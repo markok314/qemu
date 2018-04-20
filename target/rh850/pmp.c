@@ -1,10 +1,10 @@
 /*
- * QEMU RISC-V PMP (Physical Memory Protection)
+ * QEMU RH850 PMP (Physical Memory Protection)
  *
  * Author: Daire McNamara, daire.mcnamara@emdalo.com
  *         Ivan Griffin, ivan.griffin@emdalo.com
  *
- * This provides a RISC-V Physical Memory Protection implementation
+ * This provides a RH850 Physical Memory Protection implementation
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,18 +31,18 @@
 
 #ifndef CONFIG_USER_ONLY
 
-#define RISCV_DEBUG_PMP 0
+#define RH850_DEBUG_PMP 0
 #define PMP_DEBUG(fmt, ...)                                                    \
     do {                                                                       \
-        if (RISCV_DEBUG_PMP) {                                                 \
+        if (RH850_DEBUG_PMP) {                                                 \
             qemu_log_mask(LOG_TRACE, "%s: " fmt "\n", __func__, ##__VA_ARGS__);\
         }                                                                      \
     } while (0)
 
-static void pmp_write_cfg(CPURISCVState *env, uint32_t addr_index,
+static void pmp_write_cfg(CPURH850State *env, uint32_t addr_index,
     uint8_t val);
-static uint8_t pmp_read_cfg(CPURISCVState *env, uint32_t addr_index);
-static void pmp_update_rule(CPURISCVState *env, uint32_t pmp_index);
+static uint8_t pmp_read_cfg(CPURH850State *env, uint32_t addr_index);
+static void pmp_update_rule(CPURH850State *env, uint32_t pmp_index);
 
 /*
  * Accessor method to extract address matching type 'a field' from cfg reg
@@ -56,7 +56,7 @@ static inline uint8_t pmp_get_a_field(uint8_t cfg)
 /*
  * Check whether a PMP is locked or not.
  */
-static inline int pmp_is_locked(CPURISCVState *env, uint32_t pmp_index)
+static inline int pmp_is_locked(CPURH850State *env, uint32_t pmp_index)
 {
 
     if (env->pmp_state.pmp[pmp_index].cfg_reg & PMP_LOCK) {
@@ -64,7 +64,7 @@ static inline int pmp_is_locked(CPURISCVState *env, uint32_t pmp_index)
     }
 
     /* Top PMP has no 'next' to check */
-    if ((pmp_index + 1u) >= MAX_RISCV_PMPS) {
+    if ((pmp_index + 1u) >= MAX_RH850_PMPS) {
         return 0;
     }
 
@@ -84,7 +84,7 @@ static inline int pmp_is_locked(CPURISCVState *env, uint32_t pmp_index)
 /*
  * Count the number of active rules.
  */
-static inline uint32_t pmp_get_num_rules(CPURISCVState *env)
+static inline uint32_t pmp_get_num_rules(CPURH850State *env)
 {
      return env->pmp_state.num_rules;
 }
@@ -92,9 +92,9 @@ static inline uint32_t pmp_get_num_rules(CPURISCVState *env)
 /*
  * Accessor to get the cfg reg for a specific PMP/HART
  */
-static inline uint8_t pmp_read_cfg(CPURISCVState *env, uint32_t pmp_index)
+static inline uint8_t pmp_read_cfg(CPURH850State *env, uint32_t pmp_index)
 {
-    if (pmp_index < MAX_RISCV_PMPS) {
+    if (pmp_index < MAX_RH850_PMPS) {
         return env->pmp_state.pmp[pmp_index].cfg_reg;
     }
 
@@ -106,9 +106,9 @@ static inline uint8_t pmp_read_cfg(CPURISCVState *env, uint32_t pmp_index)
  * Accessor to set the cfg reg for a specific PMP/HART
  * Bounds checks and relevant lock bit.
  */
-static void pmp_write_cfg(CPURISCVState *env, uint32_t pmp_index, uint8_t val)
+static void pmp_write_cfg(CPURH850State *env, uint32_t pmp_index, uint8_t val)
 {
-    if (pmp_index < MAX_RISCV_PMPS) {
+    if (pmp_index < MAX_RH850_PMPS) {
         if (!pmp_is_locked(env, pmp_index)) {
             env->pmp_state.pmp[pmp_index].cfg_reg = val;
             pmp_update_rule(env, pmp_index);
@@ -151,7 +151,7 @@ static void pmp_decode_napot(target_ulong a, target_ulong *sa, target_ulong *ea)
  *   This function is called relatively infrequently whereas the check that
  *   an address is within a pmp rule is called often, so optimise that one
  */
-static void pmp_update_rule(CPURISCVState *env, uint32_t pmp_index)
+static void pmp_update_rule(CPURH850State *env, uint32_t pmp_index)
 {
     int i;
 
@@ -196,7 +196,7 @@ static void pmp_update_rule(CPURISCVState *env, uint32_t pmp_index)
     env->pmp_state.addr[pmp_index].sa = sa;
     env->pmp_state.addr[pmp_index].ea = ea;
 
-    for (i = 0; i < MAX_RISCV_PMPS; i++) {
+    for (i = 0; i < MAX_RH850_PMPS; i++) {
         const uint8_t a_field =
             pmp_get_a_field(env->pmp_state.pmp[i].cfg_reg);
         if (PMP_AMATCH_OFF != a_field) {
@@ -205,7 +205,7 @@ static void pmp_update_rule(CPURISCVState *env, uint32_t pmp_index)
     }
 }
 
-static int pmp_is_in_range(CPURISCVState *env, int pmp_index, target_ulong addr)
+static int pmp_is_in_range(CPURH850State *env, int pmp_index, target_ulong addr)
 {
     int result = 0;
 
@@ -227,7 +227,7 @@ static int pmp_is_in_range(CPURISCVState *env, int pmp_index, target_ulong addr)
 /*
  * Check if the address has required RWX privs to complete desired operation
  */
-bool pmp_hart_has_privs(CPURISCVState *env, target_ulong addr,
+bool pmp_hart_has_privs(CPURH850State *env, target_ulong addr,
     target_ulong size, pmp_priv_t privs)
 {
     int i = 0;
@@ -243,7 +243,7 @@ bool pmp_hart_has_privs(CPURISCVState *env, target_ulong addr,
 
     /* 1.10 draft priv spec states there is an implicit order
          from low to high */
-    for (i = 0; i < MAX_RISCV_PMPS; i++) {
+    for (i = 0; i < MAX_RH850_PMPS; i++) {
         s = pmp_is_in_range(env, i, addr);
         e = pmp_is_in_range(env, i, addr + size);
 
@@ -296,7 +296,7 @@ bool pmp_hart_has_privs(CPURISCVState *env, target_ulong addr,
 /*
  * Handle a write to a pmpcfg CSP
  */
-void pmpcfg_csr_write(CPURISCVState *env, uint32_t reg_index,
+void pmpcfg_csr_write(CPURH850State *env, uint32_t reg_index,
     target_ulong val)
 {
     int i;
@@ -321,7 +321,7 @@ void pmpcfg_csr_write(CPURISCVState *env, uint32_t reg_index,
 /*
  * Handle a read from a pmpcfg CSP
  */
-target_ulong pmpcfg_csr_read(CPURISCVState *env, uint32_t reg_index)
+target_ulong pmpcfg_csr_read(CPURH850State *env, uint32_t reg_index)
 {
     int i;
     target_ulong cfg_val = 0;
@@ -342,13 +342,13 @@ target_ulong pmpcfg_csr_read(CPURISCVState *env, uint32_t reg_index)
 /*
  * Handle a write to a pmpaddr CSP
  */
-void pmpaddr_csr_write(CPURISCVState *env, uint32_t addr_index,
+void pmpaddr_csr_write(CPURH850State *env, uint32_t addr_index,
     target_ulong val)
 {
     PMP_DEBUG("hart " TARGET_FMT_ld ": addr%d, val: 0x" TARGET_FMT_lx,
         env->mhartid, addr_index, val);
 
-    if (addr_index < MAX_RISCV_PMPS) {
+    if (addr_index < MAX_RH850_PMPS) {
         if (!pmp_is_locked(env, addr_index)) {
             env->pmp_state.pmp[addr_index].addr_reg = val;
             pmp_update_rule(env, addr_index);
@@ -364,12 +364,12 @@ void pmpaddr_csr_write(CPURISCVState *env, uint32_t addr_index,
 /*
  * Handle a read from a pmpaddr CSP
  */
-target_ulong pmpaddr_csr_read(CPURISCVState *env, uint32_t addr_index)
+target_ulong pmpaddr_csr_read(CPURH850State *env, uint32_t addr_index)
 {
     PMP_DEBUG("hart " TARGET_FMT_ld ": addr%d, val: 0x" TARGET_FMT_lx,
         env->mhartid, addr_index,
         env->pmp_state.pmp[addr_index].addr_reg);
-    if (addr_index < MAX_RISCV_PMPS) {
+    if (addr_index < MAX_RH850_PMPS) {
         return env->pmp_state.pmp[addr_index].addr_reg;
     } else {
         PMP_DEBUG("ignoring read - out of bounds");

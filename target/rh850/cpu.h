@@ -1,5 +1,5 @@
 /*
- * QEMU RISC-V CPU
+ * QEMU RH850 CPU
  *
  * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
  * Copyright (c) 2017-2018 SiFive, Inc.
@@ -17,16 +17,16 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RISCV_CPU_H
-#define RISCV_CPU_H
+#ifndef RH850_CPU_H
+#define RH850_CPU_H
 
 /* QEMU addressing/paging config */
 #define TARGET_PAGE_BITS 12 /* 4 KiB Pages */
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
 #define TARGET_LONG_BITS 64
 #define TARGET_PHYS_ADDR_SPACE_BITS 50
 #define TARGET_VIRT_ADDR_SPACE_BITS 39
-#elif defined(TARGET_RISCV32)
+#elif defined(TARGET_RH85032)
 #define TARGET_LONG_BITS 32
 #define TARGET_PHYS_ADDR_SPACE_BITS 34
 #define TARGET_VIRT_ADDR_SPACE_BITS 32
@@ -34,38 +34,38 @@
 
 #define TCG_GUEST_DEFAULT_MO 0
 
-#define ELF_MACHINE EM_RISCV
-#define CPUArchState struct CPURISCVState
+#define ELF_MACHINE EM_RH850
+#define CPUArchState struct CPURH850State
 
 #include "qemu-common.h"
 #include "qom/cpu.h"
 #include "exec/cpu-defs.h"
 #include "fpu/softfloat.h"
 
-#define TYPE_RISCV_CPU "riscv-cpu"
+#define TYPE_RH850_CPU "rh850-cpu"
 
-#define RISCV_CPU_TYPE_SUFFIX "-" TYPE_RISCV_CPU
-#define RISCV_CPU_TYPE_NAME(name) (name RISCV_CPU_TYPE_SUFFIX)
-#define CPU_RESOLVING_TYPE TYPE_RISCV_CPU
+#define RH850_CPU_TYPE_SUFFIX "-" TYPE_RH850_CPU
+#define RH850_CPU_TYPE_NAME(name) (name RH850_CPU_TYPE_SUFFIX)
+#define CPU_RESOLVING_TYPE TYPE_RH850_CPU
 
-#define TYPE_RISCV_CPU_ANY              RISCV_CPU_TYPE_NAME("any")
-#define TYPE_RISCV_CPU_RV32GCSU_V1_09_1 RISCV_CPU_TYPE_NAME("rv32gcsu-v1.9.1")
-#define TYPE_RISCV_CPU_RV32GCSU_V1_10_0 RISCV_CPU_TYPE_NAME("rv32gcsu-v1.10.0")
-#define TYPE_RISCV_CPU_RV32IMACU_NOMMU  RISCV_CPU_TYPE_NAME("rv32imacu-nommu")
-#define TYPE_RISCV_CPU_RV64GCSU_V1_09_1 RISCV_CPU_TYPE_NAME("rv64gcsu-v1.9.1")
-#define TYPE_RISCV_CPU_RV64GCSU_V1_10_0 RISCV_CPU_TYPE_NAME("rv64gcsu-v1.10.0")
-#define TYPE_RISCV_CPU_RV64IMACU_NOMMU  RISCV_CPU_TYPE_NAME("rv64imacu-nommu")
-#define TYPE_RISCV_CPU_SIFIVE_E31       RISCV_CPU_TYPE_NAME("sifive-e31")
-#define TYPE_RISCV_CPU_SIFIVE_E51       RISCV_CPU_TYPE_NAME("sifive-e51")
-#define TYPE_RISCV_CPU_SIFIVE_U34       RISCV_CPU_TYPE_NAME("sifive-u34")
-#define TYPE_RISCV_CPU_SIFIVE_U54       RISCV_CPU_TYPE_NAME("sifive-u54")
+#define TYPE_RH850_CPU_ANY              RH850_CPU_TYPE_NAME("any")
+#define TYPE_RH850_CPU_RV32GCSU_V1_09_1 RH850_CPU_TYPE_NAME("rv32gcsu-v1.9.1")
+#define TYPE_RH850_CPU_RV32GCSU_V1_10_0 RH850_CPU_TYPE_NAME("rv32gcsu-v1.10.0")
+#define TYPE_RH850_CPU_RV32IMACU_NOMMU  RH850_CPU_TYPE_NAME("rv32imacu-nommu")
+#define TYPE_RH850_CPU_RV64GCSU_V1_09_1 RH850_CPU_TYPE_NAME("rv64gcsu-v1.9.1")
+#define TYPE_RH850_CPU_RV64GCSU_V1_10_0 RH850_CPU_TYPE_NAME("rv64gcsu-v1.10.0")
+#define TYPE_RH850_CPU_RV64IMACU_NOMMU  RH850_CPU_TYPE_NAME("rv64imacu-nommu")
+#define TYPE_RH850_CPU_SIFIVE_E31       RH850_CPU_TYPE_NAME("sifive-e31")
+#define TYPE_RH850_CPU_SIFIVE_E51       RH850_CPU_TYPE_NAME("sifive-e51")
+#define TYPE_RH850_CPU_SIFIVE_U34       RH850_CPU_TYPE_NAME("sifive-u34")
+#define TYPE_RH850_CPU_SIFIVE_U54       RH850_CPU_TYPE_NAME("sifive-u54")
 
 #define RV32 ((target_ulong)1 << (TARGET_LONG_BITS - 2))
 #define RV64 ((target_ulong)2 << (TARGET_LONG_BITS - 2))
 
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
 #define RVXLEN RV32
-#elif defined(TARGET_RISCV64)
+#elif defined(TARGET_RH85064)
 #define RVXLEN RV64
 #endif
 
@@ -85,7 +85,7 @@
    is currently no bit in misa to indicate whether an MMU exists or not
    so a cpu features bitfield is required */
 enum {
-    RISCV_FEATURE_MMU
+    RH850_FEATURE_MMU
 };
 
 #define USER_VERSION_2_02_0 0x00020200
@@ -97,13 +97,13 @@ enum {
 #define NB_MMU_MODES 4
 #define MMU_USER_IDX 3
 
-#define MAX_RISCV_PMPS (16)
+#define MAX_RH850_PMPS (16)
 
-typedef struct CPURISCVState CPURISCVState;
+typedef struct CPURH850State CPURH850State;
 
 #include "pmp.h"
 
-struct CPURISCVState {
+struct CPURH850State {
     target_ulong gpr[32];
     uint64_t fpr[32]; /* assume both F and D extensions */
     target_ulong pc;
@@ -130,7 +130,7 @@ struct CPURISCVState {
      * CAUTION! Unlike the rest of this struct, mip is accessed asynchonously
      * by I/O threads and other vCPUs, so hold the iothread mutex before
      * operating on it.  CPU_INTERRUPT_HARD should be in effect iff this is
-     * non-zero.  Use riscv_cpu_set_local_interrupt.
+     * non-zero.  Use rh850_cpu_set_local_interrupt.
      */
     uint32_t mip;        /* allow atomic_read for >= 32-bit hosts */
     target_ulong mie;
@@ -177,52 +177,52 @@ struct CPURISCVState {
     QEMUTimer *timer; /* Internal timer */
 };
 
-#define RISCV_CPU_CLASS(klass) \
-    OBJECT_CLASS_CHECK(RISCVCPUClass, (klass), TYPE_RISCV_CPU)
-#define RISCV_CPU(obj) \
-    OBJECT_CHECK(RISCVCPU, (obj), TYPE_RISCV_CPU)
-#define RISCV_CPU_GET_CLASS(obj) \
-    OBJECT_GET_CLASS(RISCVCPUClass, (obj), TYPE_RISCV_CPU)
+#define RH850_CPU_CLASS(klass) \
+    OBJECT_CLASS_CHECK(RH850CPUClass, (klass), TYPE_RH850_CPU)
+#define RH850_CPU(obj) \
+    OBJECT_CHECK(RH850CPU, (obj), TYPE_RH850_CPU)
+#define RH850_CPU_GET_CLASS(obj) \
+    OBJECT_GET_CLASS(RH850CPUClass, (obj), TYPE_RH850_CPU)
 
 /**
- * RISCVCPUClass:
+ * RH850CPUClass:
  * @parent_realize: The parent class' realize handler.
  * @parent_reset: The parent class' reset handler.
  *
- * A RISCV CPU model.
+ * A RH850 CPU model.
  */
-typedef struct RISCVCPUClass {
+typedef struct RH850CPUClass {
     /*< private >*/
     CPUClass parent_class;
     /*< public >*/
     DeviceRealize parent_realize;
     void (*parent_reset)(CPUState *cpu);
-} RISCVCPUClass;
+} RH850CPUClass;
 
 /**
- * RISCVCPU:
- * @env: #CPURISCVState
+ * RH850CPU:
+ * @env: #CPURH850State
  *
- * A RISCV CPU.
+ * A RH850 CPU.
  */
-typedef struct RISCVCPU {
+typedef struct RH850CPU {
     /*< private >*/
     CPUState parent_obj;
     /*< public >*/
-    CPURISCVState env;
-} RISCVCPU;
+    CPURH850State env;
+} RH850CPU;
 
-static inline RISCVCPU *riscv_env_get_cpu(CPURISCVState *env)
+static inline RH850CPU *rh850_env_get_cpu(CPURH850State *env)
 {
-    return container_of(env, RISCVCPU, env);
+    return container_of(env, RH850CPU, env);
 }
 
-static inline int riscv_has_ext(CPURISCVState *env, target_ulong ext)
+static inline int rh850_has_ext(CPURH850State *env, target_ulong ext)
 {
     return (env->misa & ext) != 0;
 }
 
-static inline bool riscv_feature(CPURISCVState *env, int feature)
+static inline bool rh850_feature(CPURH850State *env, int feature)
 {
     return env->features & (1ULL << feature);
 }
@@ -230,49 +230,49 @@ static inline bool riscv_feature(CPURISCVState *env, int feature)
 #include "cpu_user.h"
 #include "cpu_bits.h"
 
-extern const char * const riscv_int_regnames[];
-extern const char * const riscv_fpr_regnames[];
-extern const char * const riscv_excp_names[];
-extern const char * const riscv_intr_names[];
+extern const char * const rh850_int_regnames[];
+extern const char * const rh850_fpr_regnames[];
+extern const char * const rh850_excp_names[];
+extern const char * const rh850_intr_names[];
 
-#define ENV_GET_CPU(e) CPU(riscv_env_get_cpu(e))
-#define ENV_OFFSET offsetof(RISCVCPU, env)
+#define ENV_GET_CPU(e) CPU(rh850_env_get_cpu(e))
+#define ENV_OFFSET offsetof(RH850CPU, env)
 
-void riscv_cpu_do_interrupt(CPUState *cpu);
-int riscv_cpu_gdb_read_register(CPUState *cpu, uint8_t *buf, int reg);
-int riscv_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
-bool riscv_cpu_exec_interrupt(CPUState *cs, int interrupt_request);
-int riscv_cpu_mmu_index(CPURISCVState *env, bool ifetch);
-hwaddr riscv_cpu_get_phys_page_debug(CPUState *cpu, vaddr addr);
-void  riscv_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
+void rh850_cpu_do_interrupt(CPUState *cpu);
+int rh850_cpu_gdb_read_register(CPUState *cpu, uint8_t *buf, int reg);
+int rh850_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
+bool rh850_cpu_exec_interrupt(CPUState *cs, int interrupt_request);
+int rh850_cpu_mmu_index(CPURH850State *env, bool ifetch);
+hwaddr rh850_cpu_get_phys_page_debug(CPUState *cpu, vaddr addr);
+void  rh850_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
                                     MMUAccessType access_type, int mmu_idx,
                                     uintptr_t retaddr);
-int riscv_cpu_handle_mmu_fault(CPUState *cpu, vaddr address, int size,
+int rh850_cpu_handle_mmu_fault(CPUState *cpu, vaddr address, int size,
                               int rw, int mmu_idx);
 
-char *riscv_isa_string(RISCVCPU *cpu);
-void riscv_cpu_list(FILE *f, fprintf_function cpu_fprintf);
+char *rh850_isa_string(RH850CPU *cpu);
+void rh850_cpu_list(FILE *f, fprintf_function cpu_fprintf);
 
-#define cpu_init(cpu_model) cpu_generic_init(TYPE_RISCV_CPU, cpu_model)
-#define cpu_signal_handler cpu_riscv_signal_handler
-#define cpu_list riscv_cpu_list
-#define cpu_mmu_index riscv_cpu_mmu_index
+#define cpu_init(cpu_model) cpu_generic_init(TYPE_RH850_CPU, cpu_model)
+#define cpu_signal_handler cpu_rh850_signal_handler
+#define cpu_list rh850_cpu_list
+#define cpu_mmu_index rh850_cpu_mmu_index
 
-void riscv_set_mode(CPURISCVState *env, target_ulong newpriv);
+void rh850_set_mode(CPURH850State *env, target_ulong newpriv);
 
-void riscv_translate_init(void);
-RISCVCPU *cpu_riscv_init(const char *cpu_model);
-int cpu_riscv_signal_handler(int host_signum, void *pinfo, void *puc);
-void QEMU_NORETURN do_raise_exception_err(CPURISCVState *env,
+void rh850_translate_init(void);
+RH850CPU *cpu_rh850_init(const char *cpu_model);
+int cpu_rh850_signal_handler(int host_signum, void *pinfo, void *puc);
+void QEMU_NORETURN do_raise_exception_err(CPURH850State *env,
                                           uint32_t exception, uintptr_t pc);
 
-target_ulong cpu_riscv_get_fflags(CPURISCVState *env);
-void cpu_riscv_set_fflags(CPURISCVState *env, target_ulong);
+target_ulong cpu_rh850_get_fflags(CPURH850State *env);
+void cpu_rh850_set_fflags(CPURH850State *env, target_ulong);
 
 #define TB_FLAGS_MMU_MASK  3
 #define TB_FLAGS_FP_ENABLE MSTATUS_FS
 
-static inline void cpu_get_tb_cpu_state(CPURISCVState *env, target_ulong *pc,
+static inline void cpu_get_tb_cpu_state(CPURH850State *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
     *pc = env->pc;
@@ -284,14 +284,14 @@ static inline void cpu_get_tb_cpu_state(CPURISCVState *env, target_ulong *pc,
 #endif
 }
 
-void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
+void csr_write_helper(CPURH850State *env, target_ulong val_to_write,
         target_ulong csrno);
-target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno);
+target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno);
 
 #ifndef CONFIG_USER_ONLY
-void riscv_set_local_interrupt(RISCVCPU *cpu, target_ulong mask, int value);
+void rh850_set_local_interrupt(RH850CPU *cpu, target_ulong mask, int value);
 #endif
 
 #include "exec/cpu-all.h"
 
-#endif /* RISCV_CPU_H */
+#endif /* RH850_CPU_H */

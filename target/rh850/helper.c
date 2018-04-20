@@ -1,5 +1,5 @@
 /*
- * RISC-V emulation helpers for qemu.
+ * RH850 emulation helpers for qemu.
  *
  * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
  * Copyright (c) 2017-2018 SiFive, Inc.
@@ -23,9 +23,9 @@
 #include "exec/exec-all.h"
 #include "tcg-op.h"
 
-#define RISCV_DEBUG_INTERRUPT 0
+#define RH850_DEBUG_INTERRUPT 0
 
-int riscv_cpu_mmu_index(CPURISCVState *env, bool ifetch)
+int rh850_cpu_mmu_index(CPURH850State *env, bool ifetch)
 {
 #ifdef CONFIG_USER_ONLY
     return 0;
@@ -36,12 +36,12 @@ int riscv_cpu_mmu_index(CPURISCVState *env, bool ifetch)
 
 #ifndef CONFIG_USER_ONLY
 /*
- * Return RISC-V IRQ number if an interrupt should be taken, else -1.
+ * Return RH850 IRQ number if an interrupt should be taken, else -1.
  * Used in cpu-exec.c
  *
  * Adapted from Spike's processor_t::take_interrupt()
  */
-static int riscv_cpu_hw_interrupts_pending(CPURISCVState *env)
+static int rh850_cpu_hw_interrupts_pending(CPURH850State *env)
 {
     target_ulong pending_interrupts = atomic_read(&env->mip) & env->mie;
 
@@ -63,16 +63,16 @@ static int riscv_cpu_hw_interrupts_pending(CPURISCVState *env)
 }
 #endif
 
-bool riscv_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
+bool rh850_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
 #if !defined(CONFIG_USER_ONLY)
     if (interrupt_request & CPU_INTERRUPT_HARD) {
-        RISCVCPU *cpu = RISCV_CPU(cs);
-        CPURISCVState *env = &cpu->env;
-        int interruptno = riscv_cpu_hw_interrupts_pending(env);
+        RH850CPU *cpu = RH850_CPU(cs);
+        CPURH850State *env = &cpu->env;
+        int interruptno = rh850_cpu_hw_interrupts_pending(env);
         if (interruptno >= 0) {
-            cs->exception_index = RISCV_EXCP_INT_FLAG | interruptno;
-            riscv_cpu_do_interrupt(cs);
+            cs->exception_index = RH850_EXCP_INT_FLAG | interruptno;
+            rh850_cpu_do_interrupt(cs);
             return true;
         }
     }
@@ -90,13 +90,13 @@ bool riscv_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
  * Adapted from Spike's mmu_t::translate and mmu_t::walk
  *
  */
-static int get_physical_address(CPURISCVState *env, hwaddr *physical,
+static int get_physical_address(CPURH850State *env, hwaddr *physical,
                                 int *prot, target_ulong addr,
                                 int access_type, int mmu_idx)
 {
     /* NOTE: the env->pc value visible here will not be
      * correct, but the value visible to the exception handler
-     * (riscv_cpu_do_interrupt) is correct */
+     * (rh850_cpu_do_interrupt) is correct */
 
     int mode = mmu_idx;
 
@@ -106,7 +106,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         }
     }
 
-    if (mode == PRV_M || !riscv_feature(env, RISCV_FEATURE_MMU)) {
+    if (mode == PRV_M || !rh850_feature(env, RH850_FEATURE_MMU)) {
         *physical = addr;
         *prot = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
         return TRANSLATE_SUCCESS;
@@ -158,7 +158,7 @@ static int get_physical_address(CPURISCVState *env, hwaddr *physical,
         }
     }
 
-    CPUState *cs = CPU(riscv_env_get_cpu(env));
+    CPUState *cs = CPU(rh850_env_get_cpu(env));
     int va_bits = PGSHIFT + levels * ptidxbits;
     target_ulong mask = (1L << (TARGET_LONG_BITS - (va_bits - 1))) - 1;
     target_ulong masked_msbs = (addr >> (va_bits - 1)) & mask;
@@ -178,9 +178,9 @@ restart:
 
         /* check that physical address of PTE is legal */
         target_ulong pte_addr = base + idx * ptesize;
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
         target_ulong pte = ldl_phys(cs->as, pte_addr);
-#elif defined(TARGET_RISCV64)
+#elif defined(TARGET_RH85064)
         target_ulong pte = ldq_phys(cs->as, pte_addr);
 #endif
         target_ulong ppn = pte >> PTE_PPN_SHIFT;
@@ -258,25 +258,25 @@ restart:
     return TRANSLATE_FAIL;
 }
 
-static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
+static void raise_mmu_exception(CPURH850State *env, target_ulong address,
                                 MMUAccessType access_type)
 {
-    CPUState *cs = CPU(riscv_env_get_cpu(env));
+    CPUState *cs = CPU(rh850_env_get_cpu(env));
     int page_fault_exceptions =
         (env->priv_ver >= PRIV_VERSION_1_10_0) &&
         get_field(env->satp, SATP_MODE) != VM_1_10_MBARE;
     switch (access_type) {
     case MMU_INST_FETCH:
         cs->exception_index = page_fault_exceptions ?
-            RISCV_EXCP_INST_PAGE_FAULT : RISCV_EXCP_INST_ACCESS_FAULT;
+            RH850_EXCP_INST_PAGE_FAULT : RH850_EXCP_INST_ACCESS_FAULT;
         break;
     case MMU_DATA_LOAD:
         cs->exception_index = page_fault_exceptions ?
-            RISCV_EXCP_LOAD_PAGE_FAULT : RISCV_EXCP_LOAD_ACCESS_FAULT;
+            RH850_EXCP_LOAD_PAGE_FAULT : RH850_EXCP_LOAD_ACCESS_FAULT;
         break;
     case MMU_DATA_STORE:
         cs->exception_index = page_fault_exceptions ?
-            RISCV_EXCP_STORE_PAGE_FAULT : RISCV_EXCP_STORE_AMO_ACCESS_FAULT;
+            RH850_EXCP_STORE_PAGE_FAULT : RH850_EXCP_STORE_AMO_ACCESS_FAULT;
         break;
     default:
         g_assert_not_reached();
@@ -284,9 +284,9 @@ static void raise_mmu_exception(CPURISCVState *env, target_ulong address,
     env->badaddr = address;
 }
 
-hwaddr riscv_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
+hwaddr rh850_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
 {
-    RISCVCPU *cpu = RISCV_CPU(cs);
+    RH850CPU *cpu = RH850_CPU(cs);
     hwaddr phys_addr;
     int prot;
     int mmu_idx = cpu_mmu_index(&cpu->env, false);
@@ -297,21 +297,21 @@ hwaddr riscv_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
     return phys_addr;
 }
 
-void riscv_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
+void rh850_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
                                    MMUAccessType access_type, int mmu_idx,
                                    uintptr_t retaddr)
 {
-    RISCVCPU *cpu = RISCV_CPU(cs);
-    CPURISCVState *env = &cpu->env;
+    RH850CPU *cpu = RH850_CPU(cs);
+    CPURH850State *env = &cpu->env;
     switch (access_type) {
     case MMU_INST_FETCH:
-        cs->exception_index = RISCV_EXCP_INST_ADDR_MIS;
+        cs->exception_index = RH850_EXCP_INST_ADDR_MIS;
         break;
     case MMU_DATA_LOAD:
-        cs->exception_index = RISCV_EXCP_LOAD_ADDR_MIS;
+        cs->exception_index = RH850_EXCP_LOAD_ADDR_MIS;
         break;
     case MMU_DATA_STORE:
-        cs->exception_index = RISCV_EXCP_STORE_AMO_ADDR_MIS;
+        cs->exception_index = RH850_EXCP_STORE_AMO_ADDR_MIS;
         break;
     default:
         g_assert_not_reached();
@@ -325,21 +325,21 @@ void tlb_fill(CPUState *cs, target_ulong addr, int size,
         MMUAccessType access_type, int mmu_idx, uintptr_t retaddr)
 {
     int ret;
-    ret = riscv_cpu_handle_mmu_fault(cs, addr, size, access_type, mmu_idx);
+    ret = rh850_cpu_handle_mmu_fault(cs, addr, size, access_type, mmu_idx);
     if (ret == TRANSLATE_FAIL) {
-        RISCVCPU *cpu = RISCV_CPU(cs);
-        CPURISCVState *env = &cpu->env;
+        RH850CPU *cpu = RH850_CPU(cs);
+        CPURH850State *env = &cpu->env;
         do_raise_exception_err(env, cs->exception_index, retaddr);
     }
 }
 
 #endif
 
-int riscv_cpu_handle_mmu_fault(CPUState *cs, vaddr address, int size,
+int rh850_cpu_handle_mmu_fault(CPUState *cs, vaddr address, int size,
         int rw, int mmu_idx)
 {
-    RISCVCPU *cpu = RISCV_CPU(cs);
-    CPURISCVState *env = &cpu->env;
+    RH850CPU *cpu = RH850_CPU(cs);
+    CPURH850State *env = &cpu->env;
 #if !defined(CONFIG_USER_ONLY)
     hwaddr pa = 0;
     int prot;
@@ -367,13 +367,13 @@ int riscv_cpu_handle_mmu_fault(CPUState *cs, vaddr address, int size,
 #else
     switch (rw) {
     case MMU_INST_FETCH:
-        cs->exception_index = RISCV_EXCP_INST_PAGE_FAULT;
+        cs->exception_index = RH850_EXCP_INST_PAGE_FAULT;
         break;
     case MMU_DATA_LOAD:
-        cs->exception_index = RISCV_EXCP_LOAD_PAGE_FAULT;
+        cs->exception_index = RH850_EXCP_LOAD_PAGE_FAULT;
         break;
     case MMU_DATA_STORE:
-        cs->exception_index = RISCV_EXCP_STORE_PAGE_FAULT;
+        cs->exception_index = RH850_EXCP_STORE_PAGE_FAULT;
         break;
     }
 #endif
@@ -386,45 +386,45 @@ int riscv_cpu_handle_mmu_fault(CPUState *cs, vaddr address, int size,
  * Adapted from Spike's processor_t::take_trap.
  *
  */
-void riscv_cpu_do_interrupt(CPUState *cs)
+void rh850_cpu_do_interrupt(CPUState *cs)
 {
 #if !defined(CONFIG_USER_ONLY)
 
-    RISCVCPU *cpu = RISCV_CPU(cs);
-    CPURISCVState *env = &cpu->env;
+    RH850CPU *cpu = RH850_CPU(cs);
+    CPURH850State *env = &cpu->env;
 
-    if (RISCV_DEBUG_INTERRUPT) {
-        int log_cause = cs->exception_index & RISCV_EXCP_INT_MASK;
-        if (cs->exception_index & RISCV_EXCP_INT_FLAG) {
+    if (RH850_DEBUG_INTERRUPT) {
+        int log_cause = cs->exception_index & RH850_EXCP_INT_MASK;
+        if (cs->exception_index & RH850_EXCP_INT_FLAG) {
             qemu_log_mask(LOG_TRACE, "core   0: trap %s, epc 0x" TARGET_FMT_lx,
-                riscv_intr_names[log_cause], env->pc);
+                rh850_intr_names[log_cause], env->pc);
         } else {
             qemu_log_mask(LOG_TRACE, "core   0: intr %s, epc 0x" TARGET_FMT_lx,
-                riscv_excp_names[log_cause], env->pc);
+                rh850_excp_names[log_cause], env->pc);
         }
     }
 
     target_ulong fixed_cause = 0;
-    if (cs->exception_index & (RISCV_EXCP_INT_FLAG)) {
+    if (cs->exception_index & (RH850_EXCP_INT_FLAG)) {
         /* hacky for now. the MSB (bit 63) indicates interrupt but cs->exception
            index is only 32 bits wide */
-        fixed_cause = cs->exception_index & RISCV_EXCP_INT_MASK;
+        fixed_cause = cs->exception_index & RH850_EXCP_INT_MASK;
         fixed_cause |= ((target_ulong)1) << (TARGET_LONG_BITS - 1);
     } else {
         /* fixup User ECALL -> correct priv ECALL */
-        if (cs->exception_index == RISCV_EXCP_U_ECALL) {
+        if (cs->exception_index == RH850_EXCP_U_ECALL) {
             switch (env->priv) {
             case PRV_U:
-                fixed_cause = RISCV_EXCP_U_ECALL;
+                fixed_cause = RH850_EXCP_U_ECALL;
                 break;
             case PRV_S:
-                fixed_cause = RISCV_EXCP_S_ECALL;
+                fixed_cause = RH850_EXCP_S_ECALL;
                 break;
             case PRV_H:
-                fixed_cause = RISCV_EXCP_H_ECALL;
+                fixed_cause = RH850_EXCP_H_ECALL;
                 break;
             case PRV_M:
-                fixed_cause = RISCV_EXCP_M_ECALL;
+                fixed_cause = RH850_EXCP_M_ECALL;
                 break;
             }
         } else {
@@ -438,15 +438,15 @@ void riscv_cpu_do_interrupt(CPUState *cs)
     target_ulong deleg = env->medeleg;
 
     int hasbadaddr =
-        (fixed_cause == RISCV_EXCP_INST_ADDR_MIS) ||
-        (fixed_cause == RISCV_EXCP_INST_ACCESS_FAULT) ||
-        (fixed_cause == RISCV_EXCP_LOAD_ADDR_MIS) ||
-        (fixed_cause == RISCV_EXCP_STORE_AMO_ADDR_MIS) ||
-        (fixed_cause == RISCV_EXCP_LOAD_ACCESS_FAULT) ||
-        (fixed_cause == RISCV_EXCP_STORE_AMO_ACCESS_FAULT) ||
-        (fixed_cause == RISCV_EXCP_INST_PAGE_FAULT) ||
-        (fixed_cause == RISCV_EXCP_LOAD_PAGE_FAULT) ||
-        (fixed_cause == RISCV_EXCP_STORE_PAGE_FAULT);
+        (fixed_cause == RH850_EXCP_INST_ADDR_MIS) ||
+        (fixed_cause == RH850_EXCP_INST_ACCESS_FAULT) ||
+        (fixed_cause == RH850_EXCP_LOAD_ADDR_MIS) ||
+        (fixed_cause == RH850_EXCP_STORE_AMO_ADDR_MIS) ||
+        (fixed_cause == RH850_EXCP_LOAD_ACCESS_FAULT) ||
+        (fixed_cause == RH850_EXCP_STORE_AMO_ACCESS_FAULT) ||
+        (fixed_cause == RH850_EXCP_INST_PAGE_FAULT) ||
+        (fixed_cause == RH850_EXCP_LOAD_PAGE_FAULT) ||
+        (fixed_cause == RH850_EXCP_STORE_PAGE_FAULT);
 
     if (bit & ((target_ulong)1 << (TARGET_LONG_BITS - 1))) {
         deleg = env->mideleg;
@@ -461,7 +461,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->sepc = backup_epc;
 
         if (hasbadaddr) {
-            if (RISCV_DEBUG_INTERRUPT) {
+            if (RH850_DEBUG_INTERRUPT) {
                 qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
                     ": badaddr 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
             }
@@ -474,7 +474,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         s = set_field(s, MSTATUS_SPP, env->priv);
         s = set_field(s, MSTATUS_SIE, 0);
         csr_write_helper(env, s, CSR_MSTATUS);
-        riscv_set_mode(env, PRV_S);
+        rh850_set_mode(env, PRV_S);
     } else {
         /* No need to check MTVEC for misaligned - lower 2 bits cannot be set */
         env->pc = env->mtvec;
@@ -482,7 +482,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->mcause = fixed_cause;
 
         if (hasbadaddr) {
-            if (RISCV_DEBUG_INTERRUPT) {
+            if (RH850_DEBUG_INTERRUPT) {
                 qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
                     ": badaddr 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
             }
@@ -495,7 +495,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         s = set_field(s, MSTATUS_MPP, env->priv);
         s = set_field(s, MSTATUS_MIE, 0);
         csr_write_helper(env, s, CSR_MSTATUS);
-        riscv_set_mode(env, PRV_M);
+        rh850_set_mode(env, PRV_M);
     }
     /* TODO yield load reservation  */
 #endif

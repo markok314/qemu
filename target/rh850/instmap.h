@@ -1,5 +1,5 @@
 /*
- * RISC-V emulation for qemu: Instruction decode helpers
+ * RH850 emulation for qemu: Instruction decode helpers
  *
  * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
  *

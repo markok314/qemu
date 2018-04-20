@@ -1,10 +1,10 @@
 /*
- * QEMU RISC-V PMP (Physical Memory Protection)
+ * QEMU RH850 PMP (Physical Memory Protection)
  *
  * Author: Daire McNamara, daire.mcnamara@emdalo.com
  *         Ivan Griffin, ivan.griffin@emdalo.com
  *
- * This provides a RISC-V Physical Memory Protection interface
+ * This provides a RH850 Physical Memory Protection interface
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,8 +19,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _RISCV_PMP_H_
-#define _RISCV_PMP_H_
+#ifndef _RH850_PMP_H_
+#define _RH850_PMP_H_
 
 typedef enum {
     PMP_READ  = 1 << 0,
@@ -47,18 +47,18 @@ typedef struct {
 } pmp_addr_t;
 
 typedef struct {
-    pmp_entry_t pmp[MAX_RISCV_PMPS];
-    pmp_addr_t  addr[MAX_RISCV_PMPS];
+    pmp_entry_t pmp[MAX_RH850_PMPS];
+    pmp_addr_t  addr[MAX_RH850_PMPS];
     uint32_t num_rules;
 } pmp_table_t;
 
-void pmpcfg_csr_write(CPURISCVState *env, uint32_t reg_index,
+void pmpcfg_csr_write(CPURH850State *env, uint32_t reg_index,
     target_ulong val);
-target_ulong pmpcfg_csr_read(CPURISCVState *env, uint32_t reg_index);
-void pmpaddr_csr_write(CPURISCVState *env, uint32_t addr_index,
+target_ulong pmpcfg_csr_read(CPURH850State *env, uint32_t reg_index);
+void pmpaddr_csr_write(CPURH850State *env, uint32_t addr_index,
     target_ulong val);
-target_ulong pmpaddr_csr_read(CPURISCVState *env, uint32_t addr_index);
-bool pmp_hart_has_privs(CPURISCVState *env, target_ulong addr,
+target_ulong pmpaddr_csr_read(CPURH850State *env, uint32_t addr_index);
+bool pmp_hart_has_privs(CPURH850State *env, target_ulong addr,
     target_ulong size, pmp_priv_t priv);
 
 #endif

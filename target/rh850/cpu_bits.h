@@ -1,4 +1,4 @@
-/* RISC-V ISA constants */
+/* RH850 ISA constants */
 
 #define get_field(reg, mask) (((reg) & \
                  (target_ulong)(mask)) / ((mask) & ~((mask) << 1)))
@@ -270,9 +270,9 @@
 #define MSTATUS32_SD        0x80000000
 #define MSTATUS64_SD        0x8000000000000000ULL
 
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
 #define MSTATUS_SD MSTATUS32_SD
-#elif defined(TARGET_RISCV64)
+#elif defined(TARGET_RH85064)
 #define MSTATUS_SD MSTATUS64_SD
 #endif
 
@@ -291,9 +291,9 @@
 #define SSTATUS32_SD        0x80000000
 #define SSTATUS64_SD        0x8000000000000000ULL
 
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
 #define SSTATUS_SD SSTATUS32_SD
-#elif defined(TARGET_RISCV64)
+#elif defined(TARGET_RH85064)
 #define SSTATUS_SD SSTATUS64_SD
 #endif
 
@@ -361,39 +361,39 @@
 #define SATP64_ASID 0x0FFFF00000000000ULL
 #define SATP64_PPN  0x00000FFFFFFFFFFFULL
 
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
 #define SATP_MODE SATP32_MODE
 #define SATP_ASID SATP32_ASID
 #define SATP_PPN  SATP32_PPN
 #endif
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
 #define SATP_MODE SATP64_MODE
 #define SATP_ASID SATP64_ASID
 #define SATP_PPN  SATP64_PPN
 #endif
 
-/* RISCV Exception Codes */
-#define EXCP_NONE                       -1 /* not a real RISCV exception code */
-#define RISCV_EXCP_INST_ADDR_MIS           0x0
-#define RISCV_EXCP_INST_ACCESS_FAULT       0x1
-#define RISCV_EXCP_ILLEGAL_INST            0x2
-#define RISCV_EXCP_BREAKPOINT              0x3
-#define RISCV_EXCP_LOAD_ADDR_MIS           0x4
-#define RISCV_EXCP_LOAD_ACCESS_FAULT       0x5
-#define RISCV_EXCP_STORE_AMO_ADDR_MIS      0x6
-#define RISCV_EXCP_STORE_AMO_ACCESS_FAULT  0x7
-#define RISCV_EXCP_U_ECALL                 0x8 /* for convenience, report all
+/* RH850 Exception Codes */
+#define EXCP_NONE                       -1 /* not a real RH850 exception code */
+#define RH850_EXCP_INST_ADDR_MIS           0x0
+#define RH850_EXCP_INST_ACCESS_FAULT       0x1
+#define RH850_EXCP_ILLEGAL_INST            0x2
+#define RH850_EXCP_BREAKPOINT              0x3
+#define RH850_EXCP_LOAD_ADDR_MIS           0x4
+#define RH850_EXCP_LOAD_ACCESS_FAULT       0x5
+#define RH850_EXCP_STORE_AMO_ADDR_MIS      0x6
+#define RH850_EXCP_STORE_AMO_ACCESS_FAULT  0x7
+#define RH850_EXCP_U_ECALL                 0x8 /* for convenience, report all
                                                   ECALLs as this, handler
                                                   fixes */
-#define RISCV_EXCP_S_ECALL                 0x9
-#define RISCV_EXCP_H_ECALL                 0xa
-#define RISCV_EXCP_M_ECALL                 0xb
-#define RISCV_EXCP_INST_PAGE_FAULT         0xc /* since: priv-1.10.0 */
-#define RISCV_EXCP_LOAD_PAGE_FAULT         0xd /* since: priv-1.10.0 */
-#define RISCV_EXCP_STORE_PAGE_FAULT        0xf /* since: priv-1.10.0 */
+#define RH850_EXCP_S_ECALL                 0x9
+#define RH850_EXCP_H_ECALL                 0xa
+#define RH850_EXCP_M_ECALL                 0xb
+#define RH850_EXCP_INST_PAGE_FAULT         0xc /* since: priv-1.10.0 */
+#define RH850_EXCP_LOAD_PAGE_FAULT         0xd /* since: priv-1.10.0 */
+#define RH850_EXCP_STORE_PAGE_FAULT        0xf /* since: priv-1.10.0 */
 
-#define RISCV_EXCP_INT_FLAG                0x80000000
-#define RISCV_EXCP_INT_MASK                0x7fffffff
+#define RH850_EXCP_INT_FLAG                0x80000000
+#define RH850_EXCP_INT_MASK                0x7fffffff
 
 /* page table entry (PTE) fields */
 #define PTE_V     0x001 /* Valid */

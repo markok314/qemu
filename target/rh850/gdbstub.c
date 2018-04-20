@@ -1,5 +1,5 @@
 /*
- * RISC-V GDB Server Stub
+ * RH850 GDB Server Stub
  *
  * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
  *
@@ -21,10 +21,10 @@
 #include "exec/gdbstub.h"
 #include "cpu.h"
 
-int riscv_cpu_gdb_read_register(CPUState *cs, uint8_t *mem_buf, int n)
+int rh850_cpu_gdb_read_register(CPUState *cs, uint8_t *mem_buf, int n)
 {
-    RISCVCPU *cpu = RISCV_CPU(cs);
-    CPURISCVState *env = &cpu->env;
+    RH850CPU *cpu = RH850_CPU(cs);
+    CPURH850State *env = &cpu->env;
 
     if (n < 32) {
         return gdb_get_regl(mem_buf, env->gpr[n]);
@@ -38,10 +38,10 @@ int riscv_cpu_gdb_read_register(CPUState *cs, uint8_t *mem_buf, int n)
     return 0;
 }
 
-int riscv_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
+int rh850_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
 {
-    RISCVCPU *cpu = RISCV_CPU(cs);
-    CPURISCVState *env = &cpu->env;
+    RH850CPU *cpu = RH850_CPU(cs);
+    CPURH850State *env = &cpu->env;
 
     if (n == 0) {
         /* discard writes to x0 */

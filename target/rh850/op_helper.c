@@ -1,5 +1,5 @@
 /*
- * RISC-V Emulation Helpers for QEMU.
+ * RH850 Emulation Helpers for QEMU.
  *
  * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
  * Copyright (c) 2017-2018 SiFive, Inc.
@@ -26,7 +26,7 @@
 
 #ifndef CONFIG_USER_ONLY
 
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
 static const char valid_vm_1_09[16] = {
     [VM_1_09_MBARE] = 1,
     [VM_1_09_SV32] = 1,
@@ -35,7 +35,7 @@ static const char valid_vm_1_10[16] = {
     [VM_1_10_MBARE] = 1,
     [VM_1_10_SV32] = 1
 };
-#elif defined(TARGET_RISCV64)
+#elif defined(TARGET_RH85064)
 static const char valid_vm_1_09[16] = {
     [VM_1_09_MBARE] = 1,
     [VM_1_09_SV39] = 1,
@@ -49,7 +49,7 @@ static const char valid_vm_1_10[16] = {
 };
 #endif
 
-static int validate_vm(CPURISCVState *env, target_ulong vm)
+static int validate_vm(CPURH850State *env, target_ulong vm)
 {
     return (env->priv_ver >= PRIV_VERSION_1_10_0) ?
         valid_vm_1_10[vm & 0xf] : valid_vm_1_09[vm & 0xf];
@@ -58,25 +58,25 @@ static int validate_vm(CPURISCVState *env, target_ulong vm)
 #endif
 
 /* Exceptions processing helpers */
-void QEMU_NORETURN do_raise_exception_err(CPURISCVState *env,
+void QEMU_NORETURN do_raise_exception_err(CPURH850State *env,
                                           uint32_t exception, uintptr_t pc)
 {
-    CPUState *cs = CPU(riscv_env_get_cpu(env));
+    CPUState *cs = CPU(rh850_env_get_cpu(env));
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
 }
 
-void helper_raise_exception(CPURISCVState *env, uint32_t exception)
+void helper_raise_exception(CPURH850State *env, uint32_t exception)
 {
     do_raise_exception_err(env, exception, 0);
 }
 
-static void validate_mstatus_fs(CPURISCVState *env, uintptr_t ra)
+static void validate_mstatus_fs(CPURH850State *env, uintptr_t ra)
 {
 #ifndef CONFIG_USER_ONLY
     if (!(env->mstatus & MSTATUS_FS)) {
-        do_raise_exception_err(env, RISCV_EXCP_ILLEGAL_INST, ra);
+        do_raise_exception_err(env, RH850_EXCP_ILLEGAL_INST, ra);
     }
 #endif
 }
@@ -86,7 +86,7 @@ static void validate_mstatus_fs(CPURISCVState *env, uintptr_t ra)
  *
  * Adapted from Spike's processor_t::set_csr
  */
-void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
+void csr_write_helper(CPURH850State *env, target_ulong val_to_write,
         target_ulong csrno)
 {
 #ifndef CONFIG_USER_ONLY
@@ -97,7 +97,7 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
     switch (csrno) {
     case CSR_FFLAGS:
         validate_mstatus_fs(env, GETPC());
-        cpu_riscv_set_fflags(env, val_to_write & (FSR_AEXC >> FSR_AEXC_SHIFT));
+        cpu_rh850_set_fflags(env, val_to_write & (FSR_AEXC >> FSR_AEXC_SHIFT));
         break;
     case CSR_FRM:
         validate_mstatus_fs(env, GETPC());
@@ -106,7 +106,7 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
     case CSR_FCSR:
         validate_mstatus_fs(env, GETPC());
         env->frm = (val_to_write & FSR_RD) >> FSR_RD_SHIFT;
-        cpu_riscv_set_fflags(env, (val_to_write & FSR_AEXC) >> FSR_AEXC_SHIFT);
+        cpu_rh850_set_fflags(env, (val_to_write & FSR_AEXC) >> FSR_AEXC_SHIFT);
         break;
 #ifndef CONFIG_USER_ONLY
     case CSR_MSTATUS: {
@@ -138,8 +138,8 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
 
         /* silenty discard mstatus.mpp writes for unsupported modes */
         if (mpp == PRV_H ||
-            (!riscv_has_ext(env, RVS) && mpp == PRV_S) ||
-            (!riscv_has_ext(env, RVU) && mpp == PRV_U)) {
+            (!rh850_has_ext(env, RVS) && mpp == PRV_S) ||
+            (!rh850_has_ext(env, RVU) && mpp == PRV_U)) {
             mask &= ~MSTATUS_MPP;
         }
 
@@ -148,7 +148,7 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
         /* Note: this is a workaround for an issue where mstatus.FS
            does not report dirty after floating point operations
            that modify floating point state. This workaround is
-           technically compliant with the RISC-V Privileged
+           technically compliant with the RH850 Privileged
            specification as it is legal to return only off, or dirty.
            at the expense of extra floating point save/restore. */
 
@@ -170,10 +170,10 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
          * CSR operations
          */
         qemu_mutex_lock_iothread();
-        RISCVCPU *cpu = riscv_env_get_cpu(env);
-        riscv_set_local_interrupt(cpu, MIP_SSIP,
+        RH850CPU *cpu = rh850_env_get_cpu(env);
+        rh850_set_local_interrupt(cpu, MIP_SSIP,
                                   (val_to_write & MIP_SSIP) != 0);
-        riscv_set_local_interrupt(cpu, MIP_STIP,
+        rh850_set_local_interrupt(cpu, MIP_STIP,
                                   (val_to_write & MIP_STIP) != 0);
         /*
          * csrs, csrc on mip.SEIP is not decomposable into separate read and
@@ -193,21 +193,21 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
         break;
     case CSR_MEDELEG: {
         target_ulong mask = 0;
-        mask |= 1ULL << (RISCV_EXCP_INST_ADDR_MIS);
-        mask |= 1ULL << (RISCV_EXCP_INST_ACCESS_FAULT);
-        mask |= 1ULL << (RISCV_EXCP_ILLEGAL_INST);
-        mask |= 1ULL << (RISCV_EXCP_BREAKPOINT);
-        mask |= 1ULL << (RISCV_EXCP_LOAD_ADDR_MIS);
-        mask |= 1ULL << (RISCV_EXCP_LOAD_ACCESS_FAULT);
-        mask |= 1ULL << (RISCV_EXCP_STORE_AMO_ADDR_MIS);
-        mask |= 1ULL << (RISCV_EXCP_STORE_AMO_ACCESS_FAULT);
-        mask |= 1ULL << (RISCV_EXCP_U_ECALL);
-        mask |= 1ULL << (RISCV_EXCP_S_ECALL);
-        mask |= 1ULL << (RISCV_EXCP_H_ECALL);
-        mask |= 1ULL << (RISCV_EXCP_M_ECALL);
-        mask |= 1ULL << (RISCV_EXCP_INST_PAGE_FAULT);
-        mask |= 1ULL << (RISCV_EXCP_LOAD_PAGE_FAULT);
-        mask |= 1ULL << (RISCV_EXCP_STORE_PAGE_FAULT);
+        mask |= 1ULL << (RH850_EXCP_INST_ADDR_MIS);
+        mask |= 1ULL << (RH850_EXCP_INST_ACCESS_FAULT);
+        mask |= 1ULL << (RH850_EXCP_ILLEGAL_INST);
+        mask |= 1ULL << (RH850_EXCP_BREAKPOINT);
+        mask |= 1ULL << (RH850_EXCP_LOAD_ADDR_MIS);
+        mask |= 1ULL << (RH850_EXCP_LOAD_ACCESS_FAULT);
+        mask |= 1ULL << (RH850_EXCP_STORE_AMO_ADDR_MIS);
+        mask |= 1ULL << (RH850_EXCP_STORE_AMO_ACCESS_FAULT);
+        mask |= 1ULL << (RH850_EXCP_U_ECALL);
+        mask |= 1ULL << (RH850_EXCP_S_ECALL);
+        mask |= 1ULL << (RH850_EXCP_H_ECALL);
+        mask |= 1ULL << (RH850_EXCP_M_ECALL);
+        mask |= 1ULL << (RH850_EXCP_INST_PAGE_FAULT);
+        mask |= 1ULL << (RH850_EXCP_LOAD_PAGE_FAULT);
+        mask |= 1ULL << (RH850_EXCP_STORE_PAGE_FAULT);
         env->medeleg = (env->medeleg & ~mask)
                                 | (val_to_write & mask);
         break;
@@ -254,7 +254,7 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
         break;
     }
     case CSR_SATP: /* CSR_SPTBR */ {
-        if (!riscv_feature(env, RISCV_FEATURE_MMU)) {
+        if (!rh850_feature(env, RH850_FEATURE_MMU)) {
             goto do_illegal;
         }
         if (env->priv_ver <= PRIV_VERSION_1_09_1 && (val_to_write ^ env->sptbr))
@@ -347,7 +347,7 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
     do_illegal:
 #endif
     default:
-        do_raise_exception_err(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
+        do_raise_exception_err(env, RH850_EXCP_ILLEGAL_INST, GETPC());
     }
 }
 
@@ -356,7 +356,7 @@ void csr_write_helper(CPURISCVState *env, target_ulong val_to_write,
  *
  * Adapted from Spike's processor_t::get_csr
  */
-target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
+target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno)
 {
 #ifndef CONFIG_USER_ONLY
     target_ulong ctr_en = env->priv == PRV_U ? env->mucounteren :
@@ -371,7 +371,7 @@ target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
             return 0;
         }
     }
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
     if (csrno >= CSR_HPMCOUNTER3H && csrno <= CSR_HPMCOUNTER31H) {
         if (ctr_ok) {
             return 0;
@@ -381,7 +381,7 @@ target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
     if (csrno >= CSR_MHPMCOUNTER3 && csrno <= CSR_MHPMCOUNTER31) {
         return 0;
     }
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
     if (csrno >= CSR_MHPMCOUNTER3 && csrno <= CSR_MHPMCOUNTER31) {
         return 0;
     }
@@ -393,19 +393,19 @@ target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
     switch (csrno) {
     case CSR_FFLAGS:
         validate_mstatus_fs(env, GETPC());
-        return cpu_riscv_get_fflags(env);
+        return cpu_rh850_get_fflags(env);
     case CSR_FRM:
         validate_mstatus_fs(env, GETPC());
         return env->frm;
     case CSR_FCSR:
         validate_mstatus_fs(env, GETPC());
-        return (cpu_riscv_get_fflags(env) << FSR_AEXC_SHIFT)
+        return (cpu_rh850_get_fflags(env) << FSR_AEXC_SHIFT)
                 | (env->frm << FSR_RD_SHIFT);
     /* rdtime/rdtimeh is trapped and emulated by bbl in system mode */
 #ifdef CONFIG_USER_ONLY
     case CSR_TIME:
         return cpu_get_host_ticks();
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
     case CSR_TIMEH:
         return cpu_get_host_ticks() >> 32;
 #endif
@@ -416,7 +416,7 @@ target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
             return cpu_get_host_ticks();
         }
         break;
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
     case CSR_INSTRETH:
     case CSR_CYCLEH:
         if (ctr_ok) {
@@ -430,7 +430,7 @@ target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
         return cpu_get_host_ticks();
     case CSR_MINSTRETH:
     case CSR_MCYCLEH:
-#if defined(TARGET_RISCV32)
+#if defined(TARGET_RH85032)
         return cpu_get_host_ticks() >> 32;
 #endif
         break;
@@ -534,7 +534,7 @@ target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
 #endif
     }
     /* used by e.g. MTIME read */
-    do_raise_exception_err(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
+    do_raise_exception_err(env, RH850_EXCP_ILLEGAL_INST, GETPC());
 }
 
 /*
@@ -542,19 +542,19 @@ target_ulong csr_read_helper(CPURISCVState *env, target_ulong csrno)
  *
  * Adapted from Spike's decode.h:validate_csr
  */
-static void validate_csr(CPURISCVState *env, uint64_t which,
+static void validate_csr(CPURH850State *env, uint64_t which,
                          uint64_t write, uintptr_t ra)
 {
 #ifndef CONFIG_USER_ONLY
     unsigned csr_priv = get_field((which), 0x300);
     unsigned csr_read_only = get_field((which), 0xC00) == 3;
     if (((write) && csr_read_only) || (env->priv < csr_priv)) {
-        do_raise_exception_err(env, RISCV_EXCP_ILLEGAL_INST, ra);
+        do_raise_exception_err(env, RH850_EXCP_ILLEGAL_INST, ra);
     }
 #endif
 }
 
-target_ulong helper_csrrw(CPURISCVState *env, target_ulong src,
+target_ulong helper_csrrw(CPURH850State *env, target_ulong src,
         target_ulong csr)
 {
     validate_csr(env, csr, 1, GETPC());
@@ -563,7 +563,7 @@ target_ulong helper_csrrw(CPURISCVState *env, target_ulong src,
     return csr_backup;
 }
 
-target_ulong helper_csrrs(CPURISCVState *env, target_ulong src,
+target_ulong helper_csrrs(CPURH850State *env, target_ulong src,
         target_ulong csr, target_ulong rs1_pass)
 {
     validate_csr(env, csr, rs1_pass != 0, GETPC());
@@ -574,7 +574,7 @@ target_ulong helper_csrrs(CPURISCVState *env, target_ulong src,
     return csr_backup;
 }
 
-target_ulong helper_csrrc(CPURISCVState *env, target_ulong src,
+target_ulong helper_csrrc(CPURH850State *env, target_ulong src,
         target_ulong csr, target_ulong rs1_pass)
 {
     validate_csr(env, csr, rs1_pass != 0, GETPC());
@@ -588,7 +588,7 @@ target_ulong helper_csrrc(CPURISCVState *env, target_ulong src,
 #ifndef CONFIG_USER_ONLY
 
 /* iothread_mutex must be held */
-void riscv_set_local_interrupt(RISCVCPU *cpu, target_ulong mask, int value)
+void rh850_set_local_interrupt(RH850CPU *cpu, target_ulong mask, int value)
 {
     target_ulong old_mip = cpu->env.mip;
     cpu->env.mip = (old_mip & ~mask) | (value ? mask : 0);
@@ -600,7 +600,7 @@ void riscv_set_local_interrupt(RISCVCPU *cpu, target_ulong mask, int value)
     }
 }
 
-void riscv_set_mode(CPURISCVState *env, target_ulong newpriv)
+void rh850_set_mode(CPURH850State *env, target_ulong newpriv)
 {
     if (newpriv > PRV_M) {
         g_assert_not_reached();
@@ -612,15 +612,15 @@ void riscv_set_mode(CPURISCVState *env, target_ulong newpriv)
     env->priv = newpriv;
 }
 
-target_ulong helper_sret(CPURISCVState *env, target_ulong cpu_pc_deb)
+target_ulong helper_sret(CPURH850State *env, target_ulong cpu_pc_deb)
 {
     if (!(env->priv >= PRV_S)) {
-        do_raise_exception_err(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
+        do_raise_exception_err(env, RH850_EXCP_ILLEGAL_INST, GETPC());
     }
 
     target_ulong retpc = env->sepc;
-    if (!riscv_has_ext(env, RVC) && (retpc & 0x3)) {
-        do_raise_exception_err(env, RISCV_EXCP_INST_ADDR_MIS, GETPC());
+    if (!rh850_has_ext(env, RVC) && (retpc & 0x3)) {
+        do_raise_exception_err(env, RH850_EXCP_INST_ADDR_MIS, GETPC());
     }
 
     target_ulong mstatus = env->mstatus;
@@ -631,21 +631,21 @@ target_ulong helper_sret(CPURISCVState *env, target_ulong cpu_pc_deb)
         get_field(mstatus, MSTATUS_SPIE));
     mstatus = set_field(mstatus, MSTATUS_SPIE, 0);
     mstatus = set_field(mstatus, MSTATUS_SPP, PRV_U);
-    riscv_set_mode(env, prev_priv);
+    rh850_set_mode(env, prev_priv);
     csr_write_helper(env, mstatus, CSR_MSTATUS);
 
     return retpc;
 }
 
-target_ulong helper_mret(CPURISCVState *env, target_ulong cpu_pc_deb)
+target_ulong helper_mret(CPURH850State *env, target_ulong cpu_pc_deb)
 {
     if (!(env->priv >= PRV_M)) {
-        do_raise_exception_err(env, RISCV_EXCP_ILLEGAL_INST, GETPC());
+        do_raise_exception_err(env, RH850_EXCP_ILLEGAL_INST, GETPC());
     }
 
     target_ulong retpc = env->mepc;
-    if (!riscv_has_ext(env, RVC) && (retpc & 0x3)) {
-        do_raise_exception_err(env, RISCV_EXCP_INST_ADDR_MIS, GETPC());
+    if (!rh850_has_ext(env, RVC) && (retpc & 0x3)) {
+        do_raise_exception_err(env, RH850_EXCP_INST_ADDR_MIS, GETPC());
     }
 
     target_ulong mstatus = env->mstatus;
@@ -656,25 +656,25 @@ target_ulong helper_mret(CPURISCVState *env, target_ulong cpu_pc_deb)
         get_field(mstatus, MSTATUS_MPIE));
     mstatus = set_field(mstatus, MSTATUS_MPIE, 0);
     mstatus = set_field(mstatus, MSTATUS_MPP, PRV_U);
-    riscv_set_mode(env, prev_priv);
+    rh850_set_mode(env, prev_priv);
     csr_write_helper(env, mstatus, CSR_MSTATUS);
 
     return retpc;
 }
 
 
-void helper_wfi(CPURISCVState *env)
+void helper_wfi(CPURH850State *env)
 {
-    CPUState *cs = CPU(riscv_env_get_cpu(env));
+    CPUState *cs = CPU(rh850_env_get_cpu(env));
 
     cs->halted = 1;
     cs->exception_index = EXCP_HLT;
     cpu_loop_exit(cs);
 }
 
-void helper_tlb_flush(CPURISCVState *env)
+void helper_tlb_flush(CPURH850State *env)
 {
-    RISCVCPU *cpu = riscv_env_get_cpu(env);
+    RH850CPU *cpu = rh850_env_get_cpu(env);
     CPUState *cs = CPU(cpu);
     tlb_flush(cs);
 }

@@ -1,5 +1,5 @@
 /*
- * RISC-V emulation for qemu: main translation routines.
+ * RH850 emulation for qemu: main translation routines.
  *
  * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
  *
@@ -62,7 +62,7 @@ enum {
     BS_BRANCH   = 2, /* Need to exit tb for branch, jal, etc. */
 };
 
-/* convert riscv funct3 to qemu memop for load/store */
+/* convert rh850 funct3 to qemu memop for load/store */
 static const int tcg_memop_lookup[8] = {
     [0 ... 7] = -1,
     [0] = MO_SB,
@@ -70,13 +70,13 @@ static const int tcg_memop_lookup[8] = {
     [2] = MO_TESL,
     [4] = MO_UB,
     [5] = MO_TEUW,
-#ifdef TARGET_RISCV64
+#ifdef TARGET_RH85064
     [3] = MO_TEQ,
     [6] = MO_TEUL,
 #endif
 };
 
-#ifdef TARGET_RISCV64
+#ifdef TARGET_RH85064
 #define CASE_OP_32_64(X) case X: case glue(X, W)
 #else
 #define CASE_OP_32_64(X) case X
@@ -94,7 +94,7 @@ static void generate_exception(DisasContext *ctx, int excp)
 static void generate_exception_mbadaddr(DisasContext *ctx, int excp)
 {
     tcg_gen_movi_tl(cpu_pc, ctx->pc);
-    tcg_gen_st_tl(cpu_pc, cpu_env, offsetof(CPURISCVState, badaddr));
+    tcg_gen_st_tl(cpu_pc, cpu_env, offsetof(CPURH850State, badaddr));
     TCGv_i32 helper_tmp = tcg_const_i32(excp);
     gen_helper_raise_exception(cpu_env, helper_tmp);
     tcg_temp_free_i32(helper_tmp);
@@ -110,12 +110,12 @@ static void gen_exception_debug(void)
 
 static void gen_exception_illegal(DisasContext *ctx)
 {
-    generate_exception(ctx, RISCV_EXCP_ILLEGAL_INST);
+    generate_exception(ctx, RH850_EXCP_ILLEGAL_INST);
 }
 
 static void gen_exception_inst_addr_mis(DisasContext *ctx)
 {
-    generate_exception_mbadaddr(ctx, RISCV_EXCP_INST_ADDR_MIS);
+    generate_exception_mbadaddr(ctx, RH850_EXCP_INST_ADDR_MIS);
 }
 
 static inline bool use_goto_tb(DisasContext *ctx, target_ulong dest)
@@ -241,7 +241,7 @@ static void gen_arith(DisasContext *ctx, uint32_t opc, int rd, int rs1,
     CASE_OP_32_64(OPC_RISC_SUB):
         tcg_gen_sub_tl(source1, source1, source2);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_SLLW:
         tcg_gen_andi_tl(source2, source2, 0x1F);
         tcg_gen_shl_tl(source1, source1, source2);
@@ -260,7 +260,7 @@ static void gen_arith(DisasContext *ctx, uint32_t opc, int rd, int rs1,
     case OPC_RISC_XOR:
         tcg_gen_xor_tl(source1, source1, source2);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_SRLW:
         /* clear upper 32 */
         tcg_gen_ext32u_tl(source1, source1);
@@ -272,7 +272,7 @@ static void gen_arith(DisasContext *ctx, uint32_t opc, int rd, int rs1,
         tcg_gen_andi_tl(source2, source2, TARGET_LONG_BITS - 1);
         tcg_gen_shr_tl(source1, source1, source2);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_SRAW:
         /* first, trick to get it to act like working on 32 bits (get rid of
         upper 32, sign extend to fill space) */
@@ -304,7 +304,7 @@ static void gen_arith(DisasContext *ctx, uint32_t opc, int rd, int rs1,
     case OPC_RISC_MULHU:
         tcg_gen_mulu2_tl(source2, source1, source1, source2);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_DIVW:
         tcg_gen_ext32s_tl(source1, source1);
         tcg_gen_ext32s_tl(source2, source2);
@@ -340,7 +340,7 @@ static void gen_arith(DisasContext *ctx, uint32_t opc, int rd, int rs1,
         tcg_temp_free(zeroreg);
         tcg_temp_free(resultopt1);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_DIVUW:
         tcg_gen_ext32u_tl(source1, source1);
         tcg_gen_ext32u_tl(source2, source2);
@@ -364,7 +364,7 @@ static void gen_arith(DisasContext *ctx, uint32_t opc, int rd, int rs1,
         tcg_temp_free(zeroreg);
         tcg_temp_free(resultopt1);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_REMW:
         tcg_gen_ext32s_tl(source1, source1);
         tcg_gen_ext32s_tl(source2, source2);
@@ -396,7 +396,7 @@ static void gen_arith(DisasContext *ctx, uint32_t opc, int rd, int rs1,
         tcg_temp_free(zeroreg);
         tcg_temp_free(resultopt1);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_REMUW:
         tcg_gen_ext32u_tl(source1, source1);
         tcg_gen_ext32u_tl(source2, source2);
@@ -445,7 +445,7 @@ static void gen_arith_imm(DisasContext *ctx, uint32_t opc, int rd,
 
     switch (opc) {
     case OPC_RISC_ADDI:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_ADDIW:
 #endif
         tcg_gen_addi_tl(source1, source1, imm);
@@ -465,7 +465,7 @@ static void gen_arith_imm(DisasContext *ctx, uint32_t opc, int rd,
     case OPC_RISC_ANDI:
         tcg_gen_andi_tl(source1, source1, imm);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_SLLIW:
         shift_len = 32;
         /* FALLTHRU */
@@ -476,7 +476,7 @@ static void gen_arith_imm(DisasContext *ctx, uint32_t opc, int rd,
         }
         tcg_gen_shli_tl(source1, source1, imm);
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_SHIFT_RIGHT_IW:
         shift_len = 32;
         /* FALLTHRU */
@@ -514,14 +514,14 @@ static void gen_arith_imm(DisasContext *ctx, uint32_t opc, int rd,
     tcg_temp_free(source1);
 }
 
-static void gen_jal(CPURISCVState *env, DisasContext *ctx, int rd,
+static void gen_jal(CPURH850State *env, DisasContext *ctx, int rd,
                     target_ulong imm)
 {
     target_ulong next_pc;
 
     /* check misaligned: */
     next_pc = ctx->pc + imm;
-    if (!riscv_has_ext(env, RVC)) {
+    if (!rh850_has_ext(env, RVC)) {
         if ((next_pc & 0x3) != 0) {
             gen_exception_inst_addr_mis(ctx);
             return;
@@ -535,7 +535,7 @@ static void gen_jal(CPURISCVState *env, DisasContext *ctx, int rd,
     ctx->bstate = BS_BRANCH;
 }
 
-static void gen_jalr(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
+static void gen_jalr(CPURH850State *env, DisasContext *ctx, uint32_t opc,
                      int rd, int rs1, target_long imm)
 {
     /* no chaining with JALR */
@@ -548,7 +548,7 @@ static void gen_jalr(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
         tcg_gen_addi_tl(cpu_pc, cpu_pc, imm);
         tcg_gen_andi_tl(cpu_pc, cpu_pc, (target_ulong)-2);
 
-        if (!riscv_has_ext(env, RVC)) {
+        if (!rh850_has_ext(env, RVC)) {
             misaligned = gen_new_label();
             tcg_gen_andi_tl(t0, cpu_pc, 0x2);
             tcg_gen_brcondi_tl(TCG_COND_NE, t0, 0x0, misaligned);
@@ -573,7 +573,7 @@ static void gen_jalr(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
     tcg_temp_free(t0);
 }
 
-static void gen_branch(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
+static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t opc,
                        int rs1, int rs2, target_long bimm)
 {
     TCGLabel *l = gen_new_label();
@@ -611,7 +611,7 @@ static void gen_branch(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
 
     gen_goto_tb(ctx, 1, ctx->next_pc);
     gen_set_label(l); /* branch taken */
-    if (!riscv_has_ext(env, RVC) && ((ctx->pc + bimm) & 0x3)) {
+    if (!rh850_has_ext(env, RVC) && ((ctx->pc + bimm) & 0x3)) {
         /* misaligned */
         gen_exception_inst_addr_mis(ctx);
     } else {
@@ -677,7 +677,7 @@ static void gen_fp_load(DisasContext *ctx, uint32_t opc, int rd,
     switch (opc) {
     case OPC_RISC_FLW:
         tcg_gen_qemu_ld_i64(cpu_fpr[rd], t0, ctx->mem_idx, MO_TEUL);
-        /* RISC-V requires NaN-boxing of narrower width floating point values */
+        /* RH850 requires NaN-boxing of narrower width floating point values */
         tcg_gen_ori_i64(cpu_fpr[rd], cpu_fpr[rd], 0xffffffff00000000ULL);
         break;
     case OPC_RISC_FLD:
@@ -733,7 +733,7 @@ static void gen_atomic(DisasContext *ctx, uint32_t opc,
     case 2: /* 32-bit */
         mop = MO_ALIGN | MO_TESL;
         break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case 3: /* 64-bit */
         mop = MO_ALIGN | MO_TEQ;
         break;
@@ -1061,7 +1061,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_wu_s(t0, cpu_env, cpu_fpr[rs1]);
             break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         case 2: /* FCVT_L_S */
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_l_s(t0, cpu_env, cpu_fpr[rs1]);
@@ -1091,7 +1091,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_s_wu(cpu_fpr[rd], cpu_env, t0);
             break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         case 2: /* FCVT_S_L */
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_s_l(cpu_fpr[rd], cpu_env, t0);
@@ -1112,7 +1112,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
         t0 = tcg_temp_new();
         switch (rm) {
         case 0: /* FMV */
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
             tcg_gen_ext32s_tl(t0, cpu_fpr[rs1]);
 #else
             tcg_gen_extrl_i64_i32(t0, cpu_fpr[rs1]);
@@ -1131,7 +1131,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
     case OPC_RISC_FMV_S_X:
         t0 = tcg_temp_new();
         gen_get_gpr(t0, rs1);
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         tcg_gen_mov_i64(cpu_fpr[rd], t0);
 #else
         tcg_gen_extu_i32_i64(cpu_fpr[rd], t0);
@@ -1232,7 +1232,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_wu_d(t0, cpu_env, cpu_fpr[rs1]);
             break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         case 2:
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_l_d(t0, cpu_env, cpu_fpr[rs1]);
@@ -1262,7 +1262,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_d_wu(cpu_fpr[rd], cpu_env, t0);
             break;
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         case 2:
             gen_set_rm(ctx, rm);
             gen_helper_fcvt_d_l(cpu_fpr[rd], cpu_env, t0);
@@ -1278,7 +1278,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
         tcg_temp_free(t0);
         break;
 
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_FMV_X_D:
         /* also OPC_RISC_FCLASS_D */
         switch (rm) {
@@ -1314,7 +1314,7 @@ static void gen_fp_arith(DisasContext *ctx, uint32_t opc, int rd,
     }
 }
 
-static void gen_system(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
+static void gen_system(CPURH850State *env, DisasContext *ctx, uint32_t opc,
                       int rd, int rs1, int csr)
 {
     TCGv source1, csr_store, dest, rs1_pass, imm_rs1;
@@ -1343,12 +1343,12 @@ static void gen_system(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
         switch (csr) {
         case 0x0: /* ECALL */
             /* always generates U-level ECALL, fixed in do_interrupt handler */
-            generate_exception(ctx, RISCV_EXCP_U_ECALL);
+            generate_exception(ctx, RH850_EXCP_U_ECALL);
             tcg_gen_exit_tb(0); /* no chaining */
             ctx->bstate = BS_BRANCH;
             break;
         case 0x1: /* EBREAK */
-            generate_exception(ctx, RISCV_EXCP_BREAKPOINT);
+            generate_exception(ctx, RH850_EXCP_BREAKPOINT);
             tcg_gen_exit_tb(0); /* no chaining */
             ctx->bstate = BS_BRANCH;
             break;
@@ -1357,7 +1357,7 @@ static void gen_system(CPURISCVState *env, DisasContext *ctx, uint32_t opc,
             gen_exception_illegal(ctx);
             break;
         case 0x102: /* SRET */
-            if (riscv_has_ext(env, RVS)) {
+            if (rh850_has_ext(env, RVS)) {
                 gen_helper_sret(cpu_pc, cpu_env, cpu_pc);
                 tcg_gen_exit_tb(0); /* no chaining */
                 ctx->bstate = BS_BRANCH;
@@ -1457,7 +1457,7 @@ static void decode_RV32_64C0(DisasContext *ctx)
                  GET_C_LW_IMM(ctx->opcode));
         break;
     case 3:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         /* C.LD(RV64/128) -> ld rd', offset[7:3](rs1')*/
         gen_load(ctx, OPC_RISC_LD, rd_rs2, rs1s,
                  GET_C_LD_IMM(ctx->opcode));
@@ -1483,7 +1483,7 @@ static void decode_RV32_64C0(DisasContext *ctx)
                   GET_C_LW_IMM(ctx->opcode));
         break;
     case 7:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         /* C.SD (RV64/128) -> sd rs2', offset[7:3](rs1')*/
         gen_store(ctx, OPC_RISC_SD, rs1s, rd_rs2,
                   GET_C_LD_IMM(ctx->opcode));
@@ -1496,7 +1496,7 @@ static void decode_RV32_64C0(DisasContext *ctx)
     }
 }
 
-static void decode_RV32_64C1(CPURISCVState *env, DisasContext *ctx)
+static void decode_RV32_64C1(CPURH850State *env, DisasContext *ctx)
 {
     uint8_t funct3 = extract32(ctx->opcode, 13, 3);
     uint8_t rd_rs1 = GET_C_RS1(ctx->opcode);
@@ -1510,7 +1510,7 @@ static void decode_RV32_64C1(CPURISCVState *env, DisasContext *ctx)
                       GET_C_IMM(ctx->opcode));
         break;
     case 1:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         /* C.ADDIW (RV64/128) -> addiw rd, rd, imm[5:0]*/
         gen_arith_imm(ctx, OPC_RISC_ADDIW, rd_rs1, rd_rs1,
                       GET_C_IMM(ctx->opcode));
@@ -1563,7 +1563,7 @@ static void decode_RV32_64C1(CPURISCVState *env, DisasContext *ctx)
                 if (extract32(ctx->opcode, 12, 1) == 0) {
                     gen_arith(ctx, OPC_RISC_SUB, rs1s, rs1s, rs2s);
                 }
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
                 else {
                     gen_arith(ctx, OPC_RISC_SUBW, rs1s, rs1s, rs2s);
                 }
@@ -1574,7 +1574,7 @@ static void decode_RV32_64C1(CPURISCVState *env, DisasContext *ctx)
                 if (extract32(ctx->opcode, 12, 1) == 0) {
                     gen_arith(ctx, OPC_RISC_XOR, rs1s, rs1s, rs2s);
                 }
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
                 else {
                     /* C.ADDW (RV64/128) */
                     gen_arith(ctx, OPC_RISC_ADDW, rs1s, rs1s, rs2s);
@@ -1610,7 +1610,7 @@ static void decode_RV32_64C1(CPURISCVState *env, DisasContext *ctx)
     }
 }
 
-static void decode_RV32_64C2(CPURISCVState *env, DisasContext *ctx)
+static void decode_RV32_64C2(CPURH850State *env, DisasContext *ctx)
 {
     uint8_t rd, rs2;
     uint8_t funct3 = extract32(ctx->opcode, 13, 3);
@@ -1630,7 +1630,7 @@ static void decode_RV32_64C2(CPURISCVState *env, DisasContext *ctx)
         gen_load(ctx, OPC_RISC_LW, rd, 2, GET_C_LWSP_IMM(ctx->opcode));
         break;
     case 3:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         /* C.LDSP(RVC64) -> ld rd, offset[8:3](x2) */
         gen_load(ctx, OPC_RISC_LD, rd, 2, GET_C_LDSP_IMM(ctx->opcode));
 #else
@@ -1675,7 +1675,7 @@ static void decode_RV32_64C2(CPURISCVState *env, DisasContext *ctx)
                   GET_C_SWSP_IMM(ctx->opcode));
         break;
     case 7:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
         /* C.SDSP(Rv64/128) -> sd rs2, offset[8:3](x2)*/
         gen_store(ctx, OPC_RISC_SD, 2, GET_C_RS2(ctx->opcode),
                   GET_C_SDSP_IMM(ctx->opcode));
@@ -1688,7 +1688,7 @@ static void decode_RV32_64C2(CPURISCVState *env, DisasContext *ctx)
     }
 }
 
-static void decode_RV32_64C(CPURISCVState *env, DisasContext *ctx)
+static void decode_RV32_64C(CPURH850State *env, DisasContext *ctx)
 {
     uint8_t op = extract32(ctx->opcode, 0, 2);
 
@@ -1705,7 +1705,7 @@ static void decode_RV32_64C(CPURISCVState *env, DisasContext *ctx)
     }
 }
 
-static void decode_RV32_64G(CPURISCVState *env, DisasContext *ctx)
+static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
 {
     int rs1;
     int rs2;
@@ -1757,7 +1757,7 @@ static void decode_RV32_64G(CPURISCVState *env, DisasContext *ctx)
                   GET_STORE_IMM(ctx->opcode));
         break;
     case OPC_RISC_ARITH_IMM:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_ARITH_IMM_W:
 #endif
         if (rd == 0) {
@@ -1766,7 +1766,7 @@ static void decode_RV32_64G(CPURISCVState *env, DisasContext *ctx)
         gen_arith_imm(ctx, MASK_OP_ARITH_IMM(ctx->opcode), rd, rs1, imm);
         break;
     case OPC_RISC_ARITH:
-#if defined(TARGET_RISCV64)
+#if defined(TARGET_RH85064)
     case OPC_RISC_ARITH_W:
 #endif
         if (rd == 0) {
@@ -1828,11 +1828,11 @@ static void decode_RV32_64G(CPURISCVState *env, DisasContext *ctx)
     }
 }
 
-static void decode_opc(CPURISCVState *env, DisasContext *ctx)
+static void decode_opc(CPURH850State *env, DisasContext *ctx)
 {
     /* check for compressed insn */
     if (extract32(ctx->opcode, 0, 2) != 3) {
-        if (!riscv_has_ext(env, RVC)) {
+        if (!rh850_has_ext(env, RVC)) {
             gen_exception_illegal(ctx);
         } else {
             ctx->next_pc = ctx->pc + 2;
@@ -1846,7 +1846,7 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx)
 
 void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 {
-    CPURISCVState *env = cs->env_ptr;
+    CPURH850State *env = cs->env_ptr;
     DisasContext ctx;
     target_ulong pc_start;
     target_ulong next_page_start;
@@ -1951,7 +1951,7 @@ done_generating:
 #endif
 }
 
-void riscv_translate_init(void)
+void rh850_translate_init(void)
 {
     int i;
 
@@ -1962,17 +1962,17 @@ void riscv_translate_init(void)
 
     for (i = 1; i < 32; i++) {
         cpu_gpr[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPURISCVState, gpr[i]), riscv_int_regnames[i]);
+            offsetof(CPURH850State, gpr[i]), rh850_int_regnames[i]);
     }
 
     for (i = 0; i < 32; i++) {
         cpu_fpr[i] = tcg_global_mem_new_i64(cpu_env,
-            offsetof(CPURISCVState, fpr[i]), riscv_fpr_regnames[i]);
+            offsetof(CPURH850State, fpr[i]), rh850_fpr_regnames[i]);
     }
 
-    cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, pc), "pc");
-    load_res = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, load_res),
+    cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, pc), "pc");
+    load_res = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_res),
                              "load_res");
-    load_val = tcg_global_mem_new(cpu_env, offsetof(CPURISCVState, load_val),
+    load_val = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_val),
                              "load_val");
 }
