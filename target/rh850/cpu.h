@@ -22,11 +22,8 @@
 
 /* QEMU addressing/paging config */
 #define TARGET_PAGE_BITS 12 /* 4 KiB Pages */
-#if defined(TARGET_RH85064)
-#define TARGET_LONG_BITS 64
-#define TARGET_PHYS_ADDR_SPACE_BITS 50
-#define TARGET_VIRT_ADDR_SPACE_BITS 39
-#elif defined(TARGET_RH85032)
+
+#if defined(TARGET_RH850)
 #define TARGET_LONG_BITS 32
 #define TARGET_PHYS_ADDR_SPACE_BITS 34
 #define TARGET_VIRT_ADDR_SPACE_BITS 32
@@ -63,7 +60,7 @@
 #define RV32 ((target_ulong)1 << (TARGET_LONG_BITS - 2))
 #define RV64 ((target_ulong)2 << (TARGET_LONG_BITS - 2))
 
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
 #define RVXLEN RV32
 #elif defined(TARGET_RH85064)
 #define RVXLEN RV64

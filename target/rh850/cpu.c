@@ -115,7 +115,7 @@ static void rh850_any_cpu_init(Object *obj)
     set_resetvec(env, DEFAULT_RSTVEC);
 }
 
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
 
 static void rv32gcsu_priv1_09_1_cpu_init(Object *obj)
 {
@@ -282,8 +282,8 @@ static void rh850_cpu_reset(CPUState *cs)
 
 static void rh850_cpu_disas_set_info(CPUState *s, disassemble_info *info)
 {
-#if defined(TARGET_RH85032)
-    info->print_insn = print_insn_rh85032;
+#if defined(TARGET_RH850)
+    info->print_insn = print_insn_rh850;
 #elif defined(TARGET_RH85064)
     info->print_insn = print_insn_rh85064;
 #endif
@@ -429,7 +429,7 @@ static const TypeInfo rh850_cpu_type_infos[] = {
         .class_init = rh850_cpu_class_init,
     },
     DEFINE_CPU(TYPE_RH850_CPU_ANY,              rh850_any_cpu_init),
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
     DEFINE_CPU(TYPE_RH850_CPU_RV32GCSU_V1_09_1, rv32gcsu_priv1_09_1_cpu_init),
     DEFINE_CPU(TYPE_RH850_CPU_RV32GCSU_V1_10_0, rv32gcsu_priv1_10_0_cpu_init),
     DEFINE_CPU(TYPE_RH850_CPU_RV32IMACU_NOMMU,  rv32imacu_nommu_cpu_init),

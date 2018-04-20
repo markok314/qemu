@@ -178,10 +178,8 @@ restart:
 
         /* check that physical address of PTE is legal */
         target_ulong pte_addr = base + idx * ptesize;
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
         target_ulong pte = ldl_phys(cs->as, pte_addr);
-#elif defined(TARGET_RH85064)
-        target_ulong pte = ldq_phys(cs->as, pte_addr);
 #endif
         target_ulong ppn = pte >> PTE_PPN_SHIFT;
 

@@ -26,7 +26,7 @@
 
 #ifndef CONFIG_USER_ONLY
 
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
 static const char valid_vm_1_09[16] = {
     [VM_1_09_MBARE] = 1,
     [VM_1_09_SV32] = 1,
@@ -34,18 +34,6 @@ static const char valid_vm_1_09[16] = {
 static const char valid_vm_1_10[16] = {
     [VM_1_10_MBARE] = 1,
     [VM_1_10_SV32] = 1
-};
-#elif defined(TARGET_RH85064)
-static const char valid_vm_1_09[16] = {
-    [VM_1_09_MBARE] = 1,
-    [VM_1_09_SV39] = 1,
-    [VM_1_09_SV48] = 1,
-};
-static const char valid_vm_1_10[16] = {
-    [VM_1_10_MBARE] = 1,
-    [VM_1_10_SV39] = 1,
-    [VM_1_10_SV48] = 1,
-    [VM_1_10_SV57] = 1
 };
 #endif
 
@@ -371,7 +359,7 @@ target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno)
             return 0;
         }
     }
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
     if (csrno >= CSR_HPMCOUNTER3H && csrno <= CSR_HPMCOUNTER31H) {
         if (ctr_ok) {
             return 0;
@@ -381,7 +369,7 @@ target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno)
     if (csrno >= CSR_MHPMCOUNTER3 && csrno <= CSR_MHPMCOUNTER31) {
         return 0;
     }
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
     if (csrno >= CSR_MHPMCOUNTER3 && csrno <= CSR_MHPMCOUNTER31) {
         return 0;
     }
@@ -405,7 +393,7 @@ target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno)
 #ifdef CONFIG_USER_ONLY
     case CSR_TIME:
         return cpu_get_host_ticks();
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
     case CSR_TIMEH:
         return cpu_get_host_ticks() >> 32;
 #endif
@@ -416,7 +404,7 @@ target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno)
             return cpu_get_host_ticks();
         }
         break;
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
     case CSR_INSTRETH:
     case CSR_CYCLEH:
         if (ctr_ok) {
@@ -430,7 +418,7 @@ target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno)
         return cpu_get_host_ticks();
     case CSR_MINSTRETH:
     case CSR_MCYCLEH:
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
         return cpu_get_host_ticks() >> 32;
 #endif
         break;

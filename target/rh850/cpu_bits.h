@@ -270,10 +270,8 @@
 #define MSTATUS32_SD        0x80000000
 #define MSTATUS64_SD        0x8000000000000000ULL
 
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
 #define MSTATUS_SD MSTATUS32_SD
-#elif defined(TARGET_RH85064)
-#define MSTATUS_SD MSTATUS64_SD
 #endif
 
 /* sstatus bits */
@@ -291,10 +289,8 @@
 #define SSTATUS32_SD        0x80000000
 #define SSTATUS64_SD        0x8000000000000000ULL
 
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
 #define SSTATUS_SD SSTATUS32_SD
-#elif defined(TARGET_RH85064)
-#define SSTATUS_SD SSTATUS64_SD
 #endif
 
 /* irqs */
@@ -361,15 +357,10 @@
 #define SATP64_ASID 0x0FFFF00000000000ULL
 #define SATP64_PPN  0x00000FFFFFFFFFFFULL
 
-#if defined(TARGET_RH85032)
+#if defined(TARGET_RH850)
 #define SATP_MODE SATP32_MODE
 #define SATP_ASID SATP32_ASID
 #define SATP_PPN  SATP32_PPN
-#endif
-#if defined(TARGET_RH85064)
-#define SATP_MODE SATP64_MODE
-#define SATP_ASID SATP64_ASID
-#define SATP_PPN  SATP64_PPN
 #endif
 
 /* RH850 Exception Codes */
