@@ -2918,7 +2918,7 @@ static void decode_inst_decompress_rv32(rv_decode *dec)
         dec->codec = opcode_data[decomp_op].codec;
     }
 }
-
+/*
 static void decode_inst_decompress_rv64(rv_decode *dec)
 {
     int decomp_op = opcode_data[dec->op].decomp_rv64;
@@ -2936,7 +2936,7 @@ static void decode_inst_decompress_rv128(rv_decode *dec)
         dec->codec = opcode_data[decomp_op].codec;
     }
 }
-
+*/
 static void decode_inst_decompress(rv_decode *dec)
 {
     decode_inst_decompress_rv32(dec);
@@ -2957,8 +2957,7 @@ disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
     format_inst(buf, buflen, 16, &dec);
 }
 
-static int
-print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
+int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 {
     char buf[128] = { 0 };
     bfd_byte packet[2];
