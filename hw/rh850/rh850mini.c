@@ -21,7 +21,7 @@
  */
 
 #include "qemu/osdep.h"
-//#include "qapi/error.h"
+#include "qapi/error.h"
 //#include "hw/sysbus.h"
 //#include "hw/ssi/ssi.h"
 //#include "hw/arm/arm.h"
@@ -31,7 +31,7 @@
 //#include "net/net.h"
 #include "hw/boards.h"
 //#include "qemu/log.h"
-//#include "exec/address-spaces.h"
+#include "exec/address-spaces.h"
 //#include "sysemu/sysemu.h"
 //#include "hw/char/pl011.h"
 //#include "hw/misc/unimp.h"
@@ -46,9 +46,7 @@ static void rh850mini_init(MachineState *ms)
 {
     int sram_size;
     int flash_size;
-    DeviceState *dev;
-    int i;
-    int j;
+//    DeviceState *dev;
 
     MemoryRegion *sram = g_new(MemoryRegion, 1);
     MemoryRegion *flash = g_new(MemoryRegion, 1);
@@ -67,14 +65,14 @@ static void rh850mini_init(MachineState *ms)
                            &error_fatal);
     memory_region_add_subregion(system_memory, SRAM_START, sram);
 
-    nvic = armv7m_init(system_memory, flash_size, NUM_IRQ_LINES,
-                       ms->kernel_filename, ms->cpu_type);
+//    nvic = armv7m_init(system_memory, flash_size, NUM_IRQ_LINES,
+//                       ms->kernel_filename, ms->cpu_type);
 
 //    qdev_connect_gpio_out_named(nvic, "SYSRESETREQ", 0,
 //                                qemu_allocate_irq(&do_sys_reset, NULL, 0));
 
-    stellaris_sys_init(0x400fe000, qdev_get_gpio_in(nvic, 28),
-                       board, nd_table[0].macaddr.a);
+//    stellaris_sys_init(0x400fe000, qdev_get_gpio_in(nvic, 28),
+//                       board, nd_table[0].macaddr.a);
 
 //    if (board->dc4 & (1 << 28)) {
 //        DeviceState *enet;
