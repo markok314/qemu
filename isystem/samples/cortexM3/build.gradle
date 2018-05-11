@@ -1,0 +1,195 @@
+apply plugin: "c"
+apply plugin: "cpp"
+apply plugin: 'assembler'
+
+// Link with most info:
+// https://docs.gradle.org/current/userguide/native_software.html
+//
+// Useful commands:
+//   gradle components
+//   gradle tasks   ==> gradle assembleDependentsStm32DebugExecutable
+//   gradle clean
+//   gradle assemble
+
+
+println "Building project: $project.name"
+
+def ARG_TARGET_LM3S = 'LM3S'
+def LINKER_FILE = 'cortex.lnk'
+
+model {
+    platforms {
+        arm {
+            architecture "arm"
+        }
+    }
+
+    toolChains {
+        gcc(Gcc) {
+
+            target("arm")
+
+            def gccForCpp = "/home/isystem/bin/arm-none-eabi-g++";
+            
+            def os = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
+            def isWindows = os.startsWith("windows");
+            
+            if (isWindows) {
+                
+                gccForCpp = "arm-none-eabi-g++.exe"
+                    
+                if (System.env.ISYSTEM_APPS != null) {
+                    path "$System.env.ISYSTEM_APPS/CROSS/GCC/arm/bin"
+                } else {
+                    path "/APPS/CROSS/GCC/arm/bin"
+                }
+            }
+
+            // default is STM32
+            def flashStart = '0x08000000'
+            def flashSize = '512K'
+            def ramStart = '0x20000000'
+            def ramSize = '64K'
+            if (project.hasProperty(ARG_TARGET_LM3S)) {
+                flashStart = '0x0'
+                flashSize = '256K'
+                println '\nBuildTarget: === LM3Sxx ===\n'
+            } else {
+                println '\nBuildTarget: === STM32 ===\n'
+            }
+            
+            copy {
+                from "${LINKER_FILE}.template"
+                into '.'
+                rename "${LINKER_FILE}.template", LINKER_FILE
+
+                expand('FLASH_START': flashStart, 'FLASH_SIZE': flashSize,
+                       'RAM_START': ramStart, 'RAM_SIZE': ramSize)
+            }
+            
+            eachPlatform { tools ->
+                println("----> Arch: $tools.platform.architecture")
+                tools.cppCompiler.executable = gccForCpp
+                tools.assembler.executable = gccForCpp
+                tools.cCompiler.executable = gccForCpp
+                tools.linker.executable = gccForCpp
+            }
+
+            // Final tool args are defined here (gradle and user
+            // settings), and we can modify them here if needed. This
+            // example removes redundant option.
+            eachPlatform { 
+                cppCompiler.withArguments { args ->
+                    args.remove "-x"
+                    args.remove "c++"
+                    // TODO: print build/tmp/compile.../options.txt instead 
+                    println "----> C++ args: " + args.join(' ')
+                }
+                
+                linker.withArguments { args ->
+                   println "----> Linker args: " + args.join(' ')
+                }
+            }
+        }
+    }
+
+    
+    buildTypes {
+        debug
+        release
+    }
+
+    
+    components {
+        stm32(NativeExecutableSpec) {
+
+            targetPlatform "arm"
+            
+            sources {
+                cpp {
+                    source {
+                        srcDir "src"
+                            include "**/*.cpp", "**/*.c"
+                            exclude "mpc5554.*"
+                    }
+                    // This setting is usually ment for header to be exported
+                    // by a library, but we have to specify all paths to be
+                    // given to compiler (option -I for gcc).
+                    exportedHeaders {
+                        srcDir "src"
+                    }
+                }
+
+                asm {
+                    source {
+                        srcDir "src/stm32stdlib"
+                        include "**/*.s"
+                    }
+                }
+            }
+
+            // Binaries can also be configured here, but apply only for component 'stm32'
+            // binaries.all {
+            //    executable.file = new File(executable.file.parent, 'stm32.elf')            
+            //    assembler.args '-mfpu=vfp', '-mthumb', '-mcpu=cortex-m3'
+            // }
+
+            // This construct enables access to model for binary build.
+            binaries.withType(NativeExecutableBinarySpec) {
+                println '****> ' + it.executable.file
+                println '****> ' + it.tasks
+                println '****> ' + it.cppCompiler.args
+            }
+
+        }
+    }
+
+    // This will apply to ALL binaries for ALL components.
+    // Elements are of type NativeExecutableBinarySpec.
+    binaries {   
+        all {
+
+            // Change output file name, by default it has extension 'exe'.
+            def outFile = 'stm32.elf'
+            if (project.hasProperty(ARG_TARGET_LM3S)) {
+                outFile = 'lm3s.elf'
+            }
+            
+            executable.file = new File(executable.file.parent, outFile)            
+            assembler.args '-mfpu=vfp', '-mthumb', '-mcpu=cortex-m3'
+
+            cppCompiler.args '-mfpu=vfp', '-fno-dwarf2-cfi-asm',
+                          '-mthumb', '-mcpu=cortex-m4',
+                          '-mfloat-abi=soft', '-fno-builtin-print',
+                          '-fexceptions', '-fpermissive', '-Wall',
+                          '-g'
+                
+            // Example of changing model.
+            // if (toolChain in Gcc && buildType == buildTypes.debug) {
+            //    cppCompiler.args "-g"
+            // }
+            // if (toolChain in VisualCpp && buildType == buildTypes.debug) {
+            //    ...
+            // }
+                
+            if (buildType == buildTypes.release) {
+                cppCompiler.args '-O2'
+            } else {
+                cppCompiler.args '-O0'
+            }
+
+            linker.args "-Wl,-Map=stm32.map,--script=$LINKER_FILE,-n",
+                        '-O0', '-nostartfiles', '-mcpu=cortex-m4', '-mthumb',
+                        '-fexceptions', '-lstdc++', '-lg', '-lm', '-lc', '-lrdimon'
+        }
+    }
+}
+
+
+help {
+    doLast {
+        println '\n---\n\niSYSTEM specific options:'
+        println "  -P$ARG_TARGET_LM3S - if specified, build for LM3Sxx is performed, STM32 otherwise."
+        println '\n---\n'
+    }
+}
