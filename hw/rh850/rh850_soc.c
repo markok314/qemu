@@ -22,7 +22,6 @@
 static void rh850_soc_instance_init(Object *obj)
 {
     RH850_SOC_State *s = RH850_SOC(obj);
-    int i;
 
     /* Can't init the cpu here, we don't yet know which model to use */
 
@@ -37,9 +36,7 @@ static void rh850_soc_instance_init(Object *obj)
 static void rh850_soc_realize(DeviceState *dev, Error **errp)
 {
     RH850_SOC_State *s = RH850_SOC(dev);
-    SysBusDevice *sbd;
     Error *err = NULL;
-    int i;
 
 //    if (!s->board_memory) {
 //        error_setg(errp, "memory property was not set");
@@ -124,7 +121,7 @@ static void rh850_soc_class_init(ObjectClass *klass, void *data)
 static const TypeInfo rh850_soc_info = {
     .name = TYPE_RH850_SOC,
     .parent = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(ARMv7MState),
+    .instance_size = sizeof(RH850_SOC_State),
     .instance_init = rh850_soc_instance_init,
     .class_init = rh850_soc_class_init,
 };
