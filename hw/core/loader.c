@@ -419,7 +419,7 @@ fail:
     close(fd);
 }
 
-/* return < 0 if error, otherwise the number of bytes loaded in memory */
+/* @return < 0 if error, otherwise the number of bytes loaded in memory */
 int load_elf(const char *filename, uint64_t (*translate_fn)(void *, uint64_t),
              void *translate_opaque, uint64_t *pentry, uint64_t *lowaddr,
              uint64_t *highaddr, int big_endian, int elf_machine,
@@ -430,7 +430,8 @@ int load_elf(const char *filename, uint64_t (*translate_fn)(void *, uint64_t),
                        data_swab, NULL);
 }
 
-/* return < 0 if error, otherwise the number of bytes loaded in memory */
+/* return < 0 if error, otherwise the number of bytes loaded in memory.
+ * @see load_elf_ram_sym in loader.h*/
 int load_elf_as(const char *filename,
                 uint64_t (*translate_fn)(void *, uint64_t),
                 void *translate_opaque, uint64_t *pentry, uint64_t *lowaddr,

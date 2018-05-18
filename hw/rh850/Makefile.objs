@@ -1,1 +1,2 @@
-obj-y += rh850mini.o
+obj-$(CONFIG_RH850) += rh850mini.o
+obj-$(CONFIG_RH850) += rh850_soc.o

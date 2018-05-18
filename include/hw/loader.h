@@ -72,7 +72,9 @@ const char *load_elf_strerror(int error);
  * @lowaddr: Populated with lowest loaded address. Ignored if NULL.
  * @highaddr: Populated with highest loaded address. Ignored if NULL.
  * @bigendian: Expected ELF endianness. 0 for LE otherwise BE
- * @elf_machine: Expected ELF machine type
+ * @elf_machine: Expected ELF machine type. See EM_* constants in
+ *               include/elf.h. This value must match value
+ *               in .elf file at offset 0x12.
  * @clear_lsb: Set to mask off LSB of addresses (Some architectures use
  *             this for non-address data)
  * @data_swab: Set to order of byte swapping for data. 0 for no swap, 1

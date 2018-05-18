@@ -72,7 +72,9 @@ typedef int64_t  Elf64_Sxword;
 #define ET_LOPROC 0xff00
 #define ET_HIPROC 0xffff
 
-/* These constants define the various ELF target machines */
+/* These constants define the various ELF target machines. They are 16-bit
+ * numbers in ELF header located in .elf file at offset 0x12.
+ */
 #define EM_NONE  0
 #define EM_M32   1
 #define EM_SPARC 2
@@ -92,6 +94,8 @@ typedef int64_t  Elf64_Sxword;
 
 #define EM_PPC	       20	/* PowerPC */
 #define EM_PPC64       21       /* PowerPC64 */
+
+#define EM_RH850       36     /* RH850, 0x24 */
 
 #define EM_ARM		40		/* ARM */
 
@@ -120,7 +124,6 @@ typedef int64_t  Elf64_Sxword;
 #define EM_UNICORE32    110     /* UniCore32 */
 
 #define EM_RISCV        243     /* RISC-V */
-
 /*
  * This is an interim value that we will use until the committee comes
  * up with a final number.
