@@ -10,174 +10,90 @@
 
 #include <stdint.h>
 
+#include "disas_common.h"
 
-typedef uint8_t BYTE;
-typedef int16_t WORD;
-typedef uint64_t ADDROFFS;
 
-/** Contains CPU family and variant. */
-struct CCPUInfo
+interface ICodeCache;
+interface IMemoryProperty;
+
+interface IDisassembleSink
 {
-  /** Defines CPU Family IDs. */
-  enum ECPUFamily // Flags2
+  STDMETHOD (ConvertAddressToSymbol)(ADDROFFS aAddress, DWORD dwMemAreaMask, LPTSTR pszName) PURE; // address to symbol call back
+  struct CCallBackData
   {
-    cpu_8051            =  1,
-    cpu_PowerPC         = 18,
-    cpu_ARM             = 22,
-    cpu_V850            = 25,
-    cpu_TPU             = 34,
-    cpu_TriCore         = 37,
-    cpu_PCP             = 38,
-    cpu_GTM             = 40,
-    cpu_RX              = 41,
-    cpu_SPT             = 42,
-
-    cpu_Num,
-    cpu_Generic = 0xFFFF
+    enum EWhat
+    {
+      cbReadMemory,
+      cbGetRegister,
+      cbGetMemoryProperty,
+      cbGetEndian,
+      cbGetCodeCache,
+      cbGetIMemoryProperty,
+    } m_eWhat;
+    struct CReadMemory
+    {
+      SAddress    m_adrAddress;
+      ADDROFFS    m_aCount;
+      BYTE *      m_pbyBuf;
+      BOOL        m_bSuccess;
+    } m_ReadMemory;
+    struct CGetRegister
+    {
+      LPCTSTR m_pszRegister;
+      QWORD   m_qwValue;
+      BOOL    m_bSuccess;
+    } m_GetRegister;
+    struct CGetMemoryProperty
+    {
+      int      m_nProp;      // property to examine
+      SAddress m_adrAddress; // address to examine
+      BOOL     m_bResult;    // is the property selected
+    } m_GetMemoryProperty;
+    struct CGetEndian
+    {
+      SAddress m_adrAddress; // address to examine
+      EEndian  m_eEndian;    // result
+    } m_GetEndian;
+    struct SGetCodeCache
+    {
+      int m_nMemArea;      // memory area
+      ICodeCache * m_pICodeCache; // pointer to code cache interface
+    } m_GetCodeCache;
+    struct SGetIMemoryProperty
+    {
+      IMemoryProperty * m_pIMemoryProperty;
+    } m_GetIMemoryProperty;
   };
-  uint16_t m_wCPU = cpu_ARM;  ///< Contains CPU family.
-
-  enum E8051
-  {
-    v8051_8051,
-    v8051_8051MX,
-
-    v8051_Num
-  };
-  enum EPowerPC
-  {
-    vPowerPC_4xx,
-    vPowerPC_5xx,
-    vPowerPC_6xx,
-    vPowerPC_7xx,
-    vPowerPC_8xx,
-    vPowerPC_G5,
-    vPowerPC_G3,
-
-    vPowerPC_Num
-  };
-  enum EARMVariant
-  {
-    vARM_v3,
-    vARM_v4T,
-    vARM_v5TE,
-    vARM_v5TEJ,
-    vARM_v6,
-    vARM_v7A,             // Cortex A  architecture version
-    vARM_v7R,             // Cortex R  architecture version
-    vARM_v7M,             // Cortex M3 architecture version
-    vARM_v6M,             // Cortex M0 and M1 architecture version
-    vARM_v8A,
-    vARM_v8R,
-    vARM_v8M,
-
-    vARM_Num
-  };
-//  enum EARMSubVariant
-    // encoding allows 4 sub-sub variants
-    static const uint16_t svARM_CortexMask  = 0xF000;
-
-    static const uint16_t svARM_CortexM     = 0x1000;
-    static const uint16_t svARM_CortexM0    = svARM_CortexM | (0  << 2);
-    static const uint16_t svARM_CortexM1    = svARM_CortexM | (1  << 2);
-    static const uint16_t svARM_CortexM3    = svARM_CortexM | (3  << 2);
-    static const uint16_t svARM_CortexM4    = svARM_CortexM | (4  << 2);
-    static const uint16_t svARM_CortexM7    = svARM_CortexM | (7  << 2);
-    static const uint16_t svARM_CortexM33   = svARM_CortexM | (33 << 2);
-
-    static const uint16_t svARM_CortexR     = 0x2000;
-    static const uint16_t svARM_CortexR4    = svARM_CortexR | (4  << 2);
-    static const uint16_t svARM_CortexR5    = svARM_CortexR | (5  << 2);
-    static const uint16_t svARM_CortexR7    = svARM_CortexR | (7  << 2);
-    static const uint16_t svARM_CortexR52   = svARM_CortexR | (52 << 2);
-
-    static const uint16_t svARM_CortexA     = 0x3000;
-    static const uint16_t svARM_CortexA5    = svARM_CortexA | (5  << 2);
-    static const uint16_t svARM_CortexA7    = svARM_CortexA | (7  << 2);
-    static const uint16_t svARM_CortexA8    = svARM_CortexA | (8  << 2);
-    static const uint16_t svARM_CortexA9    = svARM_CortexA | (9  << 2);
-    static const uint16_t svARM_CortexA15   = svARM_CortexA | (15 << 2);
-    static const uint16_t svARM_CortexA17   = svARM_CortexA | (17 << 2);
-    static const uint16_t svARM_CortexA32   = svARM_CortexA | (32 << 2);
-    static const uint16_t svARM_CortexA35   = svARM_CortexA | (35 << 2);
-    static const uint16_t svARM_CortexA53   = svARM_CortexA | (53 << 2);
-    static const uint16_t svARM_CortexA57   = svARM_CortexA | (57 << 2);
-    static const uint16_t svARM_CortexA72   = svARM_CortexA | (72 << 2);
-    static const uint16_t svARM_CortexA75   = svARM_CortexA | (75 << 2);
-
-  enum EARMState
-  {
-/// v8
-    sARMv8_EL0    = 0x0000,
-    sARMv8_EL1    = 0x0001,
-    sARMv8_EL2    = 0x0002,
-    sARMv8_EL3    = 0x0003,
-    sARMv8_ELMask = 0x0003,
-
-    sARMv8_Secure = 0x0004,
-/// v7
-    sARMv7_PL0    = sARMv8_EL0,
-    sARMv7_PL1    = sARMv8_EL1,
-    sARMv7_PL2    = sARMv8_EL2,
-    sARMv7_ELMask = sARMv8_ELMask,
-
-    sARMv7_Secure = sARMv8_Secure,
-  };
-
-  enum EV850
-  {
-    vV850_V850,
-    vV850_V850E3v5,
-
-    vV850_Num
-  };
-  enum ETPU
-  {
-    veTPU,
-
-    vTPU_Num
-  };
-  enum EGTM
-  {
-    veGTM,
-
-    vGTM_Num
-  };
-  enum ETriCore
-  {
-    vTriCore13,
-    vTriCore16,
-    vTriCore161,
-    vTriCore162P,
-
-    vTriCore_Num
-  };
-  enum EPCP
-  {
-    vPCP,
-
-    vPCP_Num
-  };
-  enum ERX
-  {
-    vRX,
-
-    vRX_Num
-  };
-  enum ESPT
-  {
-    vSPT_v1,
-    vSPT_v2,
-    vSPT_v2_5,
-
-    vSPT_Num
-  };
-  uint16_t m_wVariant     = 0;  ///< Contains CPU variant ID.
-
-  uint16_t m_wSubVariant  = 0;  ///< Contains CPU subvariant ID.
+  STDMETHOD (CallBack)(CCallBackData & rCallBackData) PURE;  // call back
 };
 
 
+    struct CParameters
+    {
+        enum { MAX_DASM_LEN = 232 };
+        enum EOptions
+        {
+        daSymAddr         = 0x0100,
+        daSymbols         = 0x0200,
+        daWantConditionOutcome = 0x0400,// request info on whether the condition passes. requires context access
+        daWantNextAddrImm = 0x1000,  // when set then next address must be established for instructions encoding the target immediately
+        daWantNextAddrAll = 0x3000,  // when set then next address must be established for all instructions
+        daConditionPassed = 0x4000,  // conditional instruction executed - use only in conjunction with daNoContextAccess
+        daNoContextAccess = 0x8000,  // register and memory context is not available
+        
+        daNumMAUsBeforeBuf= 0x000F,  // mask for number of MAUs available before m_pbyBuf
+
+        daFormatMask      = 0x0030,
+        daFormatPadd      = 0x0000,  // formated op-code string is padded with spaces between op-code and arguments
+        daFormatTab       = 0x0010,  // formated op-code string uses TAB to separate op-code and arguments
+        };
+        WORD   m_wOptions;  // disassembly options
+        WORD   m_wNumMAUs;  // number of MAUs available in m_pbyBuf
+        ADDROFFS m_aAddress; 
+        const BYTE * m_pbyBuf;  // pointer to where the dis. buffer is located
+    };
+
+    
 class IDisassemble
 {
 public:
