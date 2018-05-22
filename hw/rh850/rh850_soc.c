@@ -1,5 +1,5 @@
 /*
- * rh850_soc emulation.
+ * RH850_soc emulation.
  *
  * Copyright (c) 2018 iSYSTEM Labs.
  * Written by Marko Klopcic
@@ -33,6 +33,15 @@ static void rh850_soc_instance_init(Object *obj)
 //                              OBJECT(&s->nvic), "num-irq", &error_abort);
 }
 
+
+/**
+main() -> machne.c:machine_run_board_init() -> rh850mini.c:rh850mini_init() -> add_cpu()
+  -> qdev.c:qdev_init_nofail() -> object_property_set_bool() ->
+                               -> object_property_set_qobject()
+                               -> object_property_set()
+                               -> property_set_bool()
+  -> qdev.c:device_set_realized() -> rh850_soc_realize()
+*/
 static void rh850_soc_realize(DeviceState *dev, Error **errp)
 {
     RH850_SOC_State *s = RH850_SOC(dev);
@@ -101,6 +110,10 @@ static void rh850_soc_realize(DeviceState *dev, Error **errp)
 */
 }
 
+/*
+ * Properties are structs with prop name as string and offset to the member
+ * in struct. Struct members are then set as properties.
+ */
 static Property rh850_soc_properties[] = {
     DEFINE_PROP_STRING("cpu-type", RH850_SOC_State, cpu_type),
     DEFINE_PROP_LINK("memory", RH850_SOC_State, board_memory, TYPE_MEMORY_REGION,

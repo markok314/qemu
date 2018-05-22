@@ -345,7 +345,7 @@
 #define IRQ_X_COP       12 /* non-standard */
 
 /* Default addresses */
-#define DEFAULT_RSTVEC     0x00001000
+#define DEFAULT_RSTVEC     0x00000000
 
 /* RV32 satp field masks */
 #define SATP32_MODE 0x80000000

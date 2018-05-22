@@ -73,12 +73,14 @@ static void add_memory(void)
 }
 
 
+// main() -> machne.c:machine_run_board_init() -> rh850mini.c:rh850mini_init() -> add_cpu()
 static void add_cpu(const char *cpu_type)
 {
     DeviceState *rh850cpu;
 
     rh850cpu = qdev_create(NULL, TYPE_RH850_SOC);
-    qdev_prop_set_uint32(rh850cpu, "num-irq", 1);
+
+    // qdev_prop_set_uint32(rh850cpu, "num-irq", 1);
     qdev_prop_set_string(rh850cpu, "cpu-type", cpu_type);
     object_property_set_link(OBJECT(rh850cpu), OBJECT(get_system_memory()),
                                      "memory", &error_abort);
@@ -92,7 +94,7 @@ static void add_cpu(const char *cpu_type)
  * Loads elf file specified in command line - kernel or barebone app.
  * Copied from armv7m.c.
  */
-static void load_rhkernel(RH850CPU *cpu, const char *kernel_filename, int mem_size)
+static void load_rh_kernel(RH850CPU *cpu, const char *kernel_filename, int mem_size)
 {
     if (!kernel_filename && !qtest_enabled()) {
         error_report("Guest image must be specified (using -kernel)");
@@ -128,11 +130,12 @@ static void load_rhkernel(RH850CPU *cpu, const char *kernel_filename, int mem_si
 }
 
 
+// main() -> machne.c:machine_run_board_init() -> rh850mini.c:rh850mini_init()
 static void rh850mini_init(MachineState *ms)
 {
     add_memory();
     add_cpu(ms->cpu_type);
-    load_rhkernel(RH850_CPU(first_cpu), ms->kernel_filename, FLASH_SIZE);
+    load_rh_kernel(RH850_CPU(first_cpu), ms->kernel_filename, FLASH_SIZE);
 
 //    nvic = armv7m_init(system_memory, flash_size, NUM_IRQ_LINES,
 //                       ms->kernel_filename, ms->cpu_type);
@@ -170,7 +173,7 @@ static void rh850mini_class_init(ObjectClass *oc, void *data)
     mc->desc = "iSYSTEM RH850 Mini";
     mc->init = rh850mini_init;
     mc->ignore_memory_transaction_failures = true;
-    mc->default_cpu_type = RH850_CPU_TYPE_NAME("rh850");
+    mc->default_cpu_type = RH850_CPU_TYPE_NAME("any");
 }
 
 static const TypeInfo rh850mini_type = {

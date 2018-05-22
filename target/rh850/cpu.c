@@ -83,7 +83,7 @@ typedef struct RH850CPUInfo {
     const char *name;
     void (*initfn)(Object *obj);
 } RH850CPUInfo;
-
+/*
 static void set_misa(CPURH850State *env, target_ulong misa)
 {
     env->misa = misa;
@@ -94,27 +94,27 @@ static void set_versions(CPURH850State *env, int user_ver, int priv_ver)
     env->user_ver = user_ver;
     env->priv_ver = priv_ver;
 }
+*/
 
+/*
 static void set_feature(CPURH850State *env, int feature)
 {
     env->features |= (1ULL << feature);
-}
+} */
 
 static void set_resetvec(CPURH850State *env, int resetvec)
 {
-#ifndef CONFIG_USER_ONLY
     env->resetvec = resetvec;
-#endif
 }
 
 static void rh850_any_cpu_init(Object *obj)
 {
     CPURH850State *env = &RH850_CPU(obj)->env;
-    set_misa(env, RVXLEN | RVI | RVM | RVA | RVF | RVD | RVC | RVU);
-    set_versions(env, USER_VERSION_2_02_0, PRIV_VERSION_1_10_0);
+    // set_misa(env, RVXLEN | RVI | RVM | RVA | RVF | RVD | RVC | RVU);
+    // set_versions(env, USER_VERSION_2_02_0, PRIV_VERSION_1_10_0);
     set_resetvec(env, DEFAULT_RSTVEC);
 }
-
+/*
 #if defined(TARGET_RH850)
 
 static void rv32gcsu_priv1_09_1_cpu_init(Object *obj)
@@ -172,6 +172,8 @@ static void rv64imacu_nommu_cpu_init(Object *obj)
 }
 
 #endif
+*/
+
 
 static ObjectClass *rh850_cpu_class_by_name(const char *cpu_model)
 {
@@ -341,7 +343,7 @@ static void rh850_cpu_class_init(ObjectClass *c, void *data)
     cc->synchronize_from_tb = rh850_cpu_synchronize_from_tb;
     cc->gdb_read_register = rh850_cpu_gdb_read_register;
     cc->gdb_write_register = rh850_cpu_gdb_write_register;
-    cc->gdb_num_core_regs = 65;
+    cc->gdb_num_core_regs = 32;
     cc->gdb_stop_before_watchpoint = true;
     cc->disas_set_info = rh850_cpu_disas_set_info;
 #ifdef CONFIG_USER_ONLY
@@ -418,9 +420,22 @@ void rh850_cpu_list(FILE *f, fprintf_function cpu_fprintf)
         .instance_init = initfn            \
     }
 
+
+/*static const TypeInfo rh850_cpu_type_info = {
+    .name = TYPE_RH850_CPU,
+    .parent = TYPE_CPU,
+    .instance_size = sizeof(RH850CPU),
+    .instance_init = rh850_cpu_initfn,
+    // .instance_post_init = rh850_cpu_post_init,  // not mandatory, RISCV doesn't have this
+    // .instance_finalize = rh850_cpu_finalizefn,  // not mandatory, RISCV doesn't have this
+    .abstract = true,
+    .class_size = sizeof(ARMCPUClass),
+};
+ */
+
 static const TypeInfo rh850_cpu_type_infos[] = {
-    {
-        .name = TYPE_RH850_CPU,
+    {  // this registers core (abstract CPU)
+        .name = TYPE_RH850_CPU, // TYPE_RH850_CPU,
         .parent = TYPE_CPU,
         .instance_size = sizeof(RH850CPU),
         .instance_init = rh850_cpu_init,
@@ -429,19 +444,14 @@ static const TypeInfo rh850_cpu_type_infos[] = {
         .class_init = rh850_cpu_class_init,
     },
     DEFINE_CPU(TYPE_RH850_CPU_ANY,              rh850_any_cpu_init),
-#if defined(TARGET_RH850)
+/** #if defined(TARGET_RH850)
     DEFINE_CPU(TYPE_RH850_CPU_RV32GCSU_V1_09_1, rv32gcsu_priv1_09_1_cpu_init),
     DEFINE_CPU(TYPE_RH850_CPU_RV32GCSU_V1_10_0, rv32gcsu_priv1_10_0_cpu_init),
     DEFINE_CPU(TYPE_RH850_CPU_RV32IMACU_NOMMU,  rv32imacu_nommu_cpu_init),
     DEFINE_CPU(TYPE_RH850_CPU_SIFIVE_E31,       rv32imacu_nommu_cpu_init),
     DEFINE_CPU(TYPE_RH850_CPU_SIFIVE_U34,       rv32gcsu_priv1_10_0_cpu_init)
-#elif defined(TARGET_RH85064)
-    DEFINE_CPU(TYPE_RH850_CPU_RV64GCSU_V1_09_1, rv64gcsu_priv1_09_1_cpu_init),
-    DEFINE_CPU(TYPE_RH850_CPU_RV64GCSU_V1_10_0, rv64gcsu_priv1_10_0_cpu_init),
-    DEFINE_CPU(TYPE_RH850_CPU_RV64IMACU_NOMMU,  rv64imacu_nommu_cpu_init),
-    DEFINE_CPU(TYPE_RH850_CPU_SIFIVE_E51,       rv64imacu_nommu_cpu_init),
-    DEFINE_CPU(TYPE_RH850_CPU_SIFIVE_U54,       rv64gcsu_priv1_10_0_cpu_init)
 #endif
+*/
 };
 
 DEFINE_TYPES(rh850_cpu_type_infos)
