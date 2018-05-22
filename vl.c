@@ -3025,6 +3025,7 @@ int main(int argc, char **argv, char **envp)
     const char *kernel_filename, *kernel_cmdline;
     const char *boot_order = NULL;
     const char *boot_once = NULL;
+
     DisplayState *ds;
     QemuOpts *opts, *machine_opts;
     QemuOpts *icount_opts = NULL, *accel_opts = NULL;

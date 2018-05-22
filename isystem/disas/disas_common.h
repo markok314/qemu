@@ -1,5 +1,20 @@
 #pragma once
 
+#include <stdint.h>
+#include <string>
+
+
+typedef uint32_t u32;
+typedef uint8_t BYTE;
+typedef uint16_t WORD;
+typedef uint32_t DWORD;
+typedef uint64_t QWORD;
+typedef uint64_t ADDROFFS;
+
+typedef char * LPTSTR;
+typedef const char * LPCSTR;
+typedef int BOOL;
+
 typedef std::string jstring;
 
 // MemArea.h
@@ -451,11 +466,6 @@ typedef int BOOL;
     ) PURE; 
 };
 
-
-typedef uint8_t BYTE;
-typedef int16_t WORD;
-typedef uint64_t QWORD;
-typedef uint64_t ADDROFFS;
 
 interface IMemoryProperty: public IUnknown
 {

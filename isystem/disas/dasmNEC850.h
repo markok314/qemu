@@ -6,9 +6,13 @@
 #define __DasmNEC850_h__
 
 #include "DisassemblerBase.h"
-#include "AsystMacros.h"
+#include "disas_common.h"
+//#include "AsystMacros.h"
+
 
 typedef const BYTE *PCBYTE;
+
+
 
 class CDisassemblerNEC850: public CDisassemblerBase  
 {

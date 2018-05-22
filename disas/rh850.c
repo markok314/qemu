@@ -18,6 +18,8 @@
 
 #include "qemu/osdep.h"
 #include "disas/bfd.h"
+//#include "../isystem/disas/DisassemblerBase.h"
+//#include "../isystem/disas/dasmNEC850.h"
 
 
 /* types */
@@ -2955,6 +2957,8 @@ disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
     decode_inst_decompress(&dec);
     decode_inst_lift_pseudo(&dec);
     format_inst(buf, buflen, 16, &dec);
+
+    //CDisassemblerBase a = new CDisassembler;
 }
 
 int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
@@ -2982,6 +2986,8 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
             len = inst_length(inst);
         }
     }
+
+
 
     disasm_inst(buf, sizeof(buf), memaddr, inst);
     (*info->fprintf_func)(info->stream, "%s", buf);

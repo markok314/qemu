@@ -6,15 +6,17 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
+//#include "stdafx.h"
 #include "DisassemblerBase.h"
-#include "AsystMacros.h"
+//#include "AsystMacros.h"
 
 #ifdef _DEBUG
 #undef THIS_FILE
 static char THIS_FILE[]=__FILE__;
 #define new DEBUG_NEW
 #endif
+
+
 
 /*
 int CLookupItemCollection::Compare(DWORD Key1, DWORD Key2) const

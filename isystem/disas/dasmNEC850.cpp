@@ -2,19 +2,39 @@
    Copyright (c) 2018 iSYSTEM Labs d.o.o.
 */
 
-#include "stdafx.h"
-
+//#include "stdafx.h"
+#include "DisassemblerBase.h"
 #include "comtypes.h"
 #include "sets.h"
-#include "dasmnec850.h"
+#include "dasmNEC850.h"
 #include "memoryareas.h"
 #include "..\kernel\SharedDefs_V850.h"
+
 
 #define VECTOR_RELOC_BASE     0xFFFF0000
 #define INVALID_INSTR_HANDLER 0x00000004
 #define SET_STR(bCond, strVar, strValue) {if (!bCond) strVar = strValue;}
 
+
+
+CDisassemblerNEC850 *func = nullptr;
+
+
 #define NecAdrToSymbol(A) StandardAdrToSymbol(A, maPhysicalV850, 4)
+
+
+void isys_print_insn(){
+
+	if(!func){
+		func = new CDisassemblerNEC850();
+
+	}
+	func->QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, DWORD & rdwNextAddress, int & rnNumCycles) override;
+
+}
+
+
+
 
 
 CDisassemblerNEC850::CDisassemblerNEC850(): CDisassemblerBase(FALSE)

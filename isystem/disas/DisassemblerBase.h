@@ -6,15 +6,15 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_DISASSEMBLERBASE_H__23BEF4BD_BEE3_44C5_B4C7_D206FA726B75__INCLUDED_)
-#define AFX_DISASSEMBLERBASE_H__23BEF4BD_BEE3_44C5_B4C7_D206FA726B75__INCLUDED_
 
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
+#include <stdint.h>
+#include "disas_common.h"
+#include "idisassemble.h"
+//#include "itest.h"
+#include "stddef.h"
 
-#include "i_Disassemble.h"
-#include "i_MemoryProperty.h"
+//#include "i_MemoryProperty.h"
 
 struct SLookupItem
 {
@@ -24,6 +24,7 @@ struct SLookupItem
 
 class CDisassemblerBase  
 {
+
 public:
 	CDisassemblerBase(BOOL m_bDefaultBigEndian);
   virtual ~CDisassemblerBase();
