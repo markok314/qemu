@@ -45,8 +45,9 @@
 // see RH850/F1L, https://www.renesas.com/en-us/products/microcontrollers-microprocessors/rh850/rh850f1x/rh850f1l.html
 const int FLASH_SIZE = 2* (1 << 20); //2M
 const int SRAM_SIZE = 192 * (1 << 10); // 192 kB
-const int FLASH_START = 0;  // pure guess, verify the manual TODO
-const int SRAM_START = 2* (1 << 20);  // FLASH_SIZE, pure guess, verify the manual TODO
+const int FLASH_START = 0;  // pure guess, verify the manual (IAR linker files
+                            // have start set at 0x0100) TODO
+const int SRAM_START = 2* (1 << 20);  // == FLASH_SIZE, pure guess, verify the manual TODO
 
 
 static void rh850_reset(void *opaque)

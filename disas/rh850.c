@@ -2966,6 +2966,9 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
     bfd_vma n;
     int status;
 
+    //(*info->fprintf_func)(info->stream, "print_insn_rh850() called");
+    //return 2;
+
     /* Instructions are made of 2-byte packets in little-endian order */
     for (n = 0; n < len; n += 2) {
         status = (*info->read_memory_func)(memaddr + n, packet, 2, info);
@@ -2978,13 +2981,13 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
             return status;
         }
         inst |= ((rv_inst) bfd_getl16(packet)) << (8 * n);
-        if (n == 0) {
-            len = inst_length(inst);
-        }
+        //if (n == 0) {
+        //    len = inst_length(inst);
+        //}
     }
 
     disasm_inst(buf, sizeof(buf), memaddr, inst);
-    (*info->fprintf_func)(info->stream, "%s", buf);
+    (*info->fprintf_func)(info->stream, "%lx:  %lx", memaddr, inst);
 
     return len;
 }

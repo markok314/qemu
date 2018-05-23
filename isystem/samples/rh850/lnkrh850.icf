@@ -8,8 +8,8 @@
 
 define memory mem with size = 4G;
 
-define region ROM_near   = mem:[from 0x00000100 to 0x00007FFF];
-define region ROM_region = mem:[from 0x00000100 to 0x0003FFFF];
+define region ROM_near   = mem:[from 0x00000000 to 0x00007FFF];
+define region ROM_region = mem:[from 0x00000000 to 0x0003FFFF];
 
 define region RAM_near   = mem:[from 0xFEE00000 to 0xFEE07FFF];
 define region RAM_region = mem:[from 0xFEE00000 to 0xFEE07FFF];
