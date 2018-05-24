@@ -18,11 +18,12 @@
 
 #include "qemu/osdep.h"
 #include "disas/bfd.h"
-//#include "../isystem/disas/DisassemblerBase.h"
-//#include "../isystem/disas/dasmNEC850.h"
+#include "../isystem/disas/DisassemblerBase.h"
+#include "../isystem/disas/dasmNEC850.h"
 
 
 /* types */
+
 
 typedef uint64_t rv_inst;
 typedef uint16_t rv_opcode;

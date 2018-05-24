@@ -160,6 +160,8 @@ common-obj-y += cpus-common.o
 common-obj-y += hw/
 common-obj-y += qom/
 common-obj-y += disas/
+obj-$(CONFIG_RH850) += isystem/disas/dasmNEC850.o
+obj-$(CONFIG_RH850) += isystem/disas/DisassemblerBase.o
 
 ######################################################################
 # Resource file for Windows executables
