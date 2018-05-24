@@ -2,13 +2,13 @@
    Copyright (c) 2018 iSYSTEM Labs d.o.o.
 */
 
-#include "stdafx.h"
-
-#include "comtypes.h"
-#include "sets.h"
-#include "dasmnec850.h"
-#include "memoryareas.h"
-#include "..\kernel\SharedDefs_V850.h"
+//#include "stdafx.h"
+//#include "comtypes.h"
+//#include "sets.h"
+//#include "dasmnec850.h"
+//#include "memoryareas.h"
+//#include "..\kernel\SharedDefs_V850.h"
+#include "dasmNEC850.h"
 
 #define VECTOR_RELOC_BASE     0xFFFF0000
 #define INVALID_INSTR_HANDLER 0x00000004
@@ -16,6 +16,15 @@
 
 #define NecAdrToSymbol(A) StandardAdrToSymbol(A, maPhysicalV850, 4)
 
+CDisassemblerNEC850 *fun = nullptr;
+
+void iSys_Print_Insn(){
+
+	if(fun == nullptr){
+		fun = new CDisassemblerNEC850();
+	}
+	//int temp = test->QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, DWORD & rdwNextAddress, int & rnNumCycles) override;
+}
 
 CDisassemblerNEC850::CDisassemblerNEC850(): CDisassemblerBase(FALSE)
 {

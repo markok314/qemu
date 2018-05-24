@@ -6,6 +6,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+#include "disas_comon.h"
 #include "stdafx.h"
 #include "DisassemblerBase.h"
 #include "AsystMacros.h"

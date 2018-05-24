@@ -836,6 +836,7 @@ static void configure_rtc_date_offset(const char *startdate, int legacy)
     time_t rtc_start_date;
     struct tm tm;
 
+
     if (!strcmp(startdate, "now") && legacy) {
         rtc_date_offset = -1;
     } else {

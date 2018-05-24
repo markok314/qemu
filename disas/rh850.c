@@ -18,7 +18,7 @@
 
 #include "qemu/osdep.h"
 #include "disas/bfd.h"
-
+//#include "isystem/disas/dasmNEC850.h"
 
 /* types */
 
@@ -2947,6 +2947,7 @@ static void decode_inst_decompress(rv_decode *dec)
 static void
 disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
 {
+
     rv_decode dec = { 0 };
     dec.pc = pc;
     dec.inst = inst;
@@ -2955,6 +2956,10 @@ disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
     decode_inst_decompress(&dec);
     decode_inst_lift_pseudo(&dec);
     format_inst(buf, buflen, 16, &dec);
+
+
+	//DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst1, int& InsType, u32& dwNextAddress, jstring& Instruction, jstring& Operand)
+	//int temp = DissNEC850(false,0,0,0,pc,inst, 0);
 }
 
 int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)

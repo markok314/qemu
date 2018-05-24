@@ -46,6 +46,7 @@ enum EEndian
 };
 
 
+//TOLE SE LAHKO POBRISE + IUnknown
 interface ICodeCache : public IUnknown
 {
 #ifndef SWIG

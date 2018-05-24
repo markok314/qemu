@@ -18,11 +18,11 @@
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_START_MODE" value="run"/>
 <booleanAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN" value="true"/>
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN_SYMBOL" value="main"/>
-<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="-M lm3s6965evb -m 256M  -d -s -S -d in_asm -D qe.log -kernel /home/isystem/proj/targetProjects/build/exe/stm32/debug/lm3s.elf"/>
-<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="arm-softmmu/qemu-system-arm"/>
+<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="rh850-softmmu/qemu-system-rh850 -M rh850mini -s -S -kernel /home/blaz/Desktop/Project/qemu/isystem/samples/rh850/sample.out"/>
+<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="/home/blaz/Desktop/Project/qemu/rh850-softmmu/qemu-system-rh850"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="qemu"/>
 <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="true"/>
-<stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="org.eclipse.cdt.core.default.config.1882619105"/>
+<stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value=""/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/qemu"/>
 </listAttribute>
