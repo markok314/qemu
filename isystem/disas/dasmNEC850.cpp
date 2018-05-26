@@ -3,12 +3,12 @@
 */
 
 //#include "stdafx.h"
-#include "DisassemblerBase.h"
-#include "comtypes.h"
-#include "sets.h"
+//#include "comtypes.h"
+//#include "sets.h"
 #include "dasmNEC850.h"
-#include "memoryareas.h"
-#include "..\kernel\SharedDefs_V850.h"
+//#include "memoryareas.h"
+//#include "..\kernel\SharedDefs_V850.h"
+#include "../isystem/disas/prenos.h"
 
 
 #define VECTOR_RELOC_BASE     0xFFFF0000
@@ -23,13 +23,13 @@ CDisassemblerNEC850 *func = nullptr;
 #define NecAdrToSymbol(A) StandardAdrToSymbol(A, maPhysicalV850, 4)
 
 
-void isys_print_insn(){
+extern "C" void isys_print_insn(){
 
 	if(!func){
 		func = new CDisassemblerNEC850();
 
 	}
-	func->QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, DWORD & rdwNextAddress, int & rnNumCycles) override;
+	func->QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, DWORD & rdwNextAddress, int & rnNumCycles);
 
 }
 

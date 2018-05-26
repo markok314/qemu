@@ -6,7 +6,6 @@
 #define __DasmNEC850_h__
 
 #include "DisassemblerBase.h"
-#include "disas_common.h"
 //#include "AsystMacros.h"
 
 

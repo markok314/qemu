@@ -151,4 +151,3 @@ public:
   // obtain required regs for disassembly
 };
 
-#endif // !defined(AFX_DISASSEMBLERBASE_H__23BEF4BD_BEE3_44C5_B4C7_D206FA726B75__INCLUDED_)
