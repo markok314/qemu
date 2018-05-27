@@ -4,7 +4,6 @@ typedef std::string jstring;
 
 // MemArea.h
 
-
 enum EMemoryProperty
 {
   mempMode0       = 0,   // CPU specific mode, should be on index 0
@@ -46,9 +45,10 @@ enum EEndian
   endianBig,
 };
 
-#define test 0
+#define test1 -1
+#define test2 -1
 
-#if test > 1
+#if test1 > 0
 
 //TOLE SE LAHKO POBRISE + IUnknown
 interface ICodeCache : public IUnknown
@@ -455,15 +455,35 @@ typedef int BOOL;
     TCC_ADDRESS aOffset             ///< amount to offset
     ) PURE;
 };
-#endif //test
 
-
+#endif
 
 typedef uint8_t BYTE;
 typedef int16_t WORD;
 typedef uint64_t QWORD;
 typedef uint64_t ADDROFFS;
 
+#if test2 > 0
+
+interface IMemoryProperty: public IUnknown
+{
+  STDMETHOD_ (EEndian, GetEndian) (int nMemArea, ADDROFFS aAddress) const PURE;
+  STDMETHOD_ (BOOL, GetMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS * paLast) const PURE;
+  STDMETHOD_ (BOOL, GetMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress) const PURE;
+  STDMETHOD_ (BOOL, HasMemoryProp)(int nProp, int nMemArea) const PURE;
+  enum EFilterMode
+  {
+    fmIncluded = 0x01, // areas present in nProp are forwarded to pfnCommit
+    fmExcluded = 0x02, // areas not present in nProp are forwarded to pfnCommit
+    fmSplit    = fmIncluded | fmExcluded,   // all areas are forwarded to pfnCommit, but are individually split
+  };
+  STDMETHOD_ (BOOL, Filter)       (BYTE byFilterMode, int nProp, SAddress adrStart, ADDROFFS aEnd, BOOL (*pfnCommit)(SAddress adrStart, ADDROFFS aEnd, void* pInfo), void* pInfo) const PURE;
+  STDMETHOD_ (BOOL, Serialize)    (ISerializer * pISerializer) PURE;
+  STDMETHOD_ (void, SetMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS aLast) PURE; // sets nProp in specified range
+  STDMETHOD_ (void, ClearMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS aLast) PURE; // sets nProp in specified range
+};
+
+#endif
 
 /** Contains CPU family and variant. */
 struct CCPUInfo
