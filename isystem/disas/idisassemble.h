@@ -5,20 +5,18 @@
  *      Author: isystem
  */
 
-#ifndef ISYSTEM_DISAS_IDISASSEMBLE_H_
-#define ISYSTEM_DISAS_IDISASSEMBLE_H_
+#pragma once
 
 #include <stdint.h>
 
 #include "disas_common.h"
 
 
-interface ICodeCache;
-interface IMemoryProperty;
-
-interface IDisassembleSink
+class IDisassembleSink
 {
-  STDMETHOD (ConvertAddressToSymbol)(ADDROFFS aAddress, DWORD dwMemAreaMask, LPTSTR pszName) PURE; // address to symbol call back
+public:
+  IDisassembleSink();
+  virtual int ConvertAddressToSymbol (ADDROFFS aAddress, DWORD dwMemAreaMask, LPTSTR pszName) = 0; // address to symbol call back
   struct CCallBackData
   {
     enum EWhat
@@ -64,7 +62,7 @@ interface IDisassembleSink
       IMemoryProperty * m_pIMemoryProperty;
     } m_GetIMemoryProperty;
   };
-  STDMETHOD (CallBack)(CCallBackData & rCallBackData) PURE;  // call back
+  virtual int CallBack (CCallBackData & rCallBackData) = 0;  // call back
 };
 
 
@@ -109,7 +107,7 @@ public:
     uint32_t    m_dwFlags;
   };
 
-  int32_t SetConfig(const CConfig * pConfig) = 0;
+  int32_t SetConfig(const CConfig * pConfig);// = 0;
   struct CInfo
   {
     struct CInstrInfo
@@ -119,8 +117,8 @@ public:
     } m_InstrInfo[mempISANum];
     BYTE m_byMinInstructionAlign; // min alignment of instructions for any mode
   };
-  int32_t GetInfo(CInfo * pInfo) = 0;
-  int32_t Update() = 0;
+  int32_t GetInfo(CInfo * pInfo);// = 0;
+  int32_t Update();// = 0;
   struct CParameters
   {
     enum { MAX_DASM_LEN = 232 };
@@ -145,7 +143,7 @@ public:
     ADDROFFS m_aAddress;
     const BYTE * m_pbyBuf;  // pointer to where the dis. buffer is located
   };
-  int32_t Disassemble(const CParameters * pParameters, LPTSTR pszDasm, WORD * pwLength) PURE;
+  int32_t Disassemble(const CParameters * pParameters, LPTSTR pszDasm, WORD * pwLength);// = 0;
   struct CAnalyze
   {
     enum EFlags
@@ -192,7 +190,7 @@ public:
     ADDROFFS m_aNextInstruction; // next instruction
     uint32_t m_dwInstructionType;  // loword(common types) hiword(special types)
   };
-  int32_t Analyze(const CParameters * pParameters, CAnalyze * pAnalyze) PURE;
+  int32_t Analyze(const CParameters * pParameters, CAnalyze * pAnalyze);// = 0;
 };
 
 #define MAKE_INST_TYPE2(TYPE1, TYPE2)         MAKELONG(TYPE1, TYPE2)
@@ -216,6 +214,3 @@ enum EINST_TYPE
   it_Trap,
   it_Step,
 };
-
-
-#endif /* ISYSTEM_DISAS_IDISASSEMBLE_H_ */

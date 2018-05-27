@@ -1,2 +1,3 @@
 obj-$(CONFIG_RH850) += rh850mini.o
 obj-$(CONFIG_RH850) += rh850_soc.o
+obj-$(CONFIG_RH850) += ../../isystem/disas/DisassemblerBase.o
