@@ -2964,6 +2964,8 @@ disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
 
 int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 {
+	printf("test\n");
+
     char buf[128] = { 0 };
     bfd_byte packet[2];
     rv_inst inst = 0;

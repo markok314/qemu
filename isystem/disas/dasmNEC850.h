@@ -6,7 +6,7 @@
 #define __DasmNEC850_h__
 
 #include "DisassemblerBase.h"
-//#include "AsystMacros.h"
+//#include AsystMacros.h
 
 typedef const BYTE *PCBYTE;
 
