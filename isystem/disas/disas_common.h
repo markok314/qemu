@@ -7,6 +7,7 @@
 #define interface struct
 typedef const char *LPCTSTR;
 #define PURE =0
+//#define NULL = 0
 
 typedef uint32_t u32;
 typedef uint8_t BYTE;
@@ -14,6 +15,7 @@ typedef uint16_t WORD;
 typedef uint32_t DWORD;
 typedef uint64_t QWORD;
 typedef uint64_t ADDROFFS;
+typedef uint64_t TCC_ADDRESS;
 
 typedef char * LPTSTR;
 typedef const char * LPCSTR;
@@ -65,15 +67,14 @@ enum EEndian
 };
 
 
-interface ICodeCache : public IUnknown
+interface ICodeCache  // : public IUnknown
 {
 #ifndef SWIG
   /**
    * sets the interpretation of address and size parameters
    *
    */
-  STDMETHOD_ (void, SetACInMAUs)
-    (
+  void SetACInMAUs(
     BOOL bACInMAUs                    ///< specifies whether address and size parameters are in MAU units or BYTE units. default = MAUs
     ) PURE;
 
@@ -84,15 +85,13 @@ interface ICodeCache : public IUnknown
    * - FALSE - Address and Size parameters are interpreted in BYTE units
    * - TRUE  - Address and Size parameters are interpreted in MAU units
    */
-  STDMETHOD_ (BOOL, GetACInMAUs)
-    () PURE;
+  BOOL GetACInMAUs() PURE;
 
   /**
    * sets the MAU size. Each addressable unit then contains MAU bytes.
    * Implicitly clears all contents.
    */
-  STDMETHOD_ (void, SetMAUSize)
-    (
+  void SetMAUSize(
     int nBytesPerMAU
     ) PURE;
 
@@ -102,15 +101,13 @@ interface ICodeCache : public IUnknown
    * @return
    * - size of one addressable unit in BYTEs
    */
-  STDMETHOD_ (int, GetMAUSize)
-    () PURE;
+  int GetMAUSize() PURE;
 
   /**
    * inserts a new chunk of code
    *
    */
-  STDMETHOD_ (void, Insert)
-    (
+  virtual void insert(
     TCC_ADDRESS aAddress,             ///< address to insert at
     TCC_ADDRESS aSize,                ///< size of the chunk
     const BYTE * pbyBuf               ///< pointer to the buffer containing the data. if NULL, no copying is performed
@@ -120,8 +117,7 @@ interface ICodeCache : public IUnknown
    * excludes a range
    *
    */
-  STDMETHOD_ (void, Exclude)
-    (
+  void Exclude(
     TCC_ADDRESS aAddressExcl,         ///< first address of the exclusion
     TCC_ADDRESS aEndExcl              ///< last address of the exclusion
     ) PURE;
@@ -132,8 +128,7 @@ interface ICodeCache : public IUnknown
    * @return
    * - number of locations filled
    */
-  STDMETHOD_ (TCC_ADDRESS, Get)
-    (
+  virtual TCC_ADDRESS Get(
     TCC_ADDRESS aAddress,             ///< starting address
     TCC_ADDRESS aSize,                ///< number of locations
     BYTE * pbyBuf,                    ///< buffer to fill
@@ -147,8 +142,7 @@ interface ICodeCache : public IUnknown
    * @return
    * - number of items
    */
-  STDMETHOD_ (int, GetNumRecs)
-    () PURE;
+  int GetNumRecs() PURE;
 
   /**
    * finds an item in the requested range
@@ -157,8 +151,7 @@ interface ICodeCache : public IUnknown
    * - index of the item
    * - -1 - no item in the range
    */
-  STDMETHOD_ (int, FindRec)
-    (
+  virtual int FindRec(
     TCC_ADDRESS aAddress,             ///< starting address of the range
     TCC_ADDRESS aSize = 1             ///< size of the range
     ) PURE;
@@ -169,8 +162,7 @@ interface ICodeCache : public IUnknown
    * @return
    * - pointer to item
    */
-  STDMETHOD_ (ICodeCacheRec *, GetRec)
-    (
+  virtual ICodeCacheRec * GetRec(
     int nIndex                        ///< item index
     ) PURE;
 
@@ -178,8 +170,7 @@ interface ICodeCache : public IUnknown
    * clears all items
    *
    */
-  STDMETHOD_ (void, Clear)
-    () PURE;
+  void Clear() PURE;
 
   /**
    * enumerates all chunks in specified region
@@ -188,8 +179,7 @@ interface ICodeCache : public IUnknown
    * - TRUE  - the callback function returned TRUE always
    * - FALSE - enumeration was aborted when callback function returned FALSE
    */
-  STDMETHOD_ (BOOL, Enum)
-    (
+  virtual BOOL Enum(
     TCC_ADDRESS aAddress,             ///< starting address of the range
     TCC_ADDRESS aEndAddress,          ///< last address in the range
     BOOL fnCallBack(TCC_ADDRESS aAddress, TCC_ADDRESS aEndAddress, const BYTE * pbyCode, PVOID pInfo), ///< enumeration call back function
@@ -202,8 +192,7 @@ interface ICodeCache : public IUnknown
    * @return
    * - number of contained locations
    */
-  STDMETHOD_ (TCC_ADDRESS, GetTotal)
-    () PURE;
+  virtual TCC_ADDRESS GetTotal() PURE;
 
   /**
    * returns lowest and highest loaded location
@@ -211,8 +200,7 @@ interface ICodeCache : public IUnknown
    * @return
    * - TRUE if at least one location is contained. FLASE if empty
    */
-  STDMETHOD_ (BOOL, GetRange)
-    (
+  virtual BOOL GetRange(
     TCC_ADDRESS * paLo,              ///< pointer variable to receive the lowest address
     TCC_ADDRESS * paHi               ///< pointer variable to receive the highest address
     ) PURE;
@@ -233,8 +221,7 @@ interface ICodeCache : public IUnknown
    * copies from another code cache instance. Previous contents are cleared
    *
    */
-  STDMETHOD_ (void, Copy)
-    (
+  void Copy(
     DWORD dwFlags,                  ///< copy flags. uses ECopyMergeFlags
     ICodeCache * pICodeCacheSrc     ///< source code cache to copy from
     ) PURE;
@@ -247,8 +234,7 @@ interface ICodeCache : public IUnknown
    * merges with contents from another code cache instance
    *
    */
-  STDMETHOD_ (void, Merge)
-    (
+  virtual void Merge(
     DWORD dwFlags,                  ///< copy flags. uses ECopyMergeFlags
     ICodeCache * pICodeCacheSrc,    ///< source code cache to merge from
     TCC_ADDRESS aOffset = 0         ///< merge offset to add to all items in the source
@@ -283,8 +269,7 @@ interface ICodeCache : public IUnknown
    * @return
    * - a new code cache instance, which contains difference between this and the pICodeCache2. the data in the Dif is BYTE using EDifType values
    */
-  STDMETHOD_ (ICodeCache *, Dif)
-    (
+  virtual ICodeCache * Dif(
     DWORD dwFlags,                  ///< Dif flags. uses EDifFlags
     ICodeCache * pICodeCache2       ///< code cache to compare with
     ) PURE;
@@ -310,8 +295,7 @@ interface ICodeCache : public IUnknown
    * @return
    * - TRUE - serialization successful, FALSE otherwise
    */
-  STDMETHOD_ (BOOL, Serialize)
-    (
+  virtual BOOL Serialize(
     DWORD dwFlags,                  ///< flags. uses ESerializeFlags
     interface ISerializer * pISerializer ///< pointer to serializer
     ) PURE;
@@ -378,8 +362,7 @@ typedef int BOOL;
    * - S_OK - load successful
    * - ESaveLoadReturn encoded error code
    */
-  STDMETHOD (Load)
-    (
+	virtual void Load(
     DWORD dwFlags,                   ///< flags, uses ESaveLoadFlags
     LPCSTR pszFileName,              ///< path to the file
     TCC_ADDRESS aOffset              ///< offset to add to all addresses in the file
@@ -392,8 +375,7 @@ typedef int BOOL;
    * - S_OK - save successful
    * - ESaveLoadReturn encoded error code
    */
-  STDMETHOD (Save)
-    (
+  virtual void Save(
     DWORD dwFlags,                   ///< flags, uses ESaveLoadFlags
     LPCSTR pszFileName,              ///< path to the file
     TCC_ADDRESS aOffset              ///< offset to add to all addresses in the file
@@ -403,8 +385,7 @@ typedef int BOOL;
    * @return last error
    *
    */
-  STDMETHOD_ (LPCSTR, GetErrorString)
-    (
+  virtual LPCSTR GetErrorString(
     ) PURE;
 
 #endif  // SWIG
@@ -453,8 +434,7 @@ typedef int BOOL;
     rfAlign        = 0x00000008,      ///< align addresses to m_dwMaxMAUsPerLine
   };
 
-  STDMETHOD_ (Report)
-    (
+  virtual void Report(
     DWORD dwFlags,                   ///< flags. use EReportFlags
     LPCSTR pszFileName,              ///< path to the report file
     const ICodeCache::SReport & rReport          ///< save format configuration
@@ -464,29 +444,28 @@ typedef int BOOL;
    * offset all records
    *
    */
-  STDMETHOD_ (void, Offset)
-    (
+  virtual void Offset(
     TCC_ADDRESS aOffset             ///< amount to offset
     ) PURE;
 };
 
 
-interface IMemoryProperty: public IUnknown
+interface IMemoryProperty  //: public IUnknown
 {
-  STDMETHOD_ (EEndian, GetEndian) (int nMemArea, ADDROFFS aAddress) const PURE;
-  STDMETHOD_ (BOOL, GetMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS * paLast) const PURE;
-  STDMETHOD_ (BOOL, GetMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress) const PURE;
-  STDMETHOD_ (BOOL, HasMemoryProp)(int nProp, int nMemArea) const PURE;
+	virtual EEndian GetEndian(int nMemArea, ADDROFFS aAddress) const PURE;
+	virtual BOOL GetMemoryProp(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS * paLast) const PURE;
+	virtual BOOL GetMemoryProp(int nProp, int nMemArea, ADDROFFS aAddress) const PURE;
+	virtual BOOL HasMemoryProp(int nProp, int nMemArea) const PURE;
   enum EFilterMode
   {
     fmIncluded = 0x01, // areas present in nProp are forwarded to pfnCommit
     fmExcluded = 0x02, // areas not present in nProp are forwarded to pfnCommit
     fmSplit    = fmIncluded | fmExcluded,   // all areas are forwarded to pfnCommit, but are individually split
   };
-  STDMETHOD_ (BOOL, Filter)       (BYTE byFilterMode, int nProp, SAddress adrStart, ADDROFFS aEnd, BOOL (*pfnCommit)(SAddress adrStart, ADDROFFS aEnd, void* pInfo), void* pInfo) const PURE;
-  STDMETHOD_ (BOOL, Serialize)    (ISerializer * pISerializer) PURE;
-  STDMETHOD_ (void, SetMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS aLast) PURE; // sets nProp in specified range
-  STDMETHOD_ (void, ClearMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS aLast) PURE; // sets nProp in specified range
+  virtual  BOOL Filter (BYTE byFilterMode, int nProp, SAddress adrStart, ADDROFFS aEnd, BOOL (*pfnCommit)(SAddress adrStart, ADDROFFS aEnd, void* pInfo), void* pInfo) const PURE;
+  virtual BOOL Serialize(ISerializer * pISerializer) PURE;
+  virtual void SetMemoryProp(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS aLast) PURE; // sets nProp in specified range
+  virtual void ClearMemoryProp(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS aLast) PURE; // sets nProp in specified range
 };
 
 

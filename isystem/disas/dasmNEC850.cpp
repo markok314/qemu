@@ -23,16 +23,15 @@ CDisassemblerNEC850 *func = nullptr;
 #define NecAdrToSymbol(A) StandardAdrToSymbol(A, maPhysicalV850, 4)
 
 
-extern "C" void isys_print_insn(){
+extern "C" {
+	void isys_print_insn(){    //bfd_vma
 
 	if(!func){
 		func = new CDisassemblerNEC850();
-
 	}
 	func->QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, DWORD & rdwNextAddress, int & rnNumCycles);
-
+	}
 }
-
 
 
 
