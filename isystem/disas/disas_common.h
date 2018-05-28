@@ -1,6 +1,14 @@
 #pragma once
-
+#include <string>
 typedef std::string jstring;
+typedef uint32_t DWORD;
+typedef uint64_t QWORD;
+typedef uint64_t ADDROFFS;
+typedef uint64_t TCC_ADDRESS;
+typedef uint64_t SAddress;
+
+typedef const char *LPCTSTR;
+#define PURE = 0
 
 // MemArea.h
 
@@ -48,20 +56,17 @@ enum EEndian
 #define test1 -1
 #define test2 -1
 
-#if test1 > 0
-
-//TOLE SE LAHKO POBRISE + IUnknown
-interface ICodeCache : public IUnknown
+struct ICodeCache
 {
 #ifndef SWIG
   /**
    * sets the interpretation of address and size parameters
    *
    */
-  STDMETHOD_ (void, SetACInMAUs)
-    (
-    BOOL bACInMAUs                    ///< specifies whether address and size parameters are in MAU units or BYTE units. default = MAUs
-    ) PURE;
+	virtual void SetACInMAUs(
+			BOOL bACInMAUs
+	)PURE;
+
 
   /**
    * returns current parameter configuration
@@ -70,17 +75,17 @@ interface ICodeCache : public IUnknown
    * - FALSE - Address and Size parameters are interpreted in BYTE units
    * - TRUE  - Address and Size parameters are interpreted in MAU units
    */
-  STDMETHOD_ (BOOL, GetACInMAUs)
-    () PURE;
+	virtual BOOL GetACInMAUs(
+	)PURE;
 
   /**
    * sets the MAU size. Each addressable unit then contains MAU bytes.
    * Implicitly clears all contents.
    */
-  STDMETHOD_ (void, SetMAUSize)
-    (
-    int nBytesPerMAU
-    ) PURE;
+
+	virtual void SetMAUSize(
+			int nBytesPerMAU
+	)PURE;
 
   /**
    * returns current MAU size configuration
@@ -88,29 +93,30 @@ interface ICodeCache : public IUnknown
    * @return
    * - size of one addressable unit in BYTEs
    */
-  STDMETHOD_ (int, GetMAUSize)
-    () PURE;
+
+	virtual int GetMAUSize(
+	)PURE;
 
   /**
    * inserts a new chunk of code
    *
    */
-  STDMETHOD_ (void, Insert)
-    (
-    TCC_ADDRESS aAddress,             ///< address to insert at
-    TCC_ADDRESS aSize,                ///< size of the chunk
-    const BYTE * pbyBuf               ///< pointer to the buffer containing the data. if NULL, no copying is performed
-    ) PURE;
+
+  virtual void Insert(
+	  TCC_ADDRESS aAddress,             ///< address to insert at
+	  TCC_ADDRESS aSize,                ///< size of the chunk
+	  const BYTE * pbyBuf               ///< pointer to the buffer containing the data. if NULL, no copying is performed
+  )PURE;
 
   /**
    * excludes a range
    *
    */
-  STDMETHOD_ (void, Exclude)
-    (
-    TCC_ADDRESS aAddressExcl,         ///< first address of the exclusion
-    TCC_ADDRESS aEndExcl              ///< last address of the exclusion
-    ) PURE;
+
+  virtual void Exclude(
+		  TCC_ADDRESS aAddressExcl,         ///< first address of the exclusion
+		 TCC_ADDRESS aEndExcl              ///< last address of the exclusion
+  )PURE;
 
   /**
    * obtains the code from the specified region
@@ -118,14 +124,15 @@ interface ICodeCache : public IUnknown
    * @return
    * - number of locations filled
    */
-  STDMETHOD_ (TCC_ADDRESS, Get)
-    (
-    TCC_ADDRESS aAddress,             ///< starting address
-    TCC_ADDRESS aSize,                ///< number of locations
-    BYTE * pbyBuf,                    ///< buffer to fill
-    BOOL bWantContiguousFromStart = FALSE, ///< if TRUE, the locations must be contiguous from aAddress
-    BYTE * pbyAccessInfo = NULL       ///< pbyAccessInfo is filled with 0 for NA, 1 for OK. one byte for every MAU
-    ) PURE;
+
+  virtual TCC_ADDRESS Get(
+		  TCC_ADDRESS aAddress,             ///< starting address
+		  TCC_ADDRESS aSize,                ///< number of locations
+		  BYTE * pbyBuf,                    ///< buffer to fill
+		  BOOL bWantContiguousFromStart = FALSE, ///< if TRUE, the locations must be contiguous from aAddress
+		  BYTE * pbyAccessInfo = NULL       ///< pbyAccessInfo is filled with 0 for NA, 1 for OK. one byte for every MAU
+  )PURE;
+
 
   /**
    * returns number of all items
@@ -133,8 +140,8 @@ interface ICodeCache : public IUnknown
    * @return
    * - number of items
    */
-  STDMETHOD_ (int, GetNumRecs)
-    () PURE;
+  virtual int GetNumRecs(
+  )PURE;
 
   /**
    * finds an item in the requested range
@@ -143,11 +150,12 @@ interface ICodeCache : public IUnknown
    * - index of the item
    * - -1 - no item in the range
    */
-  STDMETHOD_ (int, FindRec)
-    (
-    TCC_ADDRESS aAddress,             ///< starting address of the range
-    TCC_ADDRESS aSize = 1             ///< size of the range
-    ) PURE;
+
+  virtual int FindRec(
+		TCC_ADDRESS aAddress,             ///< starting address of the range
+		TCC_ADDRESS aSize = 1             ///< size of the range
+  )PURE;
+
 
   /**
    * returns the requested item
@@ -155,17 +163,18 @@ interface ICodeCache : public IUnknown
    * @return
    * - pointer to item
    */
-  STDMETHOD_ (ICodeCacheRec *, GetRec)
-    (
-    int nIndex                        ///< item index
-    ) PURE;
+  virtual ICodeCacheRec * GetRec(
+		  int nIndex                        ///< item index
+  )PURE;
+
 
   /**
    * clears all items
    *
    */
-  STDMETHOD_ (void, Clear)
-    () PURE;
+  virtual void Clear(
+  )PURE;
+
 
   /**
    * enumerates all chunks in specified region
@@ -174,13 +183,15 @@ interface ICodeCache : public IUnknown
    * - TRUE  - the callback function returned TRUE always
    * - FALSE - enumeration was aborted when callback function returned FALSE
    */
-  STDMETHOD_ (BOOL, Enum)
-    (
-    TCC_ADDRESS aAddress,             ///< starting address of the range
-    TCC_ADDRESS aEndAddress,          ///< last address in the range
-    BOOL fnCallBack(TCC_ADDRESS aAddress, TCC_ADDRESS aEndAddress, const BYTE * pbyCode, PVOID pInfo), ///< enumeration call back function
-    PVOID pInfo                       ///< pointer to pass back to the enumeration
-    ) PURE;
+
+  virtual BOOL Enum(
+		  TCC_ADDRESS aAddress,             ///< starting address of the range
+		  TCC_ADDRESS aEndAddress,          ///< last address in the range
+		  BOOL fnCallBack(TCC_ADDRESS aAddress, TCC_ADDRESS aEndAddress, const BYTE * pbyCode, PVOID pInfo), ///< enumeration call back function
+		  PVOID pInfo                       ///< pointer to pass back to the enumeration
+  )PURE;
+
+
 
   /**
    * returns total number of contained locations
@@ -188,8 +199,8 @@ interface ICodeCache : public IUnknown
    * @return
    * - number of contained locations
    */
-  STDMETHOD_ (TCC_ADDRESS, GetTotal)
-    () PURE;
+  virtual TCC_ADDRESS GetTotal(
+  )PURE;
 
   /**
    * returns lowest and highest loaded location
@@ -197,11 +208,12 @@ interface ICodeCache : public IUnknown
    * @return
    * - TRUE if at least one location is contained. FLASE if empty
    */
-  STDMETHOD_ (BOOL, GetRange)
-    (
-    TCC_ADDRESS * paLo,              ///< pointer variable to receive the lowest address
-    TCC_ADDRESS * paHi               ///< pointer variable to receive the highest address
-    ) PURE;
+
+  virtual BOOL GetRange(
+		  TCC_ADDRESS * paLo,              ///< pointer variable to receive the lowest address
+		  TCC_ADDRESS * paHi               ///< pointer variable to receive the highest address
+  )PURE;
+
 #endif  // SWIG
   enum ECopyMergeFlags
   {
@@ -219,11 +231,12 @@ interface ICodeCache : public IUnknown
    * copies from another code cache instance. Previous contents are cleared
    *
    */
-  STDMETHOD_ (void, Copy)
-    (
-    DWORD dwFlags,                  ///< copy flags. uses ECopyMergeFlags
-    ICodeCache * pICodeCacheSrc     ///< source code cache to copy from
-    ) PURE;
+
+  virtual void Copy(
+		  DWORD dwFlags,                  ///< copy flags. uses ECopyMergeFlags
+		  ICodeCache * pICodeCacheSrc     ///< source code cache to copy from
+  )PURE;
+
 
   #ifdef H_PERL
   #pragma pop_macro("Copy")
@@ -233,12 +246,13 @@ interface ICodeCache : public IUnknown
    * merges with contents from another code cache instance
    *
    */
-  STDMETHOD_ (void, Merge)
-    (
-    DWORD dwFlags,                  ///< copy flags. uses ECopyMergeFlags
-    ICodeCache * pICodeCacheSrc,    ///< source code cache to merge from
-    TCC_ADDRESS aOffset = 0         ///< merge offset to add to all items in the source
-    ) PURE;
+
+  virtual void Merge(
+		  DWORD dwFlags,                  ///< copy flags. uses ECopyMergeFlags
+		  ICodeCache * pICodeCacheSrc,    ///< source code cache to merge from
+		  TCC_ADDRESS aOffset = 0         ///< merge offset to add to all items in the source
+  )PURE;
+
 
 #endif  // SWIG
 
@@ -269,11 +283,12 @@ interface ICodeCache : public IUnknown
    * @return
    * - a new code cache instance, which contains difference between this and the pICodeCache2. the data in the Dif is BYTE using EDifType values
    */
-  STDMETHOD_ (ICodeCache *, Dif)
-    (
-    DWORD dwFlags,                  ///< Dif flags. uses EDifFlags
-    ICodeCache * pICodeCache2       ///< code cache to compare with
-    ) PURE;
+
+  virtual ICodeCache * Dif(
+		  DWORD dwFlags,                  ///< Dif flags. uses EDifFlags
+		  ICodeCache * pICodeCache2       ///< code cache to compare with
+  )PURE;
+
 
 #endif  // SWIG
 
@@ -456,16 +471,14 @@ typedef int BOOL;
     ) PURE;
 };
 
-#endif
 
 typedef uint8_t BYTE;
 typedef int16_t WORD;
 typedef uint64_t QWORD;
 typedef uint64_t ADDROFFS;
 
-#if test2 > 0
 
-interface IMemoryProperty: public IUnknown
+struct IMemoryProperty: public IUnknown
 {
   STDMETHOD_ (EEndian, GetEndian) (int nMemArea, ADDROFFS aAddress) const PURE;
   STDMETHOD_ (BOOL, GetMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS * paLast) const PURE;
@@ -483,7 +496,6 @@ interface IMemoryProperty: public IUnknown
   STDMETHOD_ (void, ClearMemoryProp)(int nProp, int nMemArea, ADDROFFS aAddress, ADDROFFS aLast) PURE; // sets nProp in specified range
 };
 
-#endif
 
 /** Contains CPU family and variant. */
 struct CCPUInfo
