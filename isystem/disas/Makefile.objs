@@ -1,0 +1,2 @@
+obj-$(CONFIG_RH850) += DisassemblerBase.o
+obj-$(CONFIG_RH850) += dasmNEC850.o

@@ -2,17 +2,17 @@
    Copyright (c) 2018 iSYSTEM Labs d.o.o.
 */
 
-#include "stdafx.h"
-
-#include "comtypes.h"
-#include "sets.h"
-#include "dasmnec850.h"
-#include "memoryareas.h"
-#include "..\kernel\SharedDefs_V850.h"
+///#include "comtypes.h"
+///#include "sets.h"
+#include "dasmNEC850.h"
+///#include "memoryareas.h"
+///#include "..\kernel\SharedDefs_V850.h"
 
 #define VECTOR_RELOC_BASE     0xFFFF0000
 #define INVALID_INSTR_HANDLER 0x00000004
 #define SET_STR(bCond, strVar, strValue) {if (!bCond) strVar = strValue;}
+
+#define maPhysicalV850 32 ///???
 
 #define NecAdrToSymbol(A) StandardAdrToSymbol(A, maPhysicalV850, 4)
 
@@ -23,9 +23,9 @@ CDisassemblerNEC850::CDisassemblerNEC850(): CDisassemblerBase(FALSE)
   m_bSetsCallFlag = TRUE;
 }
 
-#define NecExtractBits(INST, FROM, TO) GETBITS_DWORD(INST, FROM, (TO - FROM))
+//#define NecExtractBits(INST, FROM, TO) GETBITS_DWORD(INST, FROM, (TO - FROM))
 #ifndef NecExtractBits
-inline u32 NecExtractBits(const u32 & dwInst, BYTE byFrom, BYTE byTo) const
+inline u32 NecExtractBits(const u32 & dwInst, BYTE byFrom, BYTE byTo) ///const
 {
   u32 Mask, Code, ShiftedCode;
 
@@ -235,7 +235,7 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
 	jstring strSysReg;
   switch(dwSelID) // V850E3v5 = RH850, additional opcode field
   {
-  case esidException: // 0 - default for V850E2v4 = Fx4 and older, a bit different than RH850
+  case 0: ///esidException: // 0 - default for V850E2v4 = Fx4 and older, a bit different than RH850
     switch(dwSysReg)
     {
     case 0x00:  strSysReg = "EIPC"; break;
@@ -276,7 +276,7 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
     default: strSysReg = "SR"+Long2Str(dwSysReg); break;
     }
     break;
-  case esidConfiguration: // 1
+  case 1: ///esidConfiguration: // 1
     switch(dwSysReg)
     {
     case 0x00:  strSysReg = "MCFG0"; break;
@@ -304,7 +304,7 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
     default: strSysReg = "SR"+Long2Str(dwSysReg); break;
     }
     break;
-  case esidMemory: // 2
+  case 2: ///esidMemory: // 2
     switch(dwSysReg)
     {
     case 0x00:  strSysReg = "HTCFG0"; break;
@@ -329,7 +329,7 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
     default: strSysReg = "SR"+Long2Str(dwSysReg); break;
     }
     break;
-  case esidDebug: // 3
+  case 3: ///esidDebug: // 3
     switch(dwSysReg)
     {
     case 0x00:  strSysReg = "VMSCPTR"; break;
@@ -352,7 +352,7 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
     default: strSysReg = "SR"+Long2Str(dwSysReg); break;
     }
     break;
-  case esidMMU: //4
+  case 4: ///esidMMU: //4
     switch(dwSysReg)
     {
       case 0x00: strSysReg = "TLBIDX"; break;
@@ -382,7 +382,7 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
       default: strSysReg = "SR"+Long2Str(dwSysReg); break;
     }
     break;
-  case esidMPU0: //5
+  case 5: ///esidMPU0: //5
     switch(dwSysReg)
     {
       case 0x00: strSysReg = "MPM";    break;
@@ -399,7 +399,7 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
       default: strSysReg = "SR"+Long2Str(dwSysReg); break;
     }
     break;
-  case esidMPU1: //6
+  case 6: ///esidMPU1: //6
     switch(dwSysReg)
     {
       case 0x00: strSysReg = "MPLA0"; break;
@@ -433,10 +433,11 @@ jstring CDisassemblerNEC850::NecGetSysReg(u32 dwSysReg, u32 dwSelID)
       case 0x1C: strSysReg = "MPLA7"; break;
       case 0x1D: strSysReg = "MPUA7"; break;
       case 0x1E: strSysReg = "MPAT7"; break;
-      default: strSysReg = "SR"+Long2Str(dwSysReg); break;
+      ///default: strSysReg = "SR" + Long2Str(dwSysReg); break;
+      default: strSysReg = "SR" + std::to_string(dwSysReg); break;
     }
     break;
-  case esidMPU2: //7
+  case 7: ///esidMPU2: //7
     switch(dwSysReg)
     {
       case 0x00: strSysReg = "MPLA8"; break;
@@ -485,8 +486,8 @@ jstring CDisassemblerNEC850::NecGetImm9(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 5) + (NecExtractBits(dwInst, 18, 22) << 5);	
 	jstring strImm;
-	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 2);
+	strImm = "#"+StrF(dwImm);
+	//strImm = "#"+Hex(dwImm, 2);
 	return strImm;
 }
 
@@ -494,8 +495,8 @@ jstring CDisassemblerNEC850::NecGetImm5_11(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 11, 16);	
 	jstring strImm;
-	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 1);
+	strImm = "#"+StrF(dwImm);
+	//strImm = "#"+Hex(dwImm, 1);
 	return strImm;
 }
 
@@ -503,8 +504,8 @@ jstring CDisassemblerNEC850::NecGetImm4(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 4);	
 	jstring strImm;
-	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 1);
+	strImm = "#"+StrF(dwImm);
+	//strImm = "#"+Hex(dwImm, 1);
 	return strImm;
 }
 
@@ -513,8 +514,8 @@ jstring CDisassemblerNEC850::NecGetImm5_18(const u32 dwInst)
 	DWORD dwImm = NecExtractBits(dwInst, 18, 22);
   dwImm = 32 - (dwImm << 1);	
 	jstring strImm;
-	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 2);
+	strImm = "#"+StrF(dwImm);
+	//strImm = "#"+Hex(dwImm, 2);
 	return strImm;
 }
 
@@ -522,15 +523,15 @@ jstring CDisassemblerNEC850::NecGetImm5(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 5);	
 	jstring strImm;
-	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 1);
+	strImm = "#"+StrF(dwImm);
+	//strImm = "#"+Hex(dwImm, 1);
 	return strImm;
 }
 
 jstring CDisassemblerNEC850::NecGetImm32(const u32 dwImm)
 {
 	jstring strImm;
-	strImm = "#"+Hex(dwImm, 4);
+	strImm = "#"+StrF(dwImm);
 	return strImm;
 }
 
@@ -538,8 +539,8 @@ jstring CDisassemblerNEC850::NecGetImm6(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 6);	
 	jstring strImm;
-	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 1);
+	strImm = "#"+StrF(dwImm);
+	//strImm = "#"+Hex(dwImm, 1);
 	return strImm;
 }
 
@@ -555,7 +556,7 @@ jstring CDisassemblerNEC850::NecGetDisp32(const u32 dwInst, const u32 dwInst1)
 jstring CDisassemblerNEC850::NecGetDisp22(const u32 dwInst)
 	{
 	LONG lDisp = NecExtractBits(dwInst, 16, 32) | (NecExtractBits(dwInst, 0, 6) << 16);
-	SignExtend(lDisp, 22);
+	///SignExtend(lDisp, 22);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	Operand = NecAdrToSymbol(dwAddr);
@@ -566,17 +567,17 @@ jstring CDisassemblerNEC850::NecGetDisp22(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp5(const u32 dwInst)
 {
 	LONG lDisp = NecExtractBits(dwInst, 0, 5);
-	SignExtend(lDisp, 5);
+	///SignExtend(lDisp, 5);
 	jstring Operand;
-	//Operand = StrF(lDisp);
-	Operand = Hex(lDisp, 1);
+	Operand = StrF(lDisp);
+	//Operand = Hex(lDisp, 1);
 	return Operand;
 }
 
 jstring CDisassemblerNEC850::NecGetDisp9(const u32 dwInst)
 {
 	LONG lDisp = (NecExtractBits(dwInst, 4, 7) | (NecExtractBits(dwInst, 11, 16) << 3)) << 1;
-	SignExtend(lDisp, 9);
+	///SignExtend(lDisp, 9);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	Operand = NecAdrToSymbol(dwAddr);
@@ -586,7 +587,7 @@ jstring CDisassemblerNEC850::NecGetDisp9(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp15(const u32 dwInst)
 {
 	LONG lDisp = (NecExtractBits(dwInst, 17, 32) << 1);
-	SignExtend(lDisp, 16);
+	///SignExtend(lDisp, 16);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) - (DWORD) lDisp;
 	jstring Operand;
 	Operand = NecAdrToSymbol(dwAddr);
@@ -596,30 +597,32 @@ jstring CDisassemblerNEC850::NecGetDisp15(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetImmN16(const u32 dwInst)
 {
 	LONG lDisp = NecExtractBits(dwInst, 16, 32);
-	SignExtend(lDisp, 16);
+	///SignExtend(lDisp, 16);
 	jstring Operand;
-	//Operand = StrF(lDisp);
-	Operand = Hex(lDisp, 2);
+	Operand = StrF(lDisp);
+	//Operand = Hex(lDisp, 2);
 	return Operand;
 }
 
 jstring CDisassemblerNEC850::NecGetDisp16(const u32 dwInst)
 {
 	LONG lDisp = (LONG) dwInst;
-	SignExtend(lDisp, 16);
+	///SignExtend(lDisp, 16);
 	jstring Operand;
-	//Operand = StrF(lDisp);  // decimal
+	//Operand = std::to_string(lDisp);  // decimal
   if (lDisp < 0)
-    Operand = "-" + Hex(-lDisp, 2);
+	///Operand = "-" + StrF(-lDisp, 2);
+    Operand = "-" + std::to_string(-lDisp);///
   else
-    Operand = Hex(lDisp, 2);
+	    ///Operand = StrF(lDisp, 2);
+  Operand = std::to_string(lDisp);
 	return Operand;
 }
 
 jstring CDisassemblerNEC850::NecGetDisp17(const u32 dwInst)
 {
   LONG lDisp = (LONG) (((NecExtractBits(dwInst, 17, 32) | (NecExtractBits(dwInst, 4, 5) << 15))) << 1);
-  SignExtend(lDisp, 17);
+  ///SignExtend(lDisp, 17);
   DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
   jstring Operand;
   Operand = NecAdrToSymbol(dwAddr);
@@ -630,38 +633,38 @@ jstring CDisassemblerNEC850::NecGetDisp17(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp23(const u32 dwInst, const u32 dwInst1)
 {
 	LONG lDisp = (NecExtractBits(dwInst, 20, 27) | (NecExtractBits(dwInst1, 0, 16) << 7));
-	SignExtend(lDisp, 23);
+	///SignExtend(lDisp, 23);
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
-	Operand = Hex(lDisp, 3);
+	Operand = std::to_string(lDisp); ///, 3);
 	return Operand;
 }
 
 jstring CDisassemblerNEC850::NecGetDisp23Z0(const u32 dwInst, const u32 dwInst1)
 {
 	LONG lDisp = ((NecExtractBits(dwInst, 21, 27) << 1) | (NecExtractBits(dwInst1, 0, 16) << 7));
-	SignExtend(lDisp, 23);
+	///SignExtend(lDisp, 23);
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
-	Operand = Hex(lDisp, 4);
+	Operand = std::to_string(lDisp); ///, 4);
 	return Operand;
 }
 
 jstring CDisassemblerNEC850::GetBitManOperand(const u32 dwInst)
 {
-	jstring strBit = "#" + Hex(NecExtractBits(dwInst, 11, 14), 1);
+	jstring strBit = "#" + StrF(NecExtractBits(dwInst, 11, 14));
 	LONG lDisp = (LONG) NecExtractBits(dwInst, 16, 32);
-	SignExtend(lDisp, 16);
+	///SignExtend(lDisp, 16);
 	jstring Operand;
 
-	Operand = strBit + jstring(",") + jstring(Hex(lDisp,4)) + jstring("[") + NecGetReg(NecExtractBits(dwInst, 0, 5)) + jstring("]");
+	Operand = strBit + jstring(",") + jstring(StrF(lDisp)) + jstring("[") + NecGetReg(NecExtractBits(dwInst, 0, 5)) + jstring("]");
 	return Operand;
 }
 
 jstring CDisassemblerNEC850::NecGetRegListItem(jstring strList, u32 dwReg)
 {
   jstring strList1=NecGetReg(dwReg);
-  if (strList.IsEmpty())
+  if (strList.empty())
     return strList1;
   else
     return strList + "," + strList1;
@@ -693,7 +696,7 @@ jstring CDisassemblerNEC850::NecGetPrepareOp(const u32 dwInst, const u32 dwInst1
 	strOp = NecGetRegList(dwInst) + "," + jstring(Long2Str(NecExtractBits(dwInst, 1, 6)<<2));
 	DWORD dwOpType = NecExtractBits(dwInst, 19, 21);
 	LONG lOp = (LONG) NecExtractBits(dwInst1, 0, 16);
-	SignExtend(lOp, 16);
+	///SignExtend(lOp, 16);
 	
 	switch(dwOpType)
 	{
@@ -800,7 +803,10 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
   {
     switch(dwForm1)
     {
-    case 0x008007E0: SET_STR(bQD, Instruction, "TRFSR"); SET_STR(bQD, Operand, Hex(NecExtractBits(dwInst, 17, 20), 1)); return 4;
+    case 0x008007E0:
+    	SET_STR(bQD, Instruction, "TRFSR");
+    	SET_STR(bQD, Operand, std::to_string(NecExtractBits(dwInst, 17, 20)));
+    	return 4;
     }
   }
 
@@ -811,8 +817,8 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
     case 0x008003F:	
       {
         SET_STR(bQD, Instruction, "TRAP"); 
-        SET_STR(bQD, Operand, "#" + Hex(NecExtractBits(dwInst, 0, 5), 1)); 
-        SET_INST_TYPE(InsType , it_Trap); 
+        SET_STR(bQD, Operand, "#" + std::to_string(NecExtractBits(dwInst, 0, 5)));
+        SET_INST_TYPE(InsType , it_Trap);
         if (bQD)				
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flCall;
         return 4; //return necExtended2; // TRAP
@@ -820,7 +826,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
     case 0x008803F:	
       {
         SET_STR(bQD, Instruction, "HVTRAP"); 
-        SET_STR(bQD, Operand, "#" + Hex(NecExtractBits(dwInst, 0, 5), 1)); 
+        SET_STR(bQD, Operand, "#" + std::to_string(NecExtractBits(dwInst, 0, 5)));
         SET_INST_TYPE(InsType , it_Trap); 
         if (bQD)				
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flCall;
@@ -863,7 +869,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
     case 0x0B06BF: 
       {
         SET_STR(bQD, Instruction, "SYSCALL"); 
-        SET_STR(bQD, Operand, Hex((NecExtractBits(dwInst,  0, 5) | (NecExtractBits(dwInst,  27, 30) << 5)), 2)); 
+        SET_STR(bQD, Operand, std::to_string((NecExtractBits(dwInst,  0, 5) | (NecExtractBits(dwInst,  27, 30) << 5))));
         SET_INST_TYPE(InsType , it_Jmp); 
         if (bQD)				
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flCall;
@@ -872,7 +878,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
     case 0x4B06BF: 
       {
         SET_STR(bQD, Instruction, "HVCALL");  
-        SET_STR(bQD, Operand, Hex((NecExtractBits(dwInst,  0, 5) | (NecExtractBits(dwInst,  27, 30) << 5)), 2)); 
+        SET_STR(bQD, Operand, std::to_string((NecExtractBits(dwInst,  0, 5) | (NecExtractBits(dwInst,  27, 30) << 5))));
         SET_INST_TYPE(InsType , it_CondJmp); 
         if (bQD)				
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flCall;
@@ -885,7 +891,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
   switch (dwForm1)
   {
     case 0x0B02FF: SET_STR(bQD, Instruction, "DBPUSH"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5))+"-"+NecGetReg(NecExtractBits(dwInst, 27, 32))); return 4;
-    case 0x0B067F: SET_STR(bQD, Instruction, "DBTAG");  SET_STR(bQD, Operand, "#"+Hex((NecExtractBits(dwInst,  0, 5) | (NecExtractBits(dwInst,  27, 32) << 5)), 3)); return 4;
+    case 0x0B067F: SET_STR(bQD, Instruction, "DBTAG");  SET_STR(bQD, Operand, "#"+std::to_string((NecExtractBits(dwInst,  0, 5) | (NecExtractBits(dwInst,  27, 32) << 5)))); return 4;
     case 0x0B06FF: SET_STR(bQD, Instruction, "PREF");   SET_STR(bQD, Operand, GetPrefetchStr(NecExtractBits(dwInst, 27, 32))+",["+NecGetReg(NecExtractBits(dwInst, 0, 5))+"]"); return 4;
     case 0x0B033F: SET_STR(bQD, Instruction, "POPSP");  SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5))+"-"+NecGetReg(NecExtractBits(dwInst, 27, 32))); return 4;
     case 0x0B023F: SET_STR(bQD, Instruction, "PUSHSP"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5))+"-"+NecGetReg(NecExtractBits(dwInst, 27, 32))); return 4;
@@ -1037,7 +1043,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           DWORD dwRegID = NecExtractBits(dwInst, 11, 16);
           SET_STR(bQD, Instruction, "STTC.SR");
-          SET_STR(bQD, Operand, NecGetSysReg(dwRegID, dwSelID) + "," + NecGetReg(dwRegID) + "," + Hex(dwSelID, 1));
+          SET_STR(bQD, Operand, NecGetSysReg(dwRegID, dwSelID) + "," + NecGetReg(dwRegID) + "," + std::to_string(dwSelID));
           return 4;
           break;
         }
@@ -1141,8 +1147,8 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
             }
           }
         }
-        //if (!bFound)
-        //	break;
+        if (!bFound)
+        	break;
         dwForm2 = NecExtractBits(dwInst, 21, 27);
         if ((dwForm2 == 0x19) & (!NecBitIsSet(dwInst, 16)))
         {
@@ -1201,7 +1207,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
       case 0x04BF:
       case 0x05BF:
       case 0x06BF: SET_STR(bQD, Instruction, "BINS"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + 
-        Hex(dwForm2,2)+","+Hex(NecExtractBits(dwInst, 28, 32)+1-dwForm2,2)+","+ 
+    		  std::to_string(dwForm2)+","+std::to_string(NecExtractBits(dwInst, 28, 32)+1-dwForm2)+","+
         NecGetReg(NecExtractBits(dwInst, 11, 16))); return 4;
     }
   }
@@ -1379,7 +1385,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
     case 0x040:	
       {
         SET_STR(bQD, Instruction, "FETRAP"); 
-        SET_STR(bQD, Operand, Hex(NecExtractBits(dwInst, 11, 15), 1)); 
+        SET_STR(bQD, Operand, std::to_string(NecExtractBits(dwInst, 11, 15)));
         SET_INST_TYPE(InsType , it_Jmp);
         if (bQD)	
           dwNextAddress = 0x00000030;					
@@ -1414,7 +1420,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
       }
 
       LONG lDisp = (((NecExtractBits(dwInst, 17, 32) | (NecExtractBits(dwInst, 4, 5) << 15))) << 1);
-      SignExtend(lDisp, 17);
+      ///SignExtend(lDisp, 17);
       dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
       if (bQD)				
         m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
@@ -1438,7 +1444,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
     case 0x037:	if (!NecBitIsSet(dwInst, 16))
       {
         SET_STR(bQD, Instruction, "JMP"); 
-        SET_STR(bQD, Operand, Hex((NecExtractBits(dwInst, 17, 32) << 1) | (NecExtractBits(dwInst1, 0, 16) << 16),4)+"["+NecGetReg(NecExtractBits(dwInst, 0, 5))+"]"); 
+        SET_STR(bQD, Operand, std::to_string((NecExtractBits(dwInst, 17, 32) << 1) | (NecExtractBits(dwInst1, 0, 16) << 16))+"["+NecGetReg(NecExtractBits(dwInst, 0, 5))+"]");
         SET_INST_TYPE(InsType , (NecExtractBits(dwInst, 0, 5)==31) ? it_Ret : it_Jmp); 
         return 6; // JMP
       }
@@ -1451,7 +1457,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           m_pAnalyze->m_wFlags &= (0xFFFF ^ IDisassemble::CAnalyze::flIndirect);				
           LONG lDisp = (NecExtractBits(dwInst, 17, 32) << 1);
-          SignExtend(lDisp, 16);
+          ///SignExtend(lDisp, 16);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) - (DWORD) lDisp;					
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
         }
@@ -1496,7 +1502,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           m_pAnalyze->m_wFlags &= (0xFFFF ^ IDisassemble::CAnalyze::flIndirect);				
           LONG lDisp = NecExtractBits(dwInst, 16, 32) | (NecExtractBits(dwInst, 0, 6) << 16);
-          SignExtend(lDisp, 22);
+          ///SignExtend(lDisp, 22);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
         }
@@ -1692,11 +1698,11 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         dwForm3 = NecExtractBits(dwInst,  16,  17) | (NecExtractBits(dwInst,  20,  27) << 1);
         switch(dwForm3)
         {
-        case 0x82: SET_STR(bQD, Instruction, "CMOVF.D"); SET_STR(bQD, Operand, Hex(NecExtractBits(dwInst, 17, 20), 1)+ ","+ NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 31))); return 4; // CMOVF.D
-        case 0x80: SET_STR(bQD, Instruction, "CMOVF.S"); SET_STR(bQD, Operand, Hex(NecExtractBits(dwInst, 17, 20), 1)+ ","+ NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 31))); return 4; // CMOVF.S
+        case 0x82: SET_STR(bQD, Instruction, "CMOVF.D"); SET_STR(bQD, Operand, std::to_string(NecExtractBits(dwInst, 17, 20))+ ","+ NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 31))); return 4; // CMOVF.D
+        case 0x80: SET_STR(bQD, Instruction, "CMOVF.S"); SET_STR(bQD, Operand, std::to_string(NecExtractBits(dwInst, 17, 20))+ ","+ NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 31))); return 4; // CMOVF.S
 
-        case 0x86: SET_STR(bQD, Instruction, "CMPF.D"); SET_STR(bQD, Operand, NecGetFPCondCodeStr(NecExtractBits(dwInst, 27, 31))+ ","+ NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + Hex(NecExtractBits(dwInst, 17, 20), 1)); return 4; // CMPF.D
-        case 0x84: SET_STR(bQD, Instruction, "CMPF.S"); SET_STR(bQD, Operand, NecGetFPCondCodeStr(NecExtractBits(dwInst, 27, 31))+ ","+ NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + Hex(NecExtractBits(dwInst, 17, 20), 1)); return 4; // CMPF.D
+        case 0x86: SET_STR(bQD, Instruction, "CMPF.D"); SET_STR(bQD, Operand, NecGetFPCondCodeStr(NecExtractBits(dwInst, 27, 31))+ ","+ NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + std::to_string(NecExtractBits(dwInst, 17, 20))); return 4; // CMPF.D
+        case 0x84: SET_STR(bQD, Instruction, "CMPF.S"); SET_STR(bQD, Operand, NecGetFPCondCodeStr(NecExtractBits(dwInst, 27, 31))+ ","+ NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + std::to_string(NecExtractBits(dwInst, 17, 20))); return 4; // CMPF.D
         }
 
         dwForm3 = NecExtractBits(dwInst,  16,  17) | (NecExtractBits(dwInst,  21,  23) << 1) | (NecExtractBits(dwInst,  24,  27) << 3);
@@ -1834,7 +1840,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flCall;
           LONG lDisp = NecExtractBits(dwInst, 16, 32) | (NecExtractBits(dwInst, 0, 6) << 16);
-          SignExtend(lDisp, 22);
+          ///SignExtend(lDisp, 22);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
         }
@@ -1872,7 +1878,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
           }
 
           LONG lDisp = (NecExtractBits(dwInst, 4, 7) | (NecExtractBits(dwInst, 11, 16) << 3)) << 1;
-          SignExtend(lDisp, 9);
+          ///SignExtend(lDisp, 9);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
           if (bQD)
             m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
@@ -1880,18 +1886,18 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         //!! Dodaj m_pAnalyze->m_wFlags status tudi za pogojne skoke..
         return 2; //return necCondBranch; // Bcond
       }
-    case 0x6:	SET_STR(bQD, Instruction, "SLD.B"); SET_STR(bQD, Operand, jstring(Hex(NecExtractBits(dwInst, 0, 7),1)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.B
-    case 0x7:	SET_STR(bQD, Instruction, "SST.B"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + Hex(NecExtractBits(dwInst, 0, 7), 1) + "[R30]"); return 2; // SST.B
-    case 0x8:	SET_STR(bQD, Instruction, "SLD.H"); SET_STR(bQD, Operand, jstring(Hex(NecExtractBits(dwInst, 0, 7) << 1,1)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // // SLD.H
-    case 0x9:	SET_STR(bQD, Instruction, "SST.H"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + Hex(NecExtractBits(dwInst, 0, 7) << 1, 1) + "[R30]"); return 2; // SST.H
+    case 0x6:	SET_STR(bQD, Instruction, "SLD.B"); SET_STR(bQD, Operand, jstring(std::to_string(NecExtractBits(dwInst, 0, 7))) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.B
+    case 0x7:	SET_STR(bQD, Instruction, "SST.B"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + std::to_string(NecExtractBits(dwInst, 0, 7)) + "[R30]"); return 2; // SST.B
+    case 0x8:	SET_STR(bQD, Instruction, "SLD.H"); SET_STR(bQD, Operand, jstring(std::to_string(NecExtractBits(dwInst, 0, 7) << 1)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // // SLD.H
+    case 0x9:	SET_STR(bQD, Instruction, "SST.H"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + std::to_string(NecExtractBits(dwInst, 0, 7) << 1) + "[R30]"); return 2; // SST.H
     case 0xA:	
       if (NecBitIsSet(dwInst, 0))
       {
-        SET_STR(bQD, Instruction, "SST.W"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," +jstring(Hex(NecExtractBits(dwInst, 1, 7) << 2, 1)) + "[R30]"); return 2; // SST.W
+        SET_STR(bQD, Instruction, "SST.W"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," +jstring(std::to_string(NecExtractBits(dwInst, 1, 7) << 2)) + "[R30]"); return 2; // SST.W
       }
       else															 
       {
-        SET_STR(bQD, Instruction, "SLD.W"); SET_STR(bQD, Operand, jstring(Hex(NecExtractBits(dwInst, 1, 7) << 2, 1)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.W
+        SET_STR(bQD, Instruction, "SLD.W"); SET_STR(bQD, Operand, jstring(std::to_string(NecExtractBits(dwInst, 1, 7) << 2)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.W
       }
     }
   }
@@ -1902,9 +1908,9 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
 int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int& InsType, u32& dwNextAddress, int& NumCycles, jstring & rjstrDasm)
 {
 	jstring Instruction;  
-  jstring Operand;
+	jstring Operand;
 	int RetValue = 0;
-  int LenInstr=12;
+	///int LenInstr=12;
 
   m_dwExtra	= 0;
 	dwNextAddress = 0x00000001; //DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + 4;
@@ -1925,7 +1931,7 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
     }
     else
     {
-      FormatOpCodeString(rjstrDasm, Instruction, Operand, LenInstr);
+      ////FormatOpCodeString(rjstrDasm, Instruction, Operand, LenInstr);
     }
 	}
   if (NULL!=m_pAnalyze)
