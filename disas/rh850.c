@@ -2957,6 +2957,9 @@ disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
     format_inst(buf, buflen, 16, &dec);
 }
 
+#include "../isystem/disas/wrap.h"
+//void bv(int);
+
 int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 {
     char buf[128] = { 0 };
@@ -2988,6 +2991,8 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 
     disasm_inst(buf, sizeof(buf), memaddr, inst);
     (*info->fprintf_func)(info->stream, "%lx:  %lx", memaddr, inst);
+
+    bv(5);
 
     return len;
 }

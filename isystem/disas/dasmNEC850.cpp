@@ -7,6 +7,7 @@
 #include "dasmNEC850.h"
 ///#include "memoryareas.h"
 ///#include "..\kernel\SharedDefs_V850.h"
+#include "wrap.h"
 
 #define VECTOR_RELOC_BASE     0xFFFF0000
 #define INVALID_INSTR_HANDLER 0x00000004
@@ -15,6 +16,14 @@
 #define maPhysicalV850 32 ///???
 
 #define NecAdrToSymbol(A) StandardAdrToSymbol(A, maPhysicalV850, 4)
+
+CDisassemblerNEC850 *p = nullptr;
+
+void bv( int i)
+{
+
+
+}
 
 
 CDisassemblerNEC850::CDisassemblerNEC850(): CDisassemblerBase(FALSE)
