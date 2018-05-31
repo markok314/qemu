@@ -21,11 +21,12 @@
 
 static void rh850_soc_instance_init(Object *obj)
 {
-    RH850_SOC_State *s = RH850_SOC(obj);
+    // RH850_SOC_State *s = RH850_SOC(obj);
 
     /* Can't init the cpu here, we don't yet know which model to use */
 
-    memory_region_init(&s->container, obj, "rh850-container", UINT32_MAX);
+    // Is this needed? MK
+    // memory_region_init(&s->container, obj, "rh850-container", UINT32_MAX);
 
 //     object_initialize(&s->nvic, sizeof(s->nvic), TYPE_NVIC);
 //    qdev_set_parent_bus(DEVICE(&s->nvic), sysbus_get_default());
@@ -56,7 +57,12 @@ static void rh850_soc_realize(DeviceState *dev, Error **errp)
 
     s->cpu = RH850_CPU(object_new(s->cpu_type));
 
-    object_property_set_link(OBJECT(s->cpu), OBJECT(&s->container), "memory",
+    // Commented line with 'OBJECT(&s->container)' adds container memory to CPU,
+    // but container is empty - we'd have to add FLASH and RAM to container.
+    // Line with OBJECT(get_system_memory()) adds system memory to CPU, which contains
+    // FLASH and RAM. Use monitor command 'info mtree' to see memory tree.
+    //object_property_set_link(OBJECT(s->cpu), OBJECT(&s->container), "memory",
+    object_property_set_link(OBJECT(s->cpu), OBJECT(get_system_memory()), "memory",
                              &error_abort);
     object_property_set_bool(OBJECT(s->cpu), true, "realized", &err);
     if (err != NULL) {
