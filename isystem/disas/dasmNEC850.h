@@ -6,7 +6,9 @@
 #define __DasmNEC850_h__
 
 #include "DisassemblerBase.h"
-#include "AsystMacros.h"
+///#include "AsystMacros.h"
+
+typedef uint32_t u32;
 
 typedef const BYTE *PCBYTE;
 
@@ -14,7 +16,8 @@ class CDisassemblerNEC850: public CDisassemblerBase
 {
 public:
   CDisassemblerNEC850();
-  int QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, DWORD & rdwNextAddress, int & rnNumCycles) override;
+  int QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType,
+		  	  DWORD & rdwNextAddress, int & rnNumCycles); /// override;
   virtual int Disasm(const BYTE * pbyBuf, jstring & rjstrDasm, int nNumAvailBytes);
   virtual BOOL IsStepOverInstr(const BYTE * pbyBuf);
   virtual void GetInfo(IDisassemble::CInfo & rInfo);
