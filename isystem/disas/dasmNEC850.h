@@ -18,7 +18,8 @@ public:
   CDisassemblerNEC850();
   int QuickDisasm32(DWORD dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType,
 		  	  DWORD & rdwNextAddress, int & rnNumCycles); /// override;
-  virtual int Disasm(const BYTE * pbyBuf, jstring & rjstrDasm, int nNumAvailBytes);
+  //virtual
+  int Disasm(const BYTE * pbyBuf, jstring & rjstrDasm, int nNumAvailBytes);
   virtual BOOL IsStepOverInstr(const BYTE * pbyBuf);
   virtual void GetInfo(IDisassemble::CInfo & rInfo);
 private:

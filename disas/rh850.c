@@ -2947,18 +2947,17 @@ static void decode_inst_decompress(rv_decode *dec)
 static void
 disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
 {
-    rv_decode dec = { 0 };
+    /*rv_decode dec = { 0 };
     dec.pc = pc;
     dec.inst = inst;
     decode_inst_opcode(&dec);
     decode_inst_operands(&dec);
     decode_inst_decompress(&dec);
     decode_inst_lift_pseudo(&dec);
-    format_inst(buf, buflen, 16, &dec);
+    format_inst(buf, buflen, 16, &dec);*/
 }
 
 #include "../isystem/disas/wrap.h"
-//void bv(int);
 
 int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 {
@@ -2990,9 +2989,10 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
     }
 
     disasm_inst(buf, sizeof(buf), memaddr, inst);
-    (*info->fprintf_func)(info->stream, "%lx:  %lx", memaddr, inst);
 
-    bv(5);
+    disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst);
+
+    (*info->fprintf_func)(info->stream, "%lx:  %lx", memaddr, inst);
 
     return len;
 }

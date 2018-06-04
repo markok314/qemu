@@ -19,9 +19,15 @@
 
 CDisassemblerNEC850 *p = nullptr;
 
-void bv( int i)
-{
 
+void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst)
+{
+	if (!p)
+		p = new CDisassemblerNEC850();
+
+
+	//p->Disasm( buf, rjstrDasm, buflen);
+	//rjstrDasm.c_str()
 
 }
 
@@ -1919,9 +1925,9 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
 	jstring Instruction;  
 	jstring Operand;
 	int RetValue = 0;
-	///int LenInstr=12;
+	int LenInstr=12;
 
-  m_dwExtra	= 0;
+    m_dwExtra	= 0;
 	dwNextAddress = 0x00000001; //DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + 4;
 	SET_INST_TYPE(InsType , it_Continue);
 
@@ -1929,24 +1935,24 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
 	u32 dwInst1 =	0;
 	NecGetInst(Buff, dwInst, dwInst1);
 	RetValue = DissNEC850(bQD, dwInst, dwInst1, InsType, dwNextAddress, Instruction, Operand);
-  if (0x00000001 == dwNextAddress)
+    if (0x00000001 == dwNextAddress)
     dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + RetValue;
 
 	if (!bQD)
 	{
-    if (0 == RetValue || RetValue > Bytes)
-    {
-      RetValue = 0;
-    }
-    else
-    {
-      ////FormatOpCodeString(rjstrDasm, Instruction, Operand, LenInstr);
-    }
+      if (0 == RetValue || RetValue > Bytes)
+      {
+        RetValue = 0;
+      }
+      else
+      {
+        FormatOpCodeString(rjstrDasm, Instruction, Operand, LenInstr);
+      }
 	}
-  if (NULL!=m_pAnalyze)
-  {
-    m_pAnalyze->m_byMemAccessSizeMAUs = (BYTE)m_dwExtra;
-  }
+    if (NULL!=m_pAnalyze)
+    {
+      m_pAnalyze->m_byMemAccessSizeMAUs = (BYTE)m_dwExtra;
+    }
 
 	return RetValue;
 }

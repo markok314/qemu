@@ -674,3 +674,16 @@ struct CCPUInfo
 
   uint16_t m_wSubVariant; /// = 0;  ///< Contains CPU subvariant ID.
 };
+
+inline void Padd(jstring & rstr, int nLen, char C=' ')  //podaljsa rstr s presledki do dolzine len
+{
+  int nLenStr = rstr.size();
+  if (nLenStr < nLen)
+  {
+    rstr += jstring(C, nLen - nLenStr);
+  }
+  else
+  {
+    rstr += C;
+  }
+}

@@ -238,27 +238,27 @@ LPCTSTR CDisassemblerBase::GetLookupMapItem(DWORD dwValue, int nLookupSize, cons
   return NULL==pItem ? NULL : pItem->m_pszName;
 }
 
-/*
+
 void CDisassemblerBase::FormatOpCodeString(jstring & rstrOpCodeString, const jstring & rstrInstruction, const jstring & rstrOperand, int nLenInstruction)
 {
   rstrOpCodeString = rstrInstruction;
   switch (m_pParameters->m_wOptions & IDisassemble::CParameters::daFormatMask)
   {
-  case IDisassemble::CParameters::daFormatPadd:
-    {
-      Padd(rstrOpCodeString, max(nLenInstruction, rstrInstruction.GetLength() + 1));
-    }
-    break;
-  case IDisassemble::CParameters::daFormatTab:
-    rstrOpCodeString += '\t';
-    break;
-  default:
-    ASSERT(0);
+    case IDisassemble::CParameters::daFormatPadd:
+      {
+        Padd(rstrOpCodeString, (unsigned)nLenInstruction > (rstrInstruction.size()+1)? nLenInstruction : rstrInstruction.size()+1 );
+      }
+      break;
+    case IDisassemble::CParameters::daFormatTab:
+      rstrOpCodeString += '\t';
+      break;
+    //default:
+    //ASSERT(0);
   }
 
   rstrOpCodeString += rstrOperand;
 }
-*/
+
 int CDisassemblerBase::QuickDisasm(ADDROFFS dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, ADDROFFS & rdwNextAddress, int & rnNumCycles)
 {
   DWORD dwNextAddress = DWORD_FROMADDROFFS(dwAddress);
