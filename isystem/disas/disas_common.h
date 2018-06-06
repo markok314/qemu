@@ -6,6 +6,18 @@
 using namespace std;
 typedef std::string jstring;
 
+#include <sstream>
+template <typename T>
+std::string ToString(T val)
+{
+    std::stringstream stream;
+    stream << val;
+    return stream.str();
+}
+#define StrF(x)  ToString(x) ///std::to_string(x)
+#define Long2Str(x)  ToString(x) ///std::to_string(x)
+
+
 typedef uint8_t BYTE;
 typedef uint16_t WORD;
 typedef uint32_t DWORD;
@@ -30,9 +42,6 @@ typedef void * PVOID;
 #define PURE =0
 #define FALSE 0
 #define TRUE 1
-
-#define StrF(x)  std::to_string(x)
-#define Long2Str(x)  std::to_string(x)
 
 typedef long int LONG;
 
