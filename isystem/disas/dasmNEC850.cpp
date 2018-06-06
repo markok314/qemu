@@ -19,16 +19,28 @@
 
 CDisassemblerNEC850 *p = nullptr;
 
-
 void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst)
 {
+	jstring rjstrDasm;
+	BYTE instr[8];
+
 	if (!p)
 		p = new CDisassemblerNEC850();
 
+	for ( int i=0; i<8; i++)
+		instr[i] = 0;
+	for ( int i=0; i<2; i++)
+		instr[i] = (inst >> (8*i)) & 0x0FF;
 
-	//p->Disasm( buf, rjstrDasm, buflen);
-	//rjstrDasm.c_str()
+	p->Disasm( instr, rjstrDasm, buflen);
+	printf("%s\n", rjstrDasm.c_str());
 
+}
+
+void SignExtend(LONG & lDisp, uint8_t n)
+{
+	if ( lDisp & (1 << (n-1)) )	// sign
+		lDisp += ((1 << (64 - n)) - 1) << n;
 }
 
 
@@ -571,7 +583,7 @@ jstring CDisassemblerNEC850::NecGetDisp32(const u32 dwInst, const u32 dwInst1)
 jstring CDisassemblerNEC850::NecGetDisp22(const u32 dwInst)
 	{
 	LONG lDisp = NecExtractBits(dwInst, 16, 32) | (NecExtractBits(dwInst, 0, 6) << 16);
-	///SignExtend(lDisp, 22);
+	SignExtend(lDisp, 22);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	Operand = NecAdrToSymbol(dwAddr);
@@ -582,7 +594,7 @@ jstring CDisassemblerNEC850::NecGetDisp22(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp5(const u32 dwInst)
 {
 	LONG lDisp = NecExtractBits(dwInst, 0, 5);
-	///SignExtend(lDisp, 5);
+	SignExtend(lDisp, 5);
 	jstring Operand;
 	Operand = StrF(lDisp);
 	//Operand = Hex(lDisp, 1);
@@ -592,7 +604,7 @@ jstring CDisassemblerNEC850::NecGetDisp5(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp9(const u32 dwInst)
 {
 	LONG lDisp = (NecExtractBits(dwInst, 4, 7) | (NecExtractBits(dwInst, 11, 16) << 3)) << 1;
-	///SignExtend(lDisp, 9);
+	SignExtend(lDisp, 9);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	Operand = NecAdrToSymbol(dwAddr);
@@ -602,7 +614,7 @@ jstring CDisassemblerNEC850::NecGetDisp9(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp15(const u32 dwInst)
 {
 	LONG lDisp = (NecExtractBits(dwInst, 17, 32) << 1);
-	///SignExtend(lDisp, 16);
+	SignExtend(lDisp, 16);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) - (DWORD) lDisp;
 	jstring Operand;
 	Operand = NecAdrToSymbol(dwAddr);
@@ -612,7 +624,7 @@ jstring CDisassemblerNEC850::NecGetDisp15(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetImmN16(const u32 dwInst)
 {
 	LONG lDisp = NecExtractBits(dwInst, 16, 32);
-	///SignExtend(lDisp, 16);
+	SignExtend(lDisp, 16);
 	jstring Operand;
 	Operand = StrF(lDisp);
 	//Operand = Hex(lDisp, 2);
@@ -622,7 +634,7 @@ jstring CDisassemblerNEC850::NecGetImmN16(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp16(const u32 dwInst)
 {
 	LONG lDisp = (LONG) dwInst;
-	///SignExtend(lDisp, 16);
+	SignExtend(lDisp, 16);
 	jstring Operand;
 	//Operand = std::to_string(lDisp);  // decimal
   if (lDisp < 0)
@@ -637,7 +649,7 @@ jstring CDisassemblerNEC850::NecGetDisp16(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp17(const u32 dwInst)
 {
   LONG lDisp = (LONG) (((NecExtractBits(dwInst, 17, 32) | (NecExtractBits(dwInst, 4, 5) << 15))) << 1);
-  ///SignExtend(lDisp, 17);
+  SignExtend(lDisp, 17);
   DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
   jstring Operand;
   Operand = NecAdrToSymbol(dwAddr);
@@ -648,7 +660,7 @@ jstring CDisassemblerNEC850::NecGetDisp17(const u32 dwInst)
 jstring CDisassemblerNEC850::NecGetDisp23(const u32 dwInst, const u32 dwInst1)
 {
 	LONG lDisp = (NecExtractBits(dwInst, 20, 27) | (NecExtractBits(dwInst1, 0, 16) << 7));
-	///SignExtend(lDisp, 23);
+	SignExtend(lDisp, 23);
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	Operand = std::to_string(lDisp); ///, 3);
@@ -658,7 +670,7 @@ jstring CDisassemblerNEC850::NecGetDisp23(const u32 dwInst, const u32 dwInst1)
 jstring CDisassemblerNEC850::NecGetDisp23Z0(const u32 dwInst, const u32 dwInst1)
 {
 	LONG lDisp = ((NecExtractBits(dwInst, 21, 27) << 1) | (NecExtractBits(dwInst1, 0, 16) << 7));
-	///SignExtend(lDisp, 23);
+	SignExtend(lDisp, 23);
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	Operand = std::to_string(lDisp); ///, 4);
@@ -669,7 +681,7 @@ jstring CDisassemblerNEC850::GetBitManOperand(const u32 dwInst)
 {
 	jstring strBit = "#" + StrF(NecExtractBits(dwInst, 11, 14));
 	LONG lDisp = (LONG) NecExtractBits(dwInst, 16, 32);
-	///SignExtend(lDisp, 16);
+	SignExtend(lDisp, 16);
 	jstring Operand;
 
 	Operand = strBit + jstring(",") + jstring(StrF(lDisp)) + jstring("[") + NecGetReg(NecExtractBits(dwInst, 0, 5)) + jstring("]");
@@ -711,7 +723,7 @@ jstring CDisassemblerNEC850::NecGetPrepareOp(const u32 dwInst, const u32 dwInst1
 	strOp = NecGetRegList(dwInst) + "," + jstring(Long2Str(NecExtractBits(dwInst, 1, 6)<<2));
 	DWORD dwOpType = NecExtractBits(dwInst, 19, 21);
 	LONG lOp = (LONG) NecExtractBits(dwInst1, 0, 16);
-	///SignExtend(lOp, 16);
+	SignExtend(lOp, 16);
 	
 	switch(dwOpType)
 	{
@@ -783,7 +795,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
 	SET_INST_TYPE(InsType , it_Continue);
 	u32 dwForm1 = 0;
 	u32 dwForm2 = 0;
-  u32 dwForm3 = 0;
+    u32 dwForm3 = 0;
 
   dwForm1 = NecExtractBits(dwInst, 0, 32);
   {
@@ -1435,7 +1447,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
       }
 
       LONG lDisp = (((NecExtractBits(dwInst, 17, 32) | (NecExtractBits(dwInst, 4, 5) << 15))) << 1);
-      ///SignExtend(lDisp, 17);
+      SignExtend(lDisp, 17);
       dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
       if (bQD)				
         m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
@@ -1472,7 +1484,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           m_pAnalyze->m_wFlags &= (0xFFFF ^ IDisassemble::CAnalyze::flIndirect);				
           LONG lDisp = (NecExtractBits(dwInst, 17, 32) << 1);
-          ///SignExtend(lDisp, 16);
+          SignExtend(lDisp, 16);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) - (DWORD) lDisp;					
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
         }
@@ -1517,7 +1529,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           m_pAnalyze->m_wFlags &= (0xFFFF ^ IDisassemble::CAnalyze::flIndirect);				
           LONG lDisp = NecExtractBits(dwInst, 16, 32) | (NecExtractBits(dwInst, 0, 6) << 16);
-          ///SignExtend(lDisp, 22);
+          SignExtend(lDisp, 22);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
         }
@@ -1855,7 +1867,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flCall;
           LONG lDisp = NecExtractBits(dwInst, 16, 32) | (NecExtractBits(dwInst, 0, 6) << 16);
-          ///SignExtend(lDisp, 22);
+          SignExtend(lDisp, 22);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
           m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
         }
@@ -1893,7 +1905,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
           }
 
           LONG lDisp = (NecExtractBits(dwInst, 4, 7) | (NecExtractBits(dwInst, 11, 16) << 3)) << 1;
-          ///SignExtend(lDisp, 9);
+          SignExtend(lDisp, 9);
           dwNextAddress = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;					
           if (bQD)
             m_pAnalyze->m_wFlags |= IDisassemble::CAnalyze::flRelative;
@@ -1932,7 +1944,7 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
 	SET_INST_TYPE(InsType , it_Continue);
 
 	u32 dwInst  = 0;
-	u32 dwInst1 =	0;
+	u32 dwInst1 = 0;
 	NecGetInst(Buff, dwInst, dwInst1);
 	RetValue = DissNEC850(bQD, dwInst, dwInst1, InsType, dwNextAddress, Instruction, Operand);
     if (0x00000001 == dwNextAddress)
@@ -1951,7 +1963,7 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
 	}
     if (NULL!=m_pAnalyze)
     {
-      m_pAnalyze->m_byMemAccessSizeMAUs = (BYTE)m_dwExtra;
+      ///m_pAnalyze->m_byMemAccessSizeMAUs = (BYTE)m_dwExtra;
     }
 
 	return RetValue;

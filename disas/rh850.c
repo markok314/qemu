@@ -2947,14 +2947,16 @@ static void decode_inst_decompress(rv_decode *dec)
 static void
 disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
 {
-    /*rv_decode dec = { 0 };
+    return;
+
+	rv_decode dec = { 0 };
     dec.pc = pc;
     dec.inst = inst;
     decode_inst_opcode(&dec);
     decode_inst_operands(&dec);
     decode_inst_decompress(&dec);
     decode_inst_lift_pseudo(&dec);
-    format_inst(buf, buflen, 16, &dec);*/
+    format_inst(buf, buflen, 16, &dec);
 }
 
 #include "../isystem/disas/wrap.h"
