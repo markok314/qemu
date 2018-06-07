@@ -28,11 +28,23 @@
 
 static const char rh850_exts[26] = "IMAFDQECLBJTPVNSUHKORWXYZG";
 
-const char * const rh850_int_regnames[] = {
-  "zero", "ra  ", "sp  ", "gp  ", "tp  ", "t0  ", "t1  ", "t2  ",
-  "s0  ", "s1  ", "a0  ", "a1  ", "a2  ", "a3  ", "a4  ", "a5  ",
-  "a6  ", "a7  ", "s2  ", "s3  ", "s4  ", "s5  ", "s6  ", "s7  ",
-  "s8  ", "s9  ", "s10 ", "s11 ", "t3  ", "t4  ", "t5  ", "t6  "
+/* Program registers:
+ * r0 - zero
+ * r1 - assembler reserved register
+ * r2 - real-time OS register / address and data variable register
+ * r3 - stack pointer
+ * r4 - global pointer
+ * r5 - text pointer
+ * r6-r29 - address and data variable registers
+ * r30 - element pointer
+ * r31 - link pointer
+ */
+
+const char * const rh850_prog_reg_names[] = {
+  "zero", "ar  ", "r2  ", "sp  ", "gp  ", "tp  ", "r6  ", "r7  ",
+  "r8  ", "r9  ", "r10  ", "r11  ", "r12  ", "r13  ", "r14  ", "r15  ",
+  "r16  ", "r17  ", "r18  ", "r19  ", "r20  ", "r21  ", "r22  ", "r23  ",
+  "r24  ", "r25  ", "r26 ", "r27 ", "r28  ", "r29  ", "ep  ", "lp  "
 };
 
 const char * const rh850_fpr_regnames[] = {

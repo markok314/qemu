@@ -227,7 +227,7 @@ static inline bool rh850_feature(CPURH850State *env, int feature)
 #include "cpu_user.h"
 #include "cpu_bits.h"
 
-extern const char * const rh850_int_regnames[];
+extern const char * const rh850_prog_reg_names[];
 extern const char * const rh850_fpr_regnames[];
 extern const char * const rh850_excp_names[];
 extern const char * const rh850_intr_names[];
