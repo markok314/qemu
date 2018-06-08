@@ -105,7 +105,7 @@ public:
     uint32_t    m_dwFlags;
   };
 
-  int32_t SetConfig(const CConfig * pConfig);// = 0;
+  virtual int32_t SetConfig(const CConfig * pConfig);// = 0;
   struct CInfo
   {
     struct CInstrInfo
@@ -115,8 +115,8 @@ public:
     } m_InstrInfo[mempISANum];
     BYTE m_byMinInstructionAlign; // min alignment of instructions for any mode
   };
-  int32_t GetInfo(CInfo * pInfo);// = 0;
-  int32_t Update();// = 0;
+  virtual int32_t GetInfo(CInfo * pInfo);// = 0;
+  virtual int32_t Update();// = 0;
   struct CParameters
   {
     enum { MAX_DASM_LEN = 232 };
@@ -136,12 +136,12 @@ public:
       daFormatPadd      = 0x0000,  // formated op-code string is padded with spaces between op-code and arguments
       daFormatTab       = 0x0010,  // formated op-code string uses TAB to separate op-code and arguments
     };
-    WORD   m_wOptions;  // disassembly options
+    WORD   m_wOptions = 0; /// // disassemly options
     WORD   m_wNumMAUs;  // number of MAUs available in m_pbyBuf
-    ADDROFFS m_aAddress;
+    ADDROFFS m_aAddress = 0; ///
     const BYTE * m_pbyBuf;  // pointer to where the dis. buffer is located
   };
-  int32_t Disassemble(const CParameters * pParameters, LPTSTR pszDasm, WORD * pwLength);// = 0;
+  virtual int32_t Disassemble(const CParameters * pParameters, LPTSTR pszDasm, WORD * pwLength);// = 0;
   struct CAnalyze
   {
     enum EFlags
@@ -188,7 +188,7 @@ public:
     ADDROFFS m_aNextInstruction; // next instruction
     uint32_t m_dwInstructionType;  // loword(common types) hiword(special types)
   };
-  int32_t Analyze(const CParameters * pParameters, CAnalyze * pAnalyze);// = 0;
+  virtual int32_t Analyze(const CParameters * pParameters, CAnalyze * pAnalyze);// = 0;
 };
 
 

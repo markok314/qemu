@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>	// memset
 
 #include <string>
 using namespace std;
@@ -686,10 +688,14 @@ struct CCPUInfo
 
 inline void Padd(jstring & rstr, int nLen, char C=' ')  //podaljsa rstr s presledki do dolzine len
 {
+  char str[100];
   int nLenStr = rstr.size();
   if (nLenStr < nLen)
   {
-    rstr += jstring(C, nLen - nLenStr);
+    memset( str, C, nLen - nLenStr);
+    str[nLen - nLenStr] = '\0';
+    //rstr += jstring(C, nLen - nLenStr);
+    rstr += std::string(str);
   }
   else
   {
