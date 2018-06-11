@@ -1919,7 +1919,7 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
 	jstring Instruction;  
 	jstring Operand;
 	int RetValue = 0;
-	///int LenInstr=12;
+	int LenInstr=12;
 
   m_dwExtra	= 0;
 	dwNextAddress = 0x00000001; //DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + 4;
@@ -1940,7 +1940,7 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
     }
     else
     {
-      ////FormatOpCodeString(rjstrDasm, Instruction, Operand, LenInstr);
+      FormatOpCodeString(rjstrDasm, Instruction, Operand, LenInstr);
     }
 	}
   if (NULL!=m_pAnalyze)

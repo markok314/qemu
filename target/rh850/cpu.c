@@ -192,6 +192,13 @@ static ObjectClass *rh850_cpu_class_by_name(const char *cpu_model)
     }
     return oc;
 }
+/*
+// isys
+static int is_supervisor_mode(CPUState *cs)
+{
+	CPUState *cs
+}
+*/
 
 static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     fprintf_function cpu_fprintf, int flags)
