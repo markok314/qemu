@@ -209,6 +209,11 @@ const char * const rh850_sys_databuff_regnames[] = { /* Data buffer operation re
 };
 
 const char * const rh850_excp_names[] = {
+
+	"reset",
+	"",
+
+
     "misaligned_fetch",
     "fault_fetch",
     "illegal_instruction",
@@ -382,11 +387,12 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
 
     for (i = 0; i < 32; i++) {
         cpu_fprintf(f, " %s " TARGET_FMT_lx,
-            rh850_int_regnames[i], env->gpr[i]);
+            rh850_prog_regnames[i], env->gpr[i]);
         if ((i & 3) == 3) {
             cpu_fprintf(f, "\n");
         }
     }
+    /*
     for (i = 0; i < 32; i++) {
         cpu_fprintf(f, " %s %016" PRIx64,
             rh850_fpr_regnames[i], env->fpr[i]);
@@ -394,6 +400,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
             cpu_fprintf(f, "\n");
         }
     }
+    */
 }
 
 static void rh850_cpu_set_pc(CPUState *cs, vaddr value)

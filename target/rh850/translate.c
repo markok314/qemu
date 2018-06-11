@@ -1780,12 +1780,12 @@ void rh850_translate_init(void)
 
     for (i = 1; i < 32; i++) {
         cpu_gpr[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPURH850State, gpr[i]), rh850_int_regnames[i]);
+            offsetof(CPURH850State, gpr[i]), rh850_prog_regnames[i]);
     }
 
     for (i = 0; i < 32; i++) {
         cpu_fpr[i] = tcg_global_mem_new_i64(cpu_env,
-            offsetof(CPURH850State, fpr[i]), rh850_fpr_regnames[i]);
+            offsetof(CPURH850State, fpr[i]), rh850_sys_basic_regnames[i]);
     }
 
     cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, pc), "pc");
