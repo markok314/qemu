@@ -44,6 +44,7 @@ m_bBigEndian(m_bDefaultBigEndian)
   m_pIMemoryProperty = NULL;
   ///ZERO(m_Config);
   m_byMinimumInstructionLength = 1;
+  m_pParameters = new IDisassemble::CParameters;
 }
 
 CDisassemblerBase::~CDisassemblerBase()
@@ -252,8 +253,10 @@ void CDisassemblerBase::FormatOpCodeString(jstring & rstrOpCodeString, const jst
     case IDisassemble::CParameters::daFormatTab:
       rstrOpCodeString += '\t';
       break;
-    //default:
-    //ASSERT(0);
+    default:
+      //ASSERT(0);
+    	//throw(0);
+    	break;
   }
 
   rstrOpCodeString += rstrOperand;
