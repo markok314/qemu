@@ -119,15 +119,31 @@ struct CPURH850State {
 
 
 
-    target_ulong load_res;
-    target_ulong load_val;
+    target_ulong psw;		//program status word
+    target_ulong eiic;		//EI level exception cause
+    target_ulong feic;		//FI level exception cause
+    target_ulong mcfg0;		//machine configuration
+    target_ulong rbase;		//reset vector base address (if psw.ebv==0, this is also exception vector)
+    target_ulong ebase;		//exception handler vector address
+    target_ulong mctl;		//CPU control
+    target_ulong pid;		//processor ID
+    target_ulong htcfg0;	//thread configuration
+    target_ulong mea; 		//memory error address (when misaligned or MPU)
+    target_ulong mei; 		//memory error info (info about instruction that caused exception)
 
-    target_ulong frm;
+
+    target_ulong load_res;    	// inst addr for TCG
+    target_ulong load_val;    	// inst val for TCG
+
+    target_ulong frm;			//  CSR floating point rounding mode
 
     target_ulong badaddr;
 
     target_ulong user_ver;
     target_ulong priv_ver;
+
+    //target_ulong user_mode;
+
     target_ulong misa;
 
     uint32_t features;
@@ -136,8 +152,8 @@ struct CPURH850State {
     target_ulong priv;
     target_ulong resetvec;
 
-    target_ulong mhartid;
-    target_ulong mstatus;
+    target_ulong mhartid;		//hardware thread ID
+    target_ulong mstatus;		//machine status
     /*
      * CAUTION! Unlike the rest of this struct, mip is accessed asynchonously
      * by I/O threads and other vCPUs, so hold the iothread mutex before
@@ -145,8 +161,8 @@ struct CPURH850State {
      * non-zero.  Use rh850_cpu_set_local_interrupt.
      */
     uint32_t mip;        /* allow atomic_read for >= 32-bit hosts */
-    target_ulong mie;
-    target_ulong mideleg;
+    target_ulong mie; 		//machine interrupt enable
+    target_ulong mideleg;	//machine interrupt delegation register
 
     target_ulong sptbr;  /* until: priv-1.9.1 */
     target_ulong satp;   /* since: priv-1.10.0 */
@@ -154,17 +170,17 @@ struct CPURH850State {
     target_ulong mbadaddr;
     target_ulong medeleg;
 
-    target_ulong stvec;
-    target_ulong sepc;
-    target_ulong scause;
+    target_ulong stvec;		//supervisor trap vector base
+    target_ulong sepc;		//supervisor exception program counter
+    target_ulong scause;	//suprevisor cause register
 
-    target_ulong mtvec;
-    target_ulong mepc;
-    target_ulong mcause;
+    target_ulong mtvec;		//machine trap handler base address
+    target_ulong mepc;		//machine exception program counter
+    target_ulong mcause;	//machine trap cause
     target_ulong mtval;  /* since: priv-1.10.0 */
 
-    uint32_t mucounteren;
-    uint32_t mscounteren;
+    uint32_t mucounteren;	//user counter enable
+    uint32_t mscounteren;	//supervisor coaunter enable
     target_ulong scounteren; /* since: priv-1.10.0 */
     target_ulong mcounteren; /* since: priv-1.10.0 */
 
@@ -172,9 +188,9 @@ struct CPURH850State {
     target_ulong mscratch;
 
     /* temporary htif regs */
-    uint64_t mfromhost;
-    uint64_t mtohost;
-    uint64_t timecmp;
+    //uint64_t mfromhost;
+    //uint64_t mtohost;
+    //uint64_t timecmp;
 
     /* physical memory protection */
     pmp_table_t pmp_state;

@@ -275,7 +275,7 @@ static void set_feature(CPURH850State *env, int feature)
 
 static void set_resetvec(CPURH850State *env, int resetvec)
 {
-    env->resetvec = resetvec;
+    env->rbase = resetvec;
 }
 
 static void rh850_any_cpu_init(Object *obj)
@@ -458,7 +458,7 @@ static void rh850_cpu_reset(CPUState *cs)
     env->priv = PRV_M;
     env->mstatus &= ~(MSTATUS_MIE | MSTATUS_MPRV);
     env->mcause = 0;
-    env->pc = env->resetvec;
+    env->pc = env->rbase;
 #endif
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);
