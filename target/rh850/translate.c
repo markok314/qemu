@@ -1778,6 +1778,7 @@ void rh850_translate_init(void)
     /* registers, unless you specifically block reads/writes to reg 0 */
     cpu_gpr[0] = NULL;
 
+    /*
     for (i = 1; i < 32; i++) {
         cpu_gpr[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, gpr[i]), rh850_prog_regnames[i]);
@@ -1785,8 +1786,49 @@ void rh850_translate_init(void)
 
     for (i = 0; i < 32; i++) {
         cpu_fpr[i] = tcg_global_mem_new_i64(cpu_env,
-            offsetof(CPURH850State, fpr[i]), rh850_sys_basic_regnames[i]);
+            offsetof(CPURH850State, fpr[i]), rh850_sys_fpu_regnames[i]);
     }
+
+    */
+
+    for (i = 1; i < 32; i++) {
+        cpu_gpr[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPURH850State, progRegs[i]), rh850_prog_regnames[i]);
+    }
+
+    /*     need to translate all system registers
+     *
+    for (i = 1; i < 31; i++) {
+        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPURH850State, sysBasicRegs[i]), rh850_sys_basic_regnames[i]);
+    }
+
+    for (i = 0; i < 5; i++) {
+        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPURH850State, sysInterruptRegs[i]), rh850_sys_intr_regnames[i]);
+    }
+
+    for (i = 0; i < 6; i++) {
+        cpu_fpr[i] = tcg_global_mem_new_i64(cpu_env,
+            offsetof(CPURH850State, sysFpuRegs[i]), rh850_sys_fpr_regnames[i]);
+    }
+
+    for (i = 0; i < 56; i++) {
+        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPURH850State, sysMpuRegs[i]), rh850_sys_mpu_regnames[i]);
+    }
+
+    for (i = 0; i < 7; i++) {
+        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPURH850State, sysCacheRegs[i]), rh850_sys_cacheop_regnames[i]);
+    }
+
+    for (i = 0; i < 1; i++) {
+        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPURH850State, sysDatabuffRegs[i]), rh850_sys_databuff_regnames[i]);
+    }
+
+    */
 
     cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, pc), "pc");
     load_res = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_res),

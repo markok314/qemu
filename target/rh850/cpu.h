@@ -101,9 +101,24 @@ typedef struct CPURH850State CPURH850State;
 #include "pmp.h"
 
 struct CPURH850State {
-    target_ulong gpr[32];
-    uint64_t fpr[32]; /* assume both F and D extensions */
+
+
+    //target_ulong gpr[32];   /*rh850 program registers*/
+    //uint64_t fpr[32]; /* assume both F and D extensions */
+    //target_ulong pc;
+
+
+    target_ulong progRegs[32];
+    target_ulong sysBasicRegs[31];
+    target_ulong sysInterruptRegs[5];
+    uint64_t sysFpuRegs[6];  //using rh850 basic system registers(sr6-sr11), 32-bit or 64-bit precision
+    target_ulong sysMpuRegs[56];
+    target_ulong sysCacheRegs[7];
+    target_ulong sysDatabuffRegs[1];
     target_ulong pc;
+
+
+
     target_ulong load_res;
     target_ulong load_val;
 

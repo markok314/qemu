@@ -27,11 +27,11 @@ int rh850_cpu_gdb_read_register(CPUState *cs, uint8_t *mem_buf, int n)
     CPURH850State *env = &cpu->env;
 
     if (n < 32) {
-        return gdb_get_regl(mem_buf, env->gpr[n]);
+        return gdb_get_regl(mem_buf, env->progRegs[n]);  //gpr is now supposed to be progRegs
     } else if (n == 32) {
         return gdb_get_regl(mem_buf, env->pc);
     } else if (n < 65) {
-        return gdb_get_reg64(mem_buf, env->fpr[n - 33]);
+        //return gdb_get_reg64(mem_buf, env->fpr[n - 33]);  //fpr is now supposed to be sysBasicRegs
     } else if (n < 4096 + 65) {
         return gdb_get_regl(mem_buf, csr_read_helper(env, n - 65));
     }
@@ -47,13 +47,13 @@ int rh850_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
         /* discard writes to x0 */
         return sizeof(target_ulong);
     } else if (n < 32) {
-        env->gpr[n] = ldtul_p(mem_buf);
+        env->progRegs[n] = ldtul_p(mem_buf);
         return sizeof(target_ulong);
     } else if (n == 32) {
         env->pc = ldtul_p(mem_buf);
         return sizeof(target_ulong);
     } else if (n < 65) {
-        env->fpr[n - 33] = ldq_p(mem_buf); /* always 64-bit */
+        //env->fpr[n - 33] = ldq_p(mem_buf); /* always 64-bit */
         return sizeof(uint64_t);
     } else if (n < 4096 + 65) {
         csr_write_helper(env, ldtul_p(mem_buf), n - 65);
