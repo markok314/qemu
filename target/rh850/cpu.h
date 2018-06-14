@@ -118,7 +118,6 @@ struct CPURH850State {
     target_ulong pc;
 
 
-
     target_ulong psw;		//program status word
     target_ulong eiic;		//EI level exception cause
     target_ulong feic;		//FI level exception cause
@@ -131,6 +130,13 @@ struct CPURH850State {
     target_ulong mea; 		//memory error address (when misaligned or MPU)
     target_ulong mei; 		//memory error info (info about instruction that caused exception)
 
+    target_ulong icsr;		//interrupt control status register
+    target_ulong intcfg;	//interrupt function setting
+
+    target_ulong fpsr;		//floating-point configuration/status   <---write the bit defines
+    target_ulong fpepc;		//floating point exception PC
+
+
 
     target_ulong load_res;    	// inst addr for TCG
     target_ulong load_val;    	// inst val for TCG
@@ -139,7 +145,7 @@ struct CPURH850State {
 
     target_ulong badaddr;
 
-    target_ulong user_ver;
+    //target_ulong user_ver;
     target_ulong priv_ver;
 
     //target_ulong user_mode;
@@ -150,7 +156,6 @@ struct CPURH850State {
 
 #ifndef CONFIG_USER_ONLY
     target_ulong priv;
-    target_ulong resetvec;
 
     target_ulong mhartid;		//hardware thread ID
     target_ulong mstatus;		//machine status
@@ -247,7 +252,8 @@ static inline RH850CPU *rh850_env_get_cpu(CPURH850State *env)
 
 static inline int rh850_has_ext(CPURH850State *env, target_ulong ext)
 {
-    return (env->misa & ext) != 0;
+    //return (env->misa & ext) != 0;
+	return false;
 }
 
 static inline bool rh850_feature(CPURH850State *env, int feature)

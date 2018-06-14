@@ -372,6 +372,8 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     int i;
 
     cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pc      ", env->pc);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "psw     ", env->psw);
+
 #ifndef CONFIG_USER_ONLY
     cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mhartid ", env->mhartid);
     cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mstatus ", env->mstatus);
@@ -393,6 +395,8 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
         }
     }
 
+    cpu_fprintf(f, "\n");
+
     for (i = 0; i < 31; i++) {
         cpu_fprintf(f, " %s " TARGET_FMT_lx,
             rh850_sys_basic_regnames[i], env->sysBasicRegs[i]);
@@ -401,7 +405,20 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
         }
     }
 
-    /*  For 64-bit values
+    cpu_fprintf(f, "\n");
+
+    for (i = 0; i < 5; i++) {
+        cpu_fprintf(f, " %s " TARGET_FMT_lx,
+            rh850_sys_intr_regnames[i], env->sysInterruptRegs[i]);
+        if ((i & 3) == 3) {
+            cpu_fprintf(f, "\n");
+        }
+
+    }
+
+    cpu_fprintf(f, "\n");
+
+
     for (i = 0; i < 6; i++) {
         cpu_fprintf(f, " %s %016" PRIx64,
         		rh850_sys_fpr_regnames[i], env->sysFpuRegs[i]);
@@ -409,7 +426,33 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
             cpu_fprintf(f, "\n");
         }
     }
-	*/
+
+    cpu_fprintf(f, "\n");
+
+    for (i = 0; i < 56; i++) {
+		cpu_fprintf(f, " %s " TARGET_FMT_lx,
+			rh850_sys_mpu_regnames[i], env->sysMpuRegs[i]);
+		if ((i & 3) == 3) {
+			cpu_fprintf(f, "\n");
+		}
+
+	}
+
+	cpu_fprintf(f, "\n");
+
+	for (i = 0; i < 7; i++) {
+		cpu_fprintf(f, " %s " TARGET_FMT_lx,
+			rh850_sys_cacheop_regnames[i], env->sysCacheRegs[i]);
+		if ((i & 3) == 3) {
+			cpu_fprintf(f, "\n");
+		}
+
+	}
+
+	cpu_fprintf(f, "\n");
+
+	cpu_fprintf(f, " %s " TARGET_FMT_lx,
+				rh850_sys_databuff_regnames[0], env->sysDatabuffRegs[0]);
 }
 
 static void rh850_cpu_set_pc(CPUState *cs, vaddr value)

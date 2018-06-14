@@ -31,7 +31,7 @@
 #include "instmap.h"
 
 /* global register indices */
-static TCGv cpu_gpr[32], cpu_pc;
+static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[31], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56], cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1];
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv load_res;
 static TCGv load_val;
@@ -1796,15 +1796,15 @@ void rh850_translate_init(void)
             offsetof(CPURH850State, progRegs[i]), rh850_prog_regnames[i]);
     }
 
-    /*     need to translate all system registers
-     *
+
+
     for (i = 1; i < 31; i++) {
         cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysBasicRegs[i]), rh850_sys_basic_regnames[i]);
     }
 
     for (i = 0; i < 5; i++) {
-        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+    	cpu_sysIntrRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysInterruptRegs[i]), rh850_sys_intr_regnames[i]);
     }
 
@@ -1814,21 +1814,20 @@ void rh850_translate_init(void)
     }
 
     for (i = 0; i < 56; i++) {
-        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+        cpu_sysMpuRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysMpuRegs[i]), rh850_sys_mpu_regnames[i]);
     }
 
     for (i = 0; i < 7; i++) {
-        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+        cpu_sysCacheRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysCacheRegs[i]), rh850_sys_cacheop_regnames[i]);
     }
 
     for (i = 0; i < 1; i++) {
-        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
+        cpu_sysDatabuffRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysDatabuffRegs[i]), rh850_sys_databuff_regnames[i]);
     }
 
-    */
 
     cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, pc), "pc");
     load_res = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_res),
