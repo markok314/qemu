@@ -136,6 +136,7 @@ struct CPURH850State {
     target_ulong fpsr;		//floating-point configuration/status   <---write the bit defines
     target_ulong fpepc;		//floating point exception PC
 
+    target_ulong mpm;		//memory protection operation mode
 
 
     target_ulong load_res;    	// inst addr for TCG
@@ -143,7 +144,7 @@ struct CPURH850State {
 
     target_ulong frm;			//  CSR floating point rounding mode
 
-    target_ulong badaddr;
+    //target_ulong badaddr;		//changed to mea
 
     //target_ulong user_ver;
     target_ulong priv_ver;
@@ -198,7 +199,7 @@ struct CPURH850State {
     //uint64_t timecmp;
 
     /* physical memory protection */
-    pmp_table_t pmp_state;
+    pmp_table_t pmp_state;				//this should be modified
 #endif
 
     float_status fp_status;

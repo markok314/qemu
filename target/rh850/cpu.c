@@ -209,11 +209,6 @@ const char * const rh850_sys_databuff_regnames[] = { /* Data buffer operation re
 };
 
 const char * const rh850_excp_names[] = {
-
-	"reset",
-	"",
-
-
     "misaligned_fetch",
     "fault_fetch",
     "illegal_instruction",
@@ -374,17 +369,27 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pc      ", env->pc);
     cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "psw     ", env->psw);
 
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "eiic    ", env->eiic);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "feic    ", env->feic);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mcfg0   ", env->mcfg0);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "rbase   ", env->rbase);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "ebase   ", env->ebase);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mctl    ", env->mctl);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pid     ", env->pid);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "htcfg0  ", env->htcfg0);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mea     ", env->mea);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mei     ", env->mei);
 #ifndef CONFIG_USER_ONLY
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mhartid ", env->mhartid);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mstatus ", env->mstatus);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mip     ",
-        (target_ulong)atomic_read(&env->mip));
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mie     ", env->mie);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mideleg ", env->mideleg);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "medeleg ", env->medeleg);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mtvec   ", env->mtvec);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mepc    ", env->mepc);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mcause  ", env->mcause);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mhartid ", env->mhartid);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mstatus ", env->mstatus);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mip     ",
+    //    (target_ulong)atomic_read(&env->mip));
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mie     ", env->mie);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mideleg ", env->mideleg);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "medeleg ", env->medeleg);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mtvec   ", env->mtvec);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mepc    ", env->mepc);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mcause  ", env->mcause);
 #endif
 
     for (i = 0; i < 32; i++) {
@@ -498,8 +503,8 @@ static void rh850_cpu_reset(CPUState *cs)
 
     mcc->parent_reset(cs);
 #ifndef CONFIG_USER_ONLY
-    env->priv = PRV_M;
-    env->mstatus &= ~(MSTATUS_MIE | MSTATUS_MPRV);
+    env->priv = PRV_M;   //sets machine privilege level, make for rh850
+    env->mstatus &= ~(MSTATUS_MIE | MSTATUS_MPRV); //
     env->mcause = 0;
     env->pc = env->rbase;
 #endif

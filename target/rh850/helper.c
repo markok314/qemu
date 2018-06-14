@@ -279,7 +279,7 @@ static void raise_mmu_exception(CPURH850State *env, target_ulong address,
     default:
         g_assert_not_reached();
     }
-    env->badaddr = address;
+    env->mea = address;
 }
 
 hwaddr rh850_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
@@ -314,7 +314,7 @@ void rh850_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
     default:
         g_assert_not_reached();
     }
-    env->badaddr = addr;
+    env->mea = addr;
     do_raise_exception_err(env, cs->exception_index, retaddr);
 }
 
@@ -461,9 +461,9 @@ void rh850_cpu_do_interrupt(CPUState *cs)
         if (hasbadaddr) {
             if (RH850_DEBUG_INTERRUPT) {
                 qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
-                    ": badaddr 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
+                    ": badaddr 0x" TARGET_FMT_lx, env->mhartid, env->mea);
             }
-            env->sbadaddr = env->badaddr;
+            //env->sbadaddr = env->mea;  Is sbadaddr=any badaddr????
         }
 
         target_ulong s = env->mstatus;
@@ -482,9 +482,9 @@ void rh850_cpu_do_interrupt(CPUState *cs)
         if (hasbadaddr) {
             if (RH850_DEBUG_INTERRUPT) {
                 qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
-                    ": badaddr 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
+                    ": mea 0x" TARGET_FMT_lx, env->mhartid, env->mea);
             }
-            env->mbadaddr = env->badaddr;
+            //env->mbadaddr = env->badaddr;
         }
 
         target_ulong s = env->mstatus;
