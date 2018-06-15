@@ -1,10 +1,24 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>	// memset
 
 #include <string>
 using namespace std;
 typedef std::string jstring;
+
+#include <sstream>
+template <typename T>
+std::string ToString(T val)
+{
+    std::stringstream stream;
+    stream << val;
+    return stream.str();
+}
+#define StrF(x)  ToString(x) ///std::to_string(x)
+#define Long2Str(x)  ToString(x) ///std::to_string(x)
+
 
 typedef uint8_t BYTE;
 typedef uint16_t WORD;
@@ -30,9 +44,6 @@ typedef void * PVOID;
 #define PURE =0
 #define FALSE 0
 #define TRUE 1
-
-#define StrF(x)  std::to_string(x)
-#define Long2Str(x)  std::to_string(x)
 
 typedef long int LONG;
 
@@ -674,3 +685,20 @@ struct CCPUInfo
 
   uint16_t m_wSubVariant; /// = 0;  ///< Contains CPU subvariant ID.
 };
+
+inline void Padd(jstring & rstr, int nLen, char C=' ')  //podaljsa rstr s presledki do dolzine len
+{
+  char str[100];
+  int nLenStr = rstr.size();
+  if (nLenStr < nLen)
+  {
+    memset( str, C, nLen - nLenStr);
+    str[nLen - nLenStr] = '\0';
+    //rstr += jstring(C, nLen - nLenStr);
+    rstr += std::string(str);
+  }
+  else
+  {
+    rstr += C;
+  }
+}

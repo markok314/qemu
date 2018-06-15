@@ -10,8 +10,7 @@
 extern "C" {
 #endif
 
-void f(int);
-void bv(int i);
+void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst);
 
 #ifdef __cplusplus
 }
