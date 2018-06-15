@@ -1963,7 +1963,7 @@ int CDisassemblerNEC850::DisassmNEC850All(BOOL bQD, PCBYTE Buff, int Bytes, int&
 	}
     if (NULL!=m_pAnalyze)
     {
-      ///m_pAnalyze->m_byMemAccessSizeMAUs = (BYTE)m_dwExtra;
+      m_pAnalyze->m_byMemAccessSizeMAUs = (BYTE)m_dwExtra;
     }
 
 	return RetValue;
