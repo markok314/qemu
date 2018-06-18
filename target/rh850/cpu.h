@@ -100,6 +100,8 @@ typedef struct CPURH850State CPURH850State;
 
 #include "pmp.h"
 
+#include "register_indices.h"
+
 struct CPURH850State {
 
 
@@ -118,18 +120,6 @@ struct CPURH850State {
     target_ulong pc;
 
 
-    target_ulong psw;		//program status word
-    target_ulong eiic;		//EI level exception cause
-    target_ulong feic;		//FI level exception cause
-    target_ulong mcfg0;		//machine configuration
-    target_ulong rbase;		//reset vector base address (if psw.ebv==0, this is also exception vector)
-    target_ulong ebase;		//exception handler vector address
-    target_ulong mctl;		//CPU control
-    target_ulong pid;		//processor ID
-    target_ulong htcfg0;	//thread configuration
-    target_ulong mea; 		//memory error address (when misaligned or MPU)
-    target_ulong mei; 		//memory error info (info about instruction that caused exception)
-
     target_ulong icsr;		//interrupt control status register
     target_ulong intcfg;	//interrupt function setting
 
@@ -144,12 +134,12 @@ struct CPURH850State {
 
     target_ulong frm;			//  CSR floating point rounding mode
 
-    //target_ulong badaddr;		//changed to mea
+    target_ulong badaddr;		//changed to mea
 
     //target_ulong user_ver;
     target_ulong priv_ver;
 
-    //target_ulong user_mode;
+    //target_ulong user_mode;  <=== if PSW.UM==1, otherwise we are in supervisor mode
 
     target_ulong misa;
 
@@ -158,7 +148,7 @@ struct CPURH850State {
 #ifndef CONFIG_USER_ONLY
     target_ulong priv;
 
-    target_ulong mhartid;		//hardware thread ID
+    target_ulong mhartid;		//hardware thread ID  ===> is this same as HTCFG0.PEID ???? rh850 doesnt support multithread?
     target_ulong mstatus;		//machine status
     /*
      * CAUTION! Unlike the rest of this struct, mip is accessed asynchonously
@@ -186,7 +176,7 @@ struct CPURH850State {
     target_ulong mtval;  /* since: priv-1.10.0 */
 
     uint32_t mucounteren;	//user counter enable
-    uint32_t mscounteren;	//supervisor coaunter enable
+    uint32_t mscounteren;	//supervisor counter enable
     target_ulong scounteren; /* since: priv-1.10.0 */
     target_ulong mcounteren; /* since: priv-1.10.0 */
 

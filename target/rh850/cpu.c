@@ -270,7 +270,7 @@ static void set_feature(CPURH850State *env, int feature)
 
 static void set_resetvec(CPURH850State *env, int resetvec)
 {
-    env->rbase = resetvec;
+    env->sysBasicRegs[rbase_idx] = resetvec;
 }
 
 static void rh850_any_cpu_init(Object *obj)
@@ -367,18 +367,18 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     int i;
 
     cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pc      ", env->pc);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "psw     ", env->psw);
+    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "psw     ", env->sysBasicRegs[psw_idx]);
 
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "eiic    ", env->eiic);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "feic    ", env->feic);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mcfg0   ", env->mcfg0);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "rbase   ", env->rbase);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "ebase   ", env->ebase);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mctl    ", env->mctl);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pid     ", env->pid);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "htcfg0  ", env->htcfg0);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mea     ", env->mea);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mei     ", env->mei);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "eiic    ", env->eiic);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "feic    ", env->feic);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mcfg0   ", env->mcfg0);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "rbase   ", env->rbase);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "ebase   ", env->ebase);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mctl    ", env->mctl);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pid     ", env->pid);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "htcfg0  ", env->htcfg0);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mea     ", env->mea);
+    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mei     ", env->mei);
 #ifndef CONFIG_USER_ONLY
     //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mhartid ", env->mhartid);
     //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mstatus ", env->mstatus);
@@ -403,8 +403,10 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     cpu_fprintf(f, "\n");
 
     for (i = 0; i < 31; i++) {
+    	if (i!=4){
         cpu_fprintf(f, " %s " TARGET_FMT_lx,
             rh850_sys_basic_regnames[i], env->sysBasicRegs[i]);
+    	}
         if ((i & 3) == 3) {
             cpu_fprintf(f, "\n");
         }
@@ -506,7 +508,7 @@ static void rh850_cpu_reset(CPUState *cs)
     env->priv = PRV_M;   //sets machine privilege level, make for rh850
     env->mstatus &= ~(MSTATUS_MIE | MSTATUS_MPRV); //
     env->mcause = 0;
-    env->pc = env->rbase;
+    env->pc = env->sysBasicRegs[rbase_idx];
 #endif
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);

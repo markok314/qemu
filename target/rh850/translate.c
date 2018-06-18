@@ -31,7 +31,7 @@
 #include "instmap.h"
 
 /* global register indices */
-static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[31], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56], cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1];
+static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[30], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56], cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1];
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv load_res;
 static TCGv load_val;
@@ -86,7 +86,7 @@ static void generate_exception(DisasContext *ctx, int excp)
 static void generate_exception_mbadaddr(DisasContext *ctx, int excp)
 {
     tcg_gen_movi_tl(cpu_pc, ctx->pc);
-    tcg_gen_st_tl(cpu_pc, cpu_env, offsetof(CPURH850State, mea));
+    tcg_gen_st_tl(cpu_pc, cpu_env, offsetof(CPURH850State, badaddr));
     TCGv_i32 helper_tmp = tcg_const_i32(excp);
     gen_helper_raise_exception(cpu_env, helper_tmp);
     tcg_temp_free_i32(helper_tmp);
@@ -1797,8 +1797,8 @@ void rh850_translate_init(void)
     }
 
 
+    for (i = 0; i < 31; i++) {
 
-    for (i = 1; i < 31; i++) {
         cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysBasicRegs[i]), rh850_sys_basic_regnames[i]);
     }
