@@ -16,9 +16,34 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define MASK_OP_MAJOR(op)  (op & 0x7F)
+#define MASK_OP_MAJOR(op)  (op & (0x3F << 5))    //most instructions for rh850 have opcodes at bits 5-10
 enum {
-    /* rv32i, rv64i, rv32m */
+
+	OPC_RH850_STB 	= (0x3A << 5),
+	OPC_RH850_STH_STW = (0x3B << 5),		//the store halfword and store word instructions differ on LSB displacement bit 16 (0=ST.H, 1=ST.W) (format VII)
+
+	OPC_RH850_STB2_STW2 = (0x3C),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
+	OPC_RH850_STDW_STH2 = (0x3D),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
+
+	/* FORMAT I */
+	OPC_RH850_ADD 	= (0xE << 5),
+	OPC_RH850_AND 	= (0xA << 5),
+	OPC_RH850_CMP 	= (0xF << 5),
+	OPC_RH850_DIVH 	= (0x2 << 5),		//dont allow registers to be r0
+	OPC_RH850_FETRAP = (0x2 << 5),		//bits 0-4 are 0
+	OPC_RH850_JMP 	= (0x3 << 5),
+	OPC_RH850_MOV 	= (0x0 << 5),
+	OPC_RH850_NOP 	= (0x0 << 5),
+	OPC_RH850_MULH 	= (0x7 << 5),
+
+
+	OPC_RH850_ADD2 = (0x12),
+	OPC_RH850_CMP2 = (0x13),
+
+
+
+
+
     OPC_RISC_LUI    = (0x37),
     OPC_RISC_AUIPC  = (0x17),
     OPC_RISC_JAL    = (0x6F),
@@ -50,8 +75,15 @@ enum {
     OPC_RISC_FP_ARITH = (0x53),
 };
 
-#define MASK_OP_ARITH(op)   (MASK_OP_MAJOR(op) | (op & ((0x7 << 12) | \
-                            (0x7F << 25))))
+#define MASK_OP_FORMAT_XIV(op)   (MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0xF << 16)))
+enum {
+	OPC_RH850_STB2 	= (0x3C << 5) | (0x00 << 11 ) | (0xD << 16),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
+	OPC_RH850_STW2	= (0x3C << 5) | (0x00 << 11 ) | (0xF << 16),
+	OPC_RH850_STDW 	= (0x3D << 5) | (0x00 << 11 ) | (0xF << 16),
+	OPC_RH850_STH2 	= (0x3D << 5) | (0x00 << 11 ) | (0xD << 16),
+};
+
+#define MASK_OP_ARITH(op)   (MASK_OP_MAJOR(op) | (op & ((0x7 << 12) | (0x7F << 25))))
 enum {
     OPC_RISC_ADD   = OPC_RISC_ARITH | (0x0 << 12) | (0x00 << 25),
     OPC_RISC_SUB   = OPC_RISC_ARITH | (0x0 << 12) | (0x20 << 25),
@@ -77,7 +109,7 @@ enum {
 };
 
 
-#define MASK_OP_ARITH_IMM(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+#define MASK_OP_ARITH_IMM(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))   //arithmetic with immediate
 enum {
     OPC_RISC_ADDI   = OPC_RISC_ARITH_IMM | (0x0 << 12),
     OPC_RISC_SLTI   = OPC_RISC_ARITH_IMM | (0x2 << 12),
@@ -90,7 +122,7 @@ enum {
     OPC_RISC_SHIFT_RIGHT_I = OPC_RISC_ARITH_IMM | (0x5 << 12) /* SRAI, SRLI */
 };
 
-#define MASK_OP_BRANCH(op)     (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+#define MASK_OP_BRANCH(op)     (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))		//branch instructions
 enum {
     OPC_RISC_BEQ  = OPC_RISC_BRANCH  | (0x0  << 12),
     OPC_RISC_BNE  = OPC_RISC_BRANCH  | (0x1  << 12),
@@ -307,10 +339,13 @@ enum {
                            | (extract32(inst, 12, 8) << 12) \
                            | (sextract64(inst, 31, 1) << 20))
 
+
+#define GET_RS1(inst)  extract32(inst, 0, 5)		//appropriate for RH850
+#define GET_RS2(inst)  extract32(inst, 11, 5)		//appropriate for RH850
+
+
 #define GET_RM(inst)   extract32(inst, 12, 3)
 #define GET_RS3(inst)  extract32(inst, 27, 5)
-#define GET_RS1(inst)  extract32(inst, 15, 5)
-#define GET_RS2(inst)  extract32(inst, 20, 5)
 #define GET_RD(inst)   extract32(inst, 7, 5)
 #define GET_IMM(inst)  sextract64(inst, 20, 12)
 

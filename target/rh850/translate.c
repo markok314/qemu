@@ -571,20 +571,20 @@ static void gen_load(DisasContext *ctx, uint32_t opc, int rd, int rs1,
     tcg_temp_free(t1);
 }
 
-static void gen_store(DisasContext *ctx, uint32_t opc, int rs1, int rs2,
+static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         target_long imm)
 {
-    TCGv t0 = tcg_temp_new();
-    TCGv dat = tcg_temp_new();
-    gen_get_gpr(t0, rs1);
-    tcg_gen_addi_tl(t0, t0, imm);
-    gen_get_gpr(dat, rs2);
-    int memop = tcg_memop_lookup[(opc >> 12) & 0x7];
+    TCGv t0 = tcg_temp_new();		//temp
+    TCGv dat = tcg_temp_new();		//temp
+    gen_get_gpr(t0, rs1);			//loading rs1 to t0
+    tcg_gen_addi_tl(t0, t0, imm);	//adding displacement to t0
+    gen_get_gpr(dat, rs2);			//getting data from rs2
+    //int memop = tcg_memop_lookup[(opc >> 12) & 0x7]; //pass memop in arguments?
 
-    if (memop < 0) {
-        gen_exception_illegal(ctx);
-        return;
-    }
+    //if (memop < 0) {
+    //    gen_exception_illegal(ctx);
+    //    return;
+    //}
 
     tcg_gen_qemu_st_tl(dat, t0, ctx->mem_idx, memop);
     tcg_temp_free(t0);
@@ -1531,18 +1531,33 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     uint32_t op;
     target_long imm;
 
-    /* We do not do misaligned address check here: the address should never be
-     * misaligned at this point. Instructions that set PC must do the check,
-     * since epc must be the address of the instruction that caused us to
-     * perform the misaligned instruction fetch */
+    /* Here we are only checking for instructions that have opcodes at
+     * bits 5-10, other types of instructions are checked in other functions.
+     * These are the considered formats:
+     * I, II, VI, VII, VIII, IX, X, XI, XII, XIV*/
 
-    op = MASK_OP_MAJOR(ctx->opcode);
-    rs1 = GET_RS1(ctx->opcode);
-    rs2 = GET_RS2(ctx->opcode);
+    op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
+    rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4; For formats II, X, XII, these are imm/sub-op bits
+    rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15; For formats X and XIV, this is sub-opcode. Format VIII is special.
     rd = GET_RD(ctx->opcode);
     imm = GET_IMM(ctx->opcode);
 
     switch (op) {
+
+    case OPC_RH850_STB:
+    	gen_store(ctx, MO_8, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
+    	break;
+
+    case OPC_RH850_STH_STW:
+    	if ( extract32(ctx->opcode, 16, 1)==1 ) {
+    		gen_store(ctx, MO_32, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+    		//this is STORE WORD
+    		break;
+    	}
+    	gen_store(ctx, MO_16, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+    	//this is STORE HALFWORD
+    	break;
+
     case OPC_RISC_LUI:
         if (rd == 0) {
             break; /* NOP */
