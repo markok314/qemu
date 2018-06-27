@@ -1636,7 +1636,30 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     	}//else false instruction
     	break;
 
+    case OPC_RH850_MULH1:
+    	if(rs2 != 0){
+    		TCGv t1 = tcg_temp_new();		//temp
+    		TCGv t2 = tcg_temp_new();		//temp
+    		gen_get_gpr(t1, rs1);			//loading rs1 to t1
+    		gen_get_gpr(t2, rs2);			//loading rs2 to t2
+    		tcg_gen_mul_tl(t2, t2, t1);		//multiply t1 t2
+    		tcg_temp_free(t1);
+    		tcg_temp_free(t2);
 
+    	}
+    	break;
+    case OPC_RH850_MULH2:
+    	//same as mulh1, different class and imm/r1
+    	if(rs2 != 0){
+    		TCGv t1 = tcg_temp_new();		//temp
+    		TCGv t2 = tcg_temp_new();		//temp
+    		gen_get_gpr(t1, rs1);			//loading rs1 to t1
+    		gen_get_gpr(t2, rs2);			//loading rs2 to t2
+    		tcg_gen_mul_tl(t2, t2, t1);		//multiply t1 t2
+    		tcg_temp_free(t1);
+    		tcg_temp_free(t2);
+    	}
+    	break;
 
 
     case OPC_RISC_LUI:
