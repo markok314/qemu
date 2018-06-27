@@ -1525,6 +1525,48 @@ static void decode_RV32_64C(CPURH850State *env, DisasContext *ctx)
 
 static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
+	uint32_t op;
+	op = MASK_OP_ST_LD1(ctx->opcode);
+
+	switch(op) {
+		case OPC_RH850_LDB2:
+			break;
+
+		case OPC_RH850_LDH2:
+			break;
+
+		case OPC_RH850_LDW2:
+			break;
+
+		case OPC_RH850_STB2:
+			break;
+
+		case OPC_RH850_STW2:
+			break;
+	}
+}
+
+static void decode_load_store_2(CPURH850State *env, DisasContext *ctx)
+{
+	uint32_t op;
+	op = MASK_OP_ST_LD2(ctx->opcode);
+
+	switch(op) {
+		case OPC_RH850_LDBU2:
+			break;
+
+		case OPC_RH850_LDDW:
+			break;
+
+		case OPC_RH850_LDHU2:
+			break;
+
+		case OPC_RH850_STDW:
+			break;
+
+		case OPC_RH850_STH2:
+			break;
+	}
 
 }
 
@@ -1566,7 +1608,9 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     		//tu gremo v fukncijo  decode_load_store_1  v kateri pogledamo op.kode z masko  MASK_OP_ST_LD1
     	break;
 
-
+    case OPC_RH850_ST_LD_2:
+    		//tu gremo v fukncijo  decode_load_store_1  v kateri pogledamo op.kode z masko  MASK_OP_ST_LD1
+    	break;
 
 
 
