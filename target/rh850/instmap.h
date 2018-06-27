@@ -367,10 +367,11 @@ enum {
 
 #define GET_RS1(inst)  extract32(inst, 0, 5)		//appropriate for RH850
 #define GET_RS2(inst)  extract32(inst, 11, 5)		//appropriate for RH850
+#define GET_RS3(inst)  extract32(inst, 27, 5)		//appropriate for RH850
+#define GET_DISP(inst) (extract(inst, 20, 7) | (sextract32(inst, 32, 16) << 7 ) ) //b47-b32 + b26-b20
 
 
 #define GET_RM(inst)   extract32(inst, 12, 3)
-#define GET_RS3(inst)  extract32(inst, 27, 5)
 #define GET_RD(inst)   extract32(inst, 7, 5)
 #define GET_IMM(inst)  sextract64(inst, 20, 12)
 

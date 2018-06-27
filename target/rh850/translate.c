@@ -1525,8 +1525,15 @@ static void decode_RV32_64C(CPURH850State *env, DisasContext *ctx)
 
 static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
+	int rs1;
+	int rs3;
+	target_long disp;
 	uint32_t op;
+
 	op = MASK_OP_ST_LD1(ctx->opcode);
+	rs1 = GET_RS1(ctx->opcode);
+	rs3 = GET_RS3(ctx->opcode);
+	disp = GET_DISP(ctx->opcode);
 
 	switch(op) {
 		case OPC_RH850_LDB2:
@@ -1539,16 +1546,26 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 			break;
 
 		case OPC_RH850_STB2:
+			gen_store(ctx, MO_8, rs1, rs3, disp);   // get lower 8 bits of reg3
 			break;
 
 		case OPC_RH850_STW2:
+			gen_store(ctx, MO_32, rs1, rs3, disp);  // get 32bits of reg3
 			break;
 	}
 }
 
 static void decode_load_store_2(CPURH850State *env, DisasContext *ctx)
 {
+	int rs1;
+	int rs3;
+	target_long disp;
 	uint32_t op;
+	rs1 = GET_RS1(ctx->opcode);
+	rs3 = GET_RS3(ctx->opcode);
+	disp = GET_DISP(ctx->opcode);
+
+
 	op = MASK_OP_ST_LD2(ctx->opcode);
 
 	switch(op) {
@@ -1562,9 +1579,11 @@ static void decode_load_store_2(CPURH850State *env, DisasContext *ctx)
 			break;
 
 		case OPC_RH850_STDW:
+			gen_store(ctx, MO_64, rs1, rs3, disp);  //get lower 32bits + higher 32bits+1 of reg3
 			break;
 
 		case OPC_RH850_STH2:
+			gen_store(ctx, MO_16, rs1, rs3, disp);  //get lower 16bits of reg3
 			break;
 	}
 
@@ -1595,7 +1614,7 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     	gen_store(ctx, MO_8, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
     	break;
 
-    case OPC_RH850_STH_STW:		//only who instructions share this opcode
+    case OPC_RH850_STH_STW:		//only two instructions share this opcode
     	if ( extract32(ctx->opcode, 16, 1)==1 ) {
     		gen_store(ctx, MO_32, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
     		//this is STORE WORD
@@ -1604,12 +1623,17 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     	gen_store(ctx, MO_16, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
     	//this is STORE HALFWORD
     	break;
+
     case OPC_RH850_ST_LD_1:
-    		//tu gremo v fukncijo  decode_load_store_1  v kateri pogledamo op.kode z masko  MASK_OP_ST_LD1
+    	if (rs2 != 0) {
+    		decode_load_store_1(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
+    	}//else false instruction
     	break;
 
     case OPC_RH850_ST_LD_2:
-    		//tu gremo v fukncijo  decode_load_store_1  v kateri pogledamo op.kode z masko  MASK_OP_ST_LD1
+    	if (rs2 != 0) {
+    		decode_load_store_2(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
+    	}//else false instruction
     	break;
 
 
