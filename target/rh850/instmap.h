@@ -22,8 +22,8 @@ enum {
 	OPC_RH850_STB 	= (0x3A << 5),
 	OPC_RH850_STH_STW = (0x3B << 5),		//the store halfword and store word instructions differ on LSB displacement bit 16 (0=ST.H, 1=ST.W) (format VII)
 
-	OPC_RH850_STB2_STW2 = (0x3C),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
-	OPC_RH850_STDW_STH2 = (0x3D),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
+	OPC_RH850_ST_LD_1 = (0x3C << 5),		//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
+	OPC_RH850_ST_LD_2 = (0x3D << 5),		//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
 
 	/* FORMAT I */
 	OPC_RH850_ADD 	= (0xE << 5),
@@ -31,10 +31,20 @@ enum {
 	OPC_RH850_CMP 	= (0xF << 5),
 	OPC_RH850_DIVH 	= (0x2 << 5),		//dont allow registers to be r0
 	OPC_RH850_FETRAP = (0x2 << 5),		//bits 0-4 are 0
+	OPC_RH850_RIE 	= (0x2 << 5),		//both regs are 0
+	OPC_RH850_SWITCH = (0x2 << 5),		//bits 0-4 are NOT allowed to be 0, bits 11-15 are 0
 	OPC_RH850_JMP 	= (0x3 << 5),
 	OPC_RH850_MOV 	= (0x0 << 5),
 	OPC_RH850_NOP 	= (0x0 << 5),
-	OPC_RH850_MULH 	= (0x7 << 5),
+	OPC_RH850_NOT 	= (0x1 << 5),
+	OPC_RH850_OR 	= (0x8 << 5),
+	OPC_RH850_SATADD = (0x6 << 5),
+	OPC_RH850_SATSUB = (0x5 << 5),
+	OPC_RH850_SATSUBR = (0x4 << 5),
+	OPC_RH850_SUB 	= (0xD << 5),
+	OPC_RH850_SUBR 	= (0xC << 5),
+	OPC_RH850_SXB 	= (0x5 << 5),		//bits 11-15 are 0
+	OPC_RH850_SXH	= (0x7 << 5),		//bits 11-15 are 0
 
 
 	OPC_RH850_ADD2 = (0x12),
@@ -75,13 +85,28 @@ enum {
     OPC_RISC_FP_ARITH = (0x53),
 };
 
-#define MASK_OP_FORMAT_XIV(op)   (MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0xF << 16)))
+#define MASK_OP_ST_LD1(op)   (MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0xF << 16)))
 enum {
-	OPC_RH850_STB2 	= (0x3C << 5) | (0x00 << 11 ) | (0xD << 16),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
-	OPC_RH850_STW2	= (0x3C << 5) | (0x00 << 11 ) | (0xF << 16),
-	OPC_RH850_STDW 	= (0x3D << 5) | (0x00 << 11 ) | (0xF << 16),
-	OPC_RH850_STH2 	= (0x3D << 5) | (0x00 << 11 ) | (0xD << 16),
+
+	OPC_RH850_LDB2 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0x5 << 16),
+	OPC_RH850_LDH2 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0x7 << 16),
+	OPC_RH850_LDW2 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0x9 << 16),
+	OPC_RH850_STB2 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0xD << 16),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
+	OPC_RH850_STW2	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0xF << 16),
+
 };
+#define MASK_OP_ST_LD2(op)   (MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0xF << 16)))
+enum {
+
+	OPC_RH850_LDBU2 = OPC_RH850_ST_LD_2 | (0x00 << 11 ) | (0x5 << 16),
+	OPC_RH850_LDDW 	= OPC_RH850_ST_LD_2 | (0x00 << 11 ) | (0x9 << 16),
+	OPC_RH850_LDHU2 = OPC_RH850_ST_LD_2 | (0x00 << 11 ) | (0x7 << 16),
+	OPC_RH850_STDW 	= OPC_RH850_ST_LD_2 | (0x00 << 11 ) | (0xF << 16),
+	OPC_RH850_STH2 	= OPC_RH850_ST_LD_2 | (0x00 << 11 ) | (0xD << 16),
+};
+
+
+
 
 #define MASK_OP_ARITH(op)   (MASK_OP_MAJOR(op) | (op & ((0x7 << 12) | (0x7F << 25))))
 enum {

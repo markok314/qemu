@@ -551,7 +551,7 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t opc,
     ctx->bstate = BS_BRANCH;
 }
 
-static void gen_load(DisasContext *ctx, uint32_t opc, int rd, int rs1,
+static void gen_load(DisasContext *ctx, uint32_t opc, int rd, int rs1,  //make cases for opcodes
         target_long imm)
 {
     TCGv t0 = tcg_temp_new();
@@ -571,7 +571,7 @@ static void gen_load(DisasContext *ctx, uint32_t opc, int rd, int rs1,
     tcg_temp_free(t1);
 }
 
-static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
+static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,    //make cases for opcodes
         target_long imm)
 {
     TCGv t0 = tcg_temp_new();		//temp
@@ -579,7 +579,7 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     gen_get_gpr(t0, rs1);			//loading rs1 to t0
     tcg_gen_addi_tl(t0, t0, imm);	//adding displacement to t0
     gen_get_gpr(dat, rs2);			//getting data from rs2
-    //int memop = tcg_memop_lookup[(opc >> 12) & 0x7]; //pass memop in arguments?
+    //int memop = tcg_memop_lookup[(opc >> 12) & 0x7]; 		//pass memop in arguments?
 
     //if (memop < 0) {
     //    gen_exception_illegal(ctx);
@@ -1523,6 +1523,11 @@ static void decode_RV32_64C(CPURH850State *env, DisasContext *ctx)
     }
 }
 
+static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
+{
+
+}
+
 static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
 {
     int rs1;
@@ -1544,11 +1549,11 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
 
     switch (op) {
 
-    case OPC_RH850_STB:
+    case OPC_RH850_STB:			//this opcode is unique
     	gen_store(ctx, MO_8, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
     	break;
 
-    case OPC_RH850_STH_STW:
+    case OPC_RH850_STH_STW:		//only who instructions share this opcode
     	if ( extract32(ctx->opcode, 16, 1)==1 ) {
     		gen_store(ctx, MO_32, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
     		//this is STORE WORD
@@ -1557,6 +1562,14 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     	gen_store(ctx, MO_16, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
     	//this is STORE HALFWORD
     	break;
+    case OPC_RH850_ST_LD_1:
+    		//tu gremo v fukncijo  decode_load_store_1  v kateri pogledamo op.kode z masko  MASK_OP_ST_LD1
+    	break;
+
+
+
+
+
 
     case OPC_RISC_LUI:
         if (rd == 0) {
