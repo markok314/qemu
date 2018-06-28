@@ -1669,15 +1669,11 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     	}//else false instruction
     	break;
 
-<<<<<<< HEAD
     case OPC_RH850_LDHU:		// LD.HU
     	if ( extract32(ctx->opcode, 16, 1) == 1 )
     		gen_load(ctx, MO_TEUW, rd, rs1, imm);
     	break;
 
-
-
-=======
     case OPC_RH850_MULH1:
     	if(rs2 != 0){
     		TCGv t1 = tcg_temp_new();		//temp
@@ -1687,8 +1683,6 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     		tcg_gen_mul_tl(t2, t2, t1);		//multiply t1 t2
     		tcg_temp_free(t1);
     		tcg_temp_free(t2);
->>>>>>> bd682f4d1b8b49dad4bf6acb33b72c7e570d6db5
-
     	}
     	break;
     case OPC_RH850_MULH2:

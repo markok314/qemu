@@ -26,6 +26,7 @@ enum {
 
 	OPC_RH850_ST_LD_0 = (0x3C << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
 	OPC_RH850_ST_LD_1 = (0x3D << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
+	OPC_RH850_LDHU 	  = (0x3F << 5),
 
 	/* FORMAT I */
 	OPC_RH850_ADD 	= (0xE << 5),
