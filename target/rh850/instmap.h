@@ -47,13 +47,24 @@ enum {
 	OPC_RH850_SUBR 	= (0xC << 5),
 	OPC_RH850_SXB 	= (0x5 << 5),		//bits 11-15 are 0
 	OPC_RH850_SXH	= (0x7 << 5),		//bits 11-15 are 0
+	OPC_RH850_MULH1	= (0x7 << 5),		//bits 11-15 are NOT 0
+	OPC_RH850_SYNCI = (0x1C),
+	OPC_RH850_SYNCE = (0x1D),
+	OPC_RH850_SYNCM = (0x1E),
+	OPC_RH850_SYNCP = (0x1F),
 
 
-	OPC_RH850_ADD2 = (0x12),
-	OPC_RH850_CMP2 = (0x13),
 
-
-
+	/* FORMAT II */
+	OPC_RH850_ADD2 = (0x12 << 5),
+	OPC_RH850_CALLT = (0x8 << 6),		//bits 11-15 are 0
+	OPC_RH850_CMP2 = (0x13 << 5),
+	OPC_RH850_MOV = (0x10 << 5), 	 	//bits 11-15 are NOT 0
+	OPC_RH850_MULH2 = (0x17 << 5),		//bits 11-15 are NOT 0
+	OPC_RH850_SAR = (0x15 << 5),
+	OPC_RH850_SATADD = (0x11 << 5),		//bits 11-15 are NOT 0
+	OPC_RH850_SHL = (0x16 << 5),
+	OPC_RH850_SHR = (0x14 << 5),
 
 
     OPC_RISC_LUI    = (0x37),
