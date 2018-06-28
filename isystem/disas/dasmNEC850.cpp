@@ -33,7 +33,8 @@ void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst)
 		instr[i] = (inst >> (8*i)) & 0x0FF;
 
 	p->Disasm( instr, rjstrDasm, buflen);
-	printf("%s\n", rjstrDasm.c_str());
+	//printf("%s\n", rjstrDasm.c_str());
+	strcpy( buf, rjstrDasm.c_str());
 
 }
 
