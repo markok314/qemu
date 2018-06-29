@@ -57,10 +57,10 @@ enum {
 	OPC_RH850_ADD2 = (0x12 << 5),
 	OPC_RH850_CALLT = (0x8 << 6),		//bits 11-15 are 0
 	OPC_RH850_CMP2 = (0x13 << 5),
-	OPC_RH850_MOV = (0x10 << 5), 	 	//bits 11-15 are NOT 0
+	OPC_RH850_MOV2 = (0x10 << 5), 	 	//bits 11-15 are NOT 0
 	OPC_RH850_MULH2 = (0x17 << 5),		//bits 11-15 are NOT 0
 	OPC_RH850_SAR = (0x15 << 5),
-	OPC_RH850_SATADD = (0x11 << 5),		//bits 11-15 are NOT 0
+	OPC_RH850_SATADD2 = (0x11 << 5),		//bits 11-15 are NOT 0
 	OPC_RH850_SHL = (0x16 << 5),
 	OPC_RH850_SHR = (0x14 << 5),
 
@@ -379,7 +379,7 @@ enum {
 #define GET_RS1(inst)  extract32(inst, 0, 5)		//appropriate for RH850
 #define GET_RS2(inst)  extract32(inst, 11, 5)		//appropriate for RH850
 #define GET_RS3(inst)  extract32(inst, 27, 5)		//appropriate for RH850
-#define GET_DISP(inst) (extract(inst, 20, 7) | (sextract32(inst, 32, 16) << 7 ) ) //b47-b32 + b26-b20
+#define GET_DISP(inst) (extract32(inst, 20, 7) | (sextract32(inst, 32, 16) << 7 ) ) //b47-b32 + b26-b20
 
 
 #define GET_RM(inst)   extract32(inst, 12, 3)
