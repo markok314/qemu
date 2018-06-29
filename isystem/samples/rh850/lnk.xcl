@@ -1,3 +1,6 @@
+
+; THIS FILE IS CURRENTLY NOT USED - OPTIONS ARE GIVEN IN COMMAND LINE!!!
+
 --config lnkrh850.icf
 --entry __iar_program_start
 --config_def CSTACK_SIZE=0x300 
