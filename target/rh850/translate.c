@@ -1541,17 +1541,17 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 
 	switch(op) {
 		case OPC_RH850_LDB2:
-			gen_load(ctx, MO_SB, rd, rs1, imm);			// LD.B (Format XIV)
+			gen_load(ctx, MO_SB, rs1, rs3, disp);			// LD.B (Format XIV)
 			break;
 
 		case OPC_RH850_LDH2:
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H (Format XIV)
-				gen_load(ctx, MO_TESW, rd, rs1, imm);
+				gen_load(ctx, MO_TESW, rs1, rs3, disp);
 			break;
 
 		case OPC_RH850_LDW2:
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
-				gen_load(ctx, MO_TESL, rd, rs1, imm);
+				gen_load(ctx, MO_TESL, rs1, rs3, disp);
 			break;
 
 		case OPC_RH850_STB2:
@@ -1579,17 +1579,17 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 	switch(op) {
 		case OPC_RH850_LDBU2:
-			gen_load(ctx, MO_UB, rd, rs1, imm);			// LD.BU (Format XIV)
+			gen_load(ctx, MO_UB, rs1, rs3, disp);			// LD.BU (Format XIV)
 			break;
 
 		case OPC_RH850_LDHU2:
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.HU (Format XIV)
-				gen_load(ctx, MO_TESW, rd, rs1, imm);
+				gen_load(ctx, MO_TESW, rs1, rs3, disp);
 			break;
 
 		case OPC_RH850_LDDW:
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
-				gen_load(ctx, MO_64, rd, rs1, imm);
+				gen_load(ctx, MO_64, rs1, rs3, disp);
 			break;
 
 		case OPC_RH850_STDW:
