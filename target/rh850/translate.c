@@ -63,13 +63,9 @@ enum {
 };
 
 /* convert rh850 funct3 to qemu memop for load/store */
+/*
 static const int tcg_memop_lookup[8] = {
     [0 ... 7] = -1,
-    /*[0] = MO_SB, ?
-    [1] = MO_TESW,
-    [2] = MO_TESL,
-    [4] = MO_UB,
-    [5] = MO_TEUW,*/
 	[0] = MO_UB,
 	[1] = MO_TEUW,
 	[2] = MO_TEUL,
@@ -77,7 +73,7 @@ static const int tcg_memop_lookup[8] = {
 	[5] = MO_TESW,
 	[6] = MO_TESL,
 };
-
+*/
 #define CASE_OP_32_64(X) case X
 
 static void generate_exception(DisasContext *ctx, int excp)
