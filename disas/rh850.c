@@ -2994,7 +2994,7 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 
     disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst);
 
-    (*info->fprintf_func)(info->stream, "%lx:  %lx", memaddr, inst);
+    (*info->fprintf_func)(info->stream, "%lx:  %lx  (%s)", memaddr, inst, buf);
 
     return len;
 }

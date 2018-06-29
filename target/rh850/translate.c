@@ -65,11 +65,17 @@ enum {
 /* convert rh850 funct3 to qemu memop for load/store */
 static const int tcg_memop_lookup[8] = {
     [0 ... 7] = -1,
-    [0] = MO_SB,
+    /*[0] = MO_SB, ?
     [1] = MO_TESW,
     [2] = MO_TESL,
     [4] = MO_UB,
-    [5] = MO_TEUW,
+    [5] = MO_TEUW,*/
+	[0] = MO_UB,
+	[1] = MO_TEUW,
+	[2] = MO_TEUL,
+	[4] = MO_SB,
+	[5] = MO_TESW,
+	[6] = MO_TESL,
 };
 
 #define CASE_OP_32_64(X) case X
@@ -551,14 +557,12 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t opc,
     ctx->bstate = BS_BRANCH;
 }
 
-static void gen_load(DisasContext *ctx, uint32_t opc, int rd, int rs1,  //make cases for opcodes
-        target_long imm)
+static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
 {
     TCGv t0 = tcg_temp_new();
     TCGv t1 = tcg_temp_new();
     gen_get_gpr(t0, rs1);
     tcg_gen_addi_tl(t0, t0, imm);
-    int memop = tcg_memop_lookup[(opc >> 12) & 0x7];
 
     if (memop < 0) {
         gen_exception_illegal(ctx);
@@ -581,10 +585,10 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,    //make 
     gen_get_gpr(dat, rs2);			//getting data from rs2
     //int memop = tcg_memop_lookup[(opc >> 12) & 0x7]; 		//pass memop in arguments?
 
-    //if (memop < 0) {
-    //    gen_exception_illegal(ctx);
-    //    return;
-    //}
+    if (memop < 0) {
+        gen_exception_illegal(ctx);
+        return;
+    }
 
     tcg_gen_qemu_st_tl(dat, t0, ctx->mem_idx, memop);
     tcg_temp_free(t0);
@@ -1523,26 +1527,31 @@ static void decode_RV32_64C(CPURH850State *env, DisasContext *ctx)
     }
 }
 
-static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
+static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
 	int rs3;
 	target_long disp;
 	uint32_t op;
 
-	op = MASK_OP_ST_LD1(ctx->opcode);
+	op = MASK_OP_ST_LD0(ctx->opcode);
 	rs1 = GET_RS1(ctx->opcode);
 	rs3 = GET_RS3(ctx->opcode);
 	disp = GET_DISP(ctx->opcode);
 
 	switch(op) {
 		case OPC_RH850_LDB2:
+			gen_load(ctx, MO_SB, rd, rs1, imm);			// LD.B (Format XIV)
 			break;
 
 		case OPC_RH850_LDH2:
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H (Format XIV)
+				gen_load(ctx, MO_TESW, rd, rs1, imm);
 			break;
 
 		case OPC_RH850_LDW2:
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
+				gen_load(ctx, MO_TESL, rd, rs1, imm);
 			break;
 
 		case OPC_RH850_STB2:
@@ -1555,7 +1564,7 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 	}
 }
 
-static void decode_load_store_2(CPURH850State *env, DisasContext *ctx)
+static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
 	int rs3;
@@ -1566,16 +1575,21 @@ static void decode_load_store_2(CPURH850State *env, DisasContext *ctx)
 	disp = GET_DISP(ctx->opcode);
 
 
-	op = MASK_OP_ST_LD2(ctx->opcode);
+	op = MASK_OP_ST_LD1(ctx->opcode);
 
 	switch(op) {
 		case OPC_RH850_LDBU2:
-			break;
-
-		case OPC_RH850_LDDW:
+			gen_load(ctx, MO_UB, rd, rs1, imm);			// LD.BU (Format XIV)
 			break;
 
 		case OPC_RH850_LDHU2:
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.HU (Format XIV)
+				gen_load(ctx, MO_TESW, rd, rs1, imm);
+			break;
+
+		case OPC_RH850_LDDW:
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
+				gen_load(ctx, MO_64, rd, rs1, imm);
 			break;
 
 		case OPC_RH850_STDW:
@@ -1597,6 +1611,14 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     uint32_t op;
     target_long imm;
 
+    /*memop:
+    	[0] = MO_UB,
+    	[1] = MO_TEUW,
+    	[2] = MO_TEUL,
+    	[4] = MO_SB,
+    	[5] = MO_TESW,
+    	[6] = MO_TESL*/
+
     /* Here we are only checking for instructions that have opcodes at
      * bits 5-10, other types of instructions are checked in other functions.
      * These are the considered formats:
@@ -1610,30 +1632,46 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
 
     switch (op) {
 
+    case OPC_RH850_LDB:			// LD.B
+        gen_load(ctx, MO_SB, rd, rs1, imm);
+    	break;
+
+    case OPC_RH850_LDH_LDW:		//
+    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H
+    		gen_load(ctx, MO_TESW, rd, rs1, imm);
+    	else
+    		gen_load(ctx, MO_TESL, rd, rs1, imm);		// LD.W
+    	break;
+
     case OPC_RH850_STB:			//this opcode is unique
-    	gen_store(ctx, MO_8, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
+    	gen_store(ctx, MO_SB, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
     	break;
 
     case OPC_RH850_STH_STW:		//only two instructions share this opcode
     	if ( extract32(ctx->opcode, 16, 1)==1 ) {
-    		gen_store(ctx, MO_32, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+    		gen_store(ctx, MO_TESL, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
     		//this is STORE WORD
     		break;
     	}
-    	gen_store(ctx, MO_16, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+    	gen_store(ctx, MO_TESW, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
     	//this is STORE HALFWORD
+    	break;
+
+    case OPC_RH850_ST_LD_0:
+    	if (rs2 != 0) {
+    		decode_load_store_0(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
+    	}//else false instruction
     	break;
 
     case OPC_RH850_ST_LD_1:
     	if (rs2 != 0) {
-    		decode_load_store_1(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
+    		decode_load_store_1(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
     	}//else false instruction
     	break;
 
-    case OPC_RH850_ST_LD_2:
-    	if (rs2 != 0) {
-    		decode_load_store_2(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
-    	}//else false instruction
+    case OPC_RH850_LDHU:		// LD.HU
+    	if ( extract32(ctx->opcode, 16, 1) == 1 )
+    		gen_load(ctx, MO_TEUW, rd, rs1, imm);
     	break;
 
     case OPC_RH850_MULH1:
@@ -1645,7 +1683,6 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     		tcg_gen_mul_tl(t2, t2, t1);		//multiply t1 t2
     		tcg_temp_free(t1);
     		tcg_temp_free(t2);
-
     	}
     	break;
     case OPC_RH850_MULH2:
