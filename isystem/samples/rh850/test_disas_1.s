@@ -10,11 +10,6 @@ __iar_program_start:
         DB 0xff, 0xff, 0x60, 0xf1 
 	; JMP 0x12 [r6]
         DB 0xff, 0x06, 0x4a, 00, 00, 00
-	; DISPOSE 0x10, r20-r31
-	; DISPOSE 0x7, r2-r6, [r11]
-        ; PREPARE R31,124
-	; PREPARE r24-r26, 0x8
-	; PREPARE r30-r31, 0xf, 0x04
 	LD.B 0x1[r7],r1
 	LD.B 0x5 [r6],r1
 	LD.BU 0xf  [r5],r2
@@ -138,8 +133,8 @@ __iar_program_start:
 	; CLL
 	CTRET
 	DI
-	; DISPOSE 0x10, r20-r31
-	; DISPOSE 0x7, r2-r6, [r11]
+	DISPOSE 0x10, {r20-r31}
+	DISPOSE 0x8, {r20-r26}, [r11]
 	EI
 	EIRET
 	FERET
@@ -150,9 +145,9 @@ __iar_program_start:
 	LDL.W [r16], r3
 	NOP
 	POPSP r3-r5
-        ; PREPARE R31,124
-	; PREPARE r24-r26, 0x8
-	; PREPARE r30-r31, 0xf, 0x04
+        PREPARE {R31},124
+	PREPARE {r24-r26}, 0x8
+	PREPARE {r30-r31}, 0x20, 0x04
 	PUSHSP r2-r5
 	RIE 0x09, 0xf
 	SNOOZE
