@@ -4,6 +4,17 @@
    section .text:CODE(2)
 
 __iar_program_start:
+; The following instructions are not recognized by IAR assembler, so they
+; are coded in hex numbers.
+	; CLL
+        DB 0xff, 0xff, 0x60, 0xf1 
+	; JMP 0x12 [r6]
+        DB 0xff, 0x06, 0x4a, 00, 00, 00
+	; DISPOSE 0x10, r20-r31
+	; DISPOSE 0x7, r2-r6, [r11]
+        ; PREPARE R31,124
+	; PREPARE r24-r26, 0x8
+	; PREPARE r30-r31, 0xf, 0x04
 	LD.B 0x1[r7],r1
 	LD.B 0x5 [r6],r1
 	LD.BU 0xf  [r5],r2
@@ -111,7 +122,7 @@ __iar_program_start:
 	JARL 0xc4, r24
 	JARL [r27], r21
 	JMP [r6]
-	JMP 0xf [r3]
+	; JMP 0x12 [r6]
 	JR 0x68
 	JR 0xfe
 	LOOP r6, 0xde
@@ -124,11 +135,11 @@ __iar_program_start:
 	TST1 5, 0xa [r4] 
 	CALLT 0x9
 	CAXI [r10], r9, r8
-	CLL
+	; CLL
 	CTRET
 	DI
-	DISPOSE 0x10, r20-r31
-	DISPOSE 0x7, r2-r6, [r11]
+	; DISPOSE 0x10, r20-r31
+	; DISPOSE 0x7, r2-r6, [r11]
 	EI
 	EIRET
 	FERET
@@ -139,8 +150,9 @@ __iar_program_start:
 	LDL.W [r16], r3
 	NOP
 	POPSP r3-r5
-	PREPARE r12-r20, 0x8
-	PREPARE r12-r20, 0xf, 0x04
+        ; PREPARE R31,124
+	; PREPARE r24-r26, 0x8
+	; PREPARE r30-r31, 0xf, 0x04
 	PUSHSP r2-r5
 	RIE 0x09, 0xf
 	SNOOZE
