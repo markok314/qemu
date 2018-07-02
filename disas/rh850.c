@@ -2969,6 +2969,8 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
     size_t len = 2;
     bfd_vma n;
     int status;
+    rv_inst instVal = 0;
+
 
     //(*info->fprintf_func)(info->stream, "print_insn_rh850() called");
     //return 2;
@@ -2994,7 +2996,11 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 
     disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst);
 
-    (*info->fprintf_func)(info->stream, "%lx  %s",  inst, buf);
+    for(int i=0; i<2; i++){
+    	instVal |= ((inst >> (8*i)) & 0x0FF) << (8*(1-i));
+    }
+
+    (*info->fprintf_func)(info->stream, "%04lx  %s",  instVal, buf);
 
     return len;
 }
