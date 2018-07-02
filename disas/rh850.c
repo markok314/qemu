@@ -2961,21 +2961,39 @@ disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
 
 #include "../isystem/disas/wrap.h"
 
+
+
+
+
 int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 {
     char buf[128] = { 0 };
-    bfd_byte packet[2];
+    bfd_byte packet[4];
     rv_inst inst = 0;
-    size_t len = 2;
+    size_t len = 2;		//read 4 bytes instead of two
     bfd_vma n;
     int status;
     rv_inst instVal = 0;
 
 
-    //(*info->fprintf_func)(info->stream, "print_insn_rh850() called");
-    //return 2;
+    //check if 48, 32 or 16-bit instruction
+    status = (*info->read_memory_func)(memaddr, packet, 3, info);
+    inst |= ((rv_inst) bfd_getl32(packet));
 
+	if ( ((inst >> 6) & 0x7ff) == 0x41e ){
+		len = 6;
+		//this is a 48-bit instruction
+	} else if ( ((inst >> 9) & (0x3)) == 0x3 ){
+		len = 4;
+		//this is a 32-bit instruction
+	} else {
+		len = 2;
+		//this is a 16-bit instruction
+	}
+
+    inst = 0;
     /* Instructions are made of 2-byte packets in little-endian order */
+    /* We need to read 32 bits (two packets) to identify 48-bit instructions */
     for (n = 0; n < len; n += 2) {
         status = (*info->read_memory_func)(memaddr + n, packet, 2, info);
         if (status != 0) {
@@ -2987,18 +3005,21 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
             return status;
         }
         inst |= ((rv_inst) bfd_getl16(packet)) << (8 * n);
-        //if (n == 0) {
-        //    len = inst_length(inst);
-        //}
     }
+
+
+
+    inst = (inst & 0xffff);
 
     disasm_inst(buf, sizeof(buf), memaddr, inst);
 
     disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst);
 
-    for(int i=0; i<2; i++){
-    	instVal |= ((inst >> (8*i)) & 0x0FF) << (8*(1-i));
-    }
+
+	for(int i=0; i<len; i++){
+			instVal |= ((( inst >> (8*(len-(i+1))) ) & 0xFF ) << 8*i);
+		}
+
 
     (*info->fprintf_func)(info->stream, "%04lx  %s",  instVal, buf);
 
