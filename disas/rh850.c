@@ -3008,9 +3008,6 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
     }
 
 
-
-    inst = (inst & 0xffff);
-
     disasm_inst(buf, sizeof(buf), memaddr, inst);
 
     disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst);
