@@ -1599,6 +1599,228 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 }
 
+static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
+{
+	uint32_t op;
+	int sub_opcode;
+
+	op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
+	sub_opcode = GET_RS2(ctx->opcode);
+
+	switch(op){
+
+		case OPC_RH850_ST_LD_0:
+			if (sub_opcode != 0) {
+				decode_load_store_0(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
+			}//else false instruction
+			break;
+
+		case OPC_RH850_ST_LD_1:
+			if (sub_opcode != 0) {
+				decode_load_store_1(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
+			}//else false instruction
+			break;
+	}
+
+}
+
+static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
+{
+	int rs1;
+	int rs2;
+	int rd;
+	uint32_t op;
+	uint32_t formXop;
+	target_long imm;
+
+	op = MASK_OP_MAJOR(ctx->opcode);
+	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
+	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
+	rd = GET_RD(ctx->opcode);
+	imm = GET_IMM(ctx->opcode);
+
+	switch(op){
+
+		case OPC_RH850_LDB:			// LD.B
+	        gen_load(ctx, MO_SB, rd, rs1, imm);
+	    	break;
+
+	    case OPC_RH850_LDH_LDW:		//
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H
+	    		gen_load(ctx, MO_TESW, rd, rs1, imm);
+	    	else
+	    		gen_load(ctx, MO_TESL, rd, rs1, imm);		// LD.W
+	    	break;
+
+	    case OPC_RH850_STB:			//this opcode is unique
+	    	gen_store(ctx, MO_SB, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
+	    	break;
+
+	    case OPC_RH850_STH_STW:		//only two instructions share this opcode
+	    	if ( extract32(ctx->opcode, 16, 1)==1 ) {
+	    		gen_store(ctx, MO_TESL, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+	    		//this is STORE WORD
+	    		break;
+	    	}
+	    	gen_store(ctx, MO_TESW, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+	    	//this is STORE HALFWORD
+	    	break;
+	    case OPC_RH850_ADDI:
+
+	    	break;
+	    case OPC_RH850_ANDI:
+
+	    	break;
+	    case OPC_RH850_MOVEA:
+
+	    	break;
+	    case OPC_RH850_MOVHI:
+
+	    	break;
+	    case OPC_RH850_LOOP:
+
+	    	break;
+	    case OPC_RH850_CLR:
+
+	    	break;
+		case OPC_RH850_32bit_1:				//this is the opcode=11111 group; formats IX, X, XI, XII
+			if (extract32(ctx->opcode, 16, 1) == 0x1 ) { //if bit 16=1 its either b.cond or ld.hu
+				if (rs2 == 0x0) {
+					//this is BCOND2
+					break;
+				} else {
+					//this is LD.HU
+					gen_load(ctx, MO_TEUW, rd, rs1, imm);
+					break;
+				}
+			}
+			formXop = extract32(ctx->opcode, 23, 4);		//sub groups based on bits b23-b26
+			switch(formXop){
+				case 0x0:
+					//LDSR
+					break;
+				case 0x1:		//format IX instructions
+					formXop = extract32(ctx->opcode, 21, 2);
+					switch(formXop){
+						case 0x0:
+							//BINS0
+							break;
+						case 0x1:
+							//BINS1
+							break;
+						case 0x2:
+							//BINS2
+							break;
+						case 0x3:
+							if (extract32(ctx->opcode, 19, 1) == 0){
+								//CLR1
+							} else if (extract32(ctx->opcode, 19, 1) == 1){
+								//CAXI
+							}
+							break;
+					}
+					break;
+				case 0x2:	// 0010 //format X instructions
+							// 		//(+JARL- added due to MASK_OP_FORMAT_X matching)
+					formXop = MASK_OP_FORMAT_X(ctx->opcode);
+					switch(formXop){
+						case OPC_RH850_CLL:
+							break;
+						case OPC_RH850_CTRET:
+							break;
+						case OPC_RH850_DI:
+							break;
+						case OPC_RH850_EI:
+							break;
+						case OPC_RH850_EIRET:
+							break;
+						case OPC_RH850_FERET:
+							break;
+						case OPC_RH850_HALT:
+							break;
+						case OPC_RH850_JARL:
+							break;
+					}
+					break;
+				case 0x4:		//MUL instructions
+					if (extract32(ctx->opcode, 22, 1) == 0){
+						// MUL in format XI
+						break;
+					} else if (extract32(ctx->opcode, 22, 1) == 1){
+						// MUL in format XII
+						break;
+					}
+					break;
+
+				case 0x5:					// DIV instructions in format XI
+					formXop = extract32(ctx->opcode, 16, 7);
+					switch(formXop){
+						case 0x0:
+							//DIVH
+							break;
+						case 0x2:
+							//DIVHU
+							break;
+						case 0x40:
+							//DIV
+							break;
+						case 0x7C:
+							//DIVQ
+							break;
+						case 0x7E:
+							//DIVQU
+							break;
+						case 0x42:
+							//DIVU
+							break;
+					}
+					break;
+				case 0x6:	// 0110 //format XII instructions
+									//excluding MUL and including CMOV
+					if (extract32(ctx->opcode, 22, 1) == 1){
+						formXop = extract32(ctx->opcode, 17, 2);
+						switch(formXop){
+						case 0x0:
+							//BSW
+							break;
+						case 0x2:
+							//HSW
+							break;
+						case 0x3:
+							//HSH
+							break;
+						}
+					} else if (extract32(ctx->opcode, 22, 1) == 0) { //here we have two CMOV ins
+						if (extract32(ctx->opcode, 21, 1) == 1){
+							//CMOV in format XI
+						} else if (extract32(ctx->opcode, 21, 0) == 1){
+							//CMOV in format XII
+						}
+
+					}
+				case 0x7:		//ADF, MAC, MACU
+					formXop = extract32(ctx->opcode, 21, 2);
+					switch(formXop){
+						case 0x1:
+							//ADF
+							break;
+						case 0x2:
+							//MAC
+							break;
+						case 0x3:
+							//MACU
+							break;
+					}
+			}
+	}
+
+}
+
+static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
+{
+
+}
+
 static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
 {
     int rs1;
@@ -1627,48 +1849,6 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     imm = GET_IMM(ctx->opcode);
 
     switch (op) {
-
-    case OPC_RH850_LDB:			// LD.B
-        gen_load(ctx, MO_SB, rd, rs1, imm);
-    	break;
-
-    case OPC_RH850_LDH_LDW:		//
-    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H
-    		gen_load(ctx, MO_TESW, rd, rs1, imm);
-    	else
-    		gen_load(ctx, MO_TESL, rd, rs1, imm);		// LD.W
-    	break;
-
-    case OPC_RH850_STB:			//this opcode is unique
-    	gen_store(ctx, MO_SB, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
-    	break;
-
-    case OPC_RH850_STH_STW:		//only two instructions share this opcode
-    	if ( extract32(ctx->opcode, 16, 1)==1 ) {
-    		gen_store(ctx, MO_TESL, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
-    		//this is STORE WORD
-    		break;
-    	}
-    	gen_store(ctx, MO_TESW, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
-    	//this is STORE HALFWORD
-    	break;
-
-    case OPC_RH850_ST_LD_0:
-    	if (rs2 != 0) {
-    		decode_load_store_0(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
-    	}//else false instruction
-    	break;
-
-    case OPC_RH850_ST_LD_1:
-    	if (rs2 != 0) {
-    		decode_load_store_1(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
-    	}//else false instruction
-    	break;
-
-    case OPC_RH850_LDHU:		// LD.HU
-    	if ( extract32(ctx->opcode, 16, 1) == 1 )
-    		gen_load(ctx, MO_TEUW, rd, rs1, imm);
-    	break;
 
     case OPC_RH850_MULH1:
     	if(rs2 != 0){
@@ -1811,6 +1991,20 @@ static void decode_opc(CPURH850State *env, DisasContext *ctx)
     } else {
         ctx->next_pc = ctx->pc + 4;
         decode_RV32_64G(env, ctx);
+    }
+
+
+    /* checking for 48-bit instructions */
+    if (extract32(ctx->opcode, 6, 11) == 0x41e){			//bits are 10000011110
+    	ctx->next_pc = ctx->pc + 6;
+    	decode_RH850_48(env, ctx);
+    } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
+    	ctx->next_pc = ctx->pc + 4;
+    	decode_RH850_32(env, ctx);
+    } else {
+    	ctx->next_pc = ctx->pc + 2;
+    	decode_RH850_16(env, ctx);
+
     }
 }
 

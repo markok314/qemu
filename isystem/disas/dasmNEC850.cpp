@@ -19,7 +19,7 @@
 
 CDisassemblerNEC850 *p = nullptr;
 
-void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst)
+void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst, int insLen)
 {
 	jstring rjstrDasm;
 	BYTE instr[8];
@@ -29,8 +29,8 @@ void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst)
 
 	for ( int i=0; i<8; i++)
 		instr[i] = 0;
-	for ( int i=0; i<2; i++)
-		instr[i] = (inst >> (8*i)) & 0x0FF;
+	for ( int i=0; i<insLen; i++)
+		instr[i] = (inst >> (8*i)) & 0x0FF;  //we need
 
 	p->Disasm( instr, rjstrDasm, buflen);
 	//printf("%s\n", rjstrDasm.c_str());
