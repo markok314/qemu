@@ -1599,6 +1599,38 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 }
 
+static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
+{
+	uint32_t op;
+	op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
+
+	switch(op){
+
+		case OPC_RH850_ST_LD_0:
+			if (rs2 != 0) {
+				decode_load_store_0(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
+			}//else false instruction
+			break;
+
+		case OPC_RH850_ST_LD_1:
+			if (rs2 != 0) {
+				decode_load_store_1(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
+			}//else false instruction
+			break;
+	}
+
+}
+
+static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
+{
+
+}
+
+static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
+{
+
+}
+
 static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
 {
     int rs1;
@@ -1653,17 +1685,7 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     	//this is STORE HALFWORD
     	break;
 
-    case OPC_RH850_ST_LD_0:
-    	if (rs2 != 0) {
-    		decode_load_store_0(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
-    	}//else false instruction
-    	break;
 
-    case OPC_RH850_ST_LD_1:
-    	if (rs2 != 0) {
-    		decode_load_store_1(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
-    	}//else false instruction
-    	break;
 
     case OPC_RH850_LDHU:		// LD.HU
     	if ( extract32(ctx->opcode, 16, 1) == 1 )
@@ -1811,6 +1833,20 @@ static void decode_opc(CPURH850State *env, DisasContext *ctx)
     } else {
         ctx->next_pc = ctx->pc + 4;
         decode_RV32_64G(env, ctx);
+    }
+
+
+    /* checking for 48-bit instructions */
+    if (extract32(ctx->opcode, 6, 11) == 0x41e){
+    	ctx->next_pc = ctx->pc + 6;
+    	decode_RH850_48(env, ctx);
+    } else if (extract32(ctx->opcode, 9, 2) == 0x3){
+    	ctx->next_pc = ctx->pc + 4;
+    	decode_RH850_32(env, ctx);
+    } else {
+    	ctx->next_pc = ctx->pc + 2;
+    	decode_RH850_16(env, ctx);
+
     }
 }
 

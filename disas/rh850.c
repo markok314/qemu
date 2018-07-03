@@ -3010,7 +3010,7 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 
     disasm_inst(buf, sizeof(buf), memaddr, inst);
 
-    disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst);
+    disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst, len);
 
 
 	for(int i=0; i<len; i++){
