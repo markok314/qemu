@@ -1651,35 +1651,68 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 				}
 			}
-			if (extract32(ctx->opcode, 23, 4) == 0x2 ) { // 0010
-				//format X instructions (+JARL- added due to MASK_OP_FORMAT_X matching)
-				formXop = MASK_OP_FORMAT_X(ctx->opcode);
+			formXop = extract32(ctx->opcode, 23, 4);
+			switch(formXop){
+				case 0x2:	// 0010 //format X instructions
+							// 		//(+JARL- added due to MASK_OP_FORMAT_X matching)
+					formXop = MASK_OP_FORMAT_X(ctx->opcode);
+					switch(formXop){
+						case OPC_RH850_CLL:
+							break;
+						case OPC_RH850_CTRET:
+							break;
+						case OPC_RH850_DI:
+							break;
+						case OPC_RH850_EI:
+							break;
+						case OPC_RH850_EIRET:
+							break;
+						case OPC_RH850_FERET:
+							break;
+						case OPC_RH850_HALT:
+							break;
+						case OPC_RH850_JARL:
+							break;
+					}
+					break;
+				case 0x4:		//MUL instructions
+					if (extract32(ctx->opcode, 22, 1) == 0){
+						// MUL in format XI
+						break;
+					} else if (extract32(ctx->opcode, 22, 1) == 1){
+						// MUL in format XII
+						break;
+					}
+				case 0x6:	// 0110 //format XII instructions
+									//excluding MUL and including CMOV
+					if (extract32(ctx->opcode, 22, 1) == 1){
+						formXop = extract32(ctx->opcode, 17, 2);
+						switch(formXop){
+						case 0x0:
+							//BSW
+							break;
+						case 0x2:
+							//HSW
+							break;
+						case 0x3:
+							//HSH
+							break;
+						}
+					} else if (extract32(ctx->opcode, 22, 1) == 0) { //here we have two CMOV ins
+						if (extract32(ctx->opcode, 21, 1) == 1){
+							//CMOV in format XI
+						} else if (extract32(ctx->opcode, 21, 0) == 1){
+							//CMOV in format XII
+						}
 
-				switch(formXop){
-				case OPC_RH850_CLL:
-					break;
-				case OPC_RH850_CTRET:
-					break;
-				case OPC_RH850_DI:
-					break;
-				case OPC_RH850_EI:
-					break;
-				case OPC_RH850_EIRET:
-					break;
-				case OPC_RH850_FERET:
-					break;
-				case OPC_RH850_HALT:
-					break;
-				case OPC_RH850_JARL:
-					break;
-				}
-
+					}
 			}
+
 			if (extract32(ctx->opcode, 24, 3) == 0x0 ) {  // 000
 				//format IX instructions
 				formXop = MASK_OP_FORMAT_IX(ctx->opcode);
 
-				switch(){
+				switch(formXop){
 				case OPC_RH850_BINS_0:
 					break;
 				case OPC_RH850_BINS_1:
@@ -1692,8 +1725,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 				}
 			}
-
-
 
 	}
 

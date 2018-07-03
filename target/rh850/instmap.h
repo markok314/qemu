@@ -131,7 +131,7 @@ enum {
 	OPC_RH850_EIRET	= (0X900 << 11),
 	OPC_RH850_FERET	= (0X940 << 11),
 	OPC_RH850_HALT	= (0X400 << 11),
-	OPC_RH850_JARL	= (OXC18 << 11)
+	OPC_RH850_JARL	= (0XC18 << 11)
 };
 
 #define MASK_OP_FORMAT_IX(op) (op & (0x7 << 21))
