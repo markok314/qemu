@@ -1602,18 +1602,21 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
 	uint32_t op;
+	int sub_opcode;
+
 	op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
+	sub_opcode = GET_RS2(ctx->opcode);
 
 	switch(op){
 
 		case OPC_RH850_ST_LD_0:
-			if (rs2 != 0) {
+			if (sub_opcode != 0) {
 				decode_load_store_0(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
 			}//else false instruction
 			break;
 
 		case OPC_RH850_ST_LD_1:
-			if (rs2 != 0) {
+			if (sub_opcode != 0) {
 				decode_load_store_1(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
 			}//else false instruction
 			break;
