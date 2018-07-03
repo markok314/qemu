@@ -26,7 +26,10 @@ enum {
 
 	OPC_RH850_ST_LD_0 = (0x3C << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
 	OPC_RH850_ST_LD_1 = (0x3D << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
-	OPC_RH850_LDHU 	  = (0x3F << 5),
+	//OPC_RH850_LDHU 	  = (0x3F << 5),	//bits 11-15 are not 0
+
+	OPC_RH850_32bit_1 = (0x3F << 5),	//this is 111111
+
 
 	/* FORMAT I */
 	OPC_RH850_ADD 	= (0xE << 5),
@@ -119,7 +122,26 @@ enum {
 	OPC_RH850_STH2 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0xD << 16),
 };
 
+#define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))
+enum {
+	OPC_RH850_CLL 	= (0xC1F << 11),
+	OPC_RH850_CTRET	= (0x880 << 11),
+	OPC_RH850_DI	= (0xC00 << 11),
+	OPC_RH850_EI	= (0XC10 << 11),
+	OPC_RH850_EIRET	= (0X900 << 11),
+	OPC_RH850_FERET	= (0X940 << 11),
+	OPC_RH850_HALT	= (0X400 << 11),
+	OPC_RH850_JARL	= (OXC18 << 11)
+};
 
+#define MASK_OP_FORMAT_IX(op) (op & (0x7 << 21))
+enum {
+	OPC_RH850_BINS_0	= (0x4  << 21),
+	OPC_RH850_BINS_1	= (0x5  << 21),
+	OPC_RH850_BINS_2	= (0x6  << 21),
+	OPC_RH850_CLR1		= (0x7  << 21),
+	OPC_RH850_LDSR		= (0x1  << 21),
+};
 
 
 #define MASK_OP_ARITH(op)   (MASK_OP_MAJOR(op) | (op & ((0x7 << 12) | (0x7F << 25))))

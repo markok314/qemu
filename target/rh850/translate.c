@@ -1626,6 +1626,76 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 
 static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 {
+	int rs1;
+	int rs2;
+	int rd;
+	uint32_t op;
+	uint32_t formXop;
+	target_long imm;
+
+	op = MASK_OP_MAJOR(ctx->opcode);
+	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
+	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
+	rd = GET_RD(ctx->opcode);
+	imm = GET_IMM(ctx->opcode);
+
+	switch(op){
+		case OPC_RH850_32bit_1:				//this is 111111; formats IX, X, XI, XII
+			if (extract32(ctx->opcode, 16, 1) == 0x1 ) { //if bit 16=1 its either b.cond or ld.hu
+				if (rs2 == 0x0) {
+					//this is BCOND2
+					break;
+				} else {
+					//this is LD.HU
+					gen_load(ctx, MO_TEUW, rd, rs1, imm);
+					break;
+				}
+			}
+			if (extract32(ctx->opcode, 23, 4) == 0x2 ) { // 0010
+				//format X instructions (+JARL- added due to MASK_OP_FORMAT_X matching)
+				formXop = MASK_OP_FORMAT_X(ctx->opcode);
+
+				switch(formXop){
+				case OPC_RH850_CLL:
+					break;
+				case OPC_RH850_CTRET:
+					break;
+				case OPC_RH850_DI:
+					break;
+				case OPC_RH850_EI:
+					break;
+				case OPC_RH850_EIRET:
+					break;
+				case OPC_RH850_FERET:
+					break;
+				case OPC_RH850_HALT:
+					break;
+				case OPC_RH850_JARL:
+					break;
+				}
+
+			}
+			if (extract32(ctx->opcode, 24, 3) == 0x0 ) {  // 000
+				//format IX instructions
+				formXop = MASK_OP_FORMAT_IX(ctx->opcode);
+
+				switch(){
+				case OPC_RH850_BINS_0:
+					break;
+				case OPC_RH850_BINS_1:
+					break;
+				case OPC_RH850_BINS_2:
+					break;
+				case OPC_RH850_CLR1:
+					break;
+				case OPC_RH850_LDSR:
+					break;
+				}
+			}
+
+
+
+	}
 
 }
 
@@ -1689,11 +1759,6 @@ static void decode_RV32_64G(CPURH850State *env, DisasContext *ctx)
     	break;
 
 
-
-    case OPC_RH850_LDHU:		// LD.HU
-    	if ( extract32(ctx->opcode, 16, 1) == 1 )
-    		gen_load(ctx, MO_TEUW, rd, rs1, imm);
-    	break;
 
     case OPC_RH850_MULH1:
     	if(rs2 != 0){
@@ -1840,10 +1905,10 @@ static void decode_opc(CPURH850State *env, DisasContext *ctx)
 
 
     /* checking for 48-bit instructions */
-    if (extract32(ctx->opcode, 6, 11) == 0x41e){
+    if (extract32(ctx->opcode, 6, 11) == 0x41e){			//bits are 10000011110
     	ctx->next_pc = ctx->pc + 6;
     	decode_RH850_48(env, ctx);
-    } else if (extract32(ctx->opcode, 9, 2) == 0x3){
+    } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
     	ctx->next_pc = ctx->pc + 4;
     	decode_RH850_32(env, ctx);
     } else {
