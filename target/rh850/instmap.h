@@ -70,6 +70,21 @@ enum {
 	OPC_RH850_SHL = (0x16 << 5),
 	OPC_RH850_SHR = (0x14 << 5),
 
+	/* FORMAT VI */
+	OPC_RH850_ADDI	=	(0x30 << 5),
+	OPC_RH850_ANDI	=	(0x36 << 5),
+	OPC_RH850_MOVEA	=	(0x31 << 5),
+	OPC_RH850_MOVHI	=	(0x32 << 5),
+
+	/* FORMAT VII */
+
+	OPC_RH850_LOOP	=	(0x37 << 5),
+
+	/* FORMAT VIII */
+
+	OPC_RH850_CLR	=	(0x3E << 5),
+
+	////////////////////////////////////////
 
     OPC_RISC_LUI    = (0x37),
     OPC_RISC_AUIPC  = (0x17),
