@@ -71,7 +71,7 @@ enum {
 	OPC_RH850_SAR = (0x15 << 5),
 	OPC_RH850_SHL = (0x16 << 5),
 
-	OPC_RH850_SHR = (0x14 << 5),
+
 
 	/* FORMAT VI */
 	OPC_RH850_ADDI	=	(0x30 << 5),
@@ -111,7 +111,10 @@ enum {
     /* floating point */
     OPC_RISC_FP_LOAD = (0x7),
     OPC_RISC_FP_STORE = (0x27),
+	OPC_RISC_FMADD = (0x0),
+	OPC_RISC_FMSUB, OPC_RISC_FNMADD, OPC_RISC_FNMSUB, OPC_RISC_FP_ARITH = (0x0),
 
+	OPC_RH850_MULH1 = (0x7 << 5),		//DOUBLE CHECK OP CODE
 	OPC_RH850_MULH2 = (0x17 << 5),		//bits 15-11 are not all 0
 
 
