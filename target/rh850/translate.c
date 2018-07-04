@@ -598,9 +598,37 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_CMP:
 		break;
+	case OPC_RH850_16bit_16:
+		if (rs2 == 0){
+			//CALLT
+			break;
+		} else {
+			//MOV
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_17:
+		if (rs2 == 0){
+			//CALLT
+			break;
+		} else {
+			//SATADD
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_ADD:
+		break;
+	case OPC_RH850_16bit_CMP:
+		break;
+	case OPC_RH850_16bit_SHR:
+		break;
+	case OPC_RH850_16bit_SAR:
+		break;
+	case OPC_RH850_16bit_SHL:
+		break;
+	case OPC_RH850_16bit_MULH:
+		break;
 	}
-
-
 }
 
 
