@@ -150,12 +150,22 @@ enum {
 
 #define MASK_OP_32BIT_SUB(op)	(op & (0xF << 23))
 enum {
-	OPC_RH850_LDSR		=	(0x0 << 23),
-	OPC_RH850_FORMAT_IX	=	(0x1 << 23),
-	OPC_RH850_FORMAT_X	=	(0x2 << 23),
-	OPC_RH850_MUL_INSTS	=	(0x4 << 23),
-	OPC_RH850_FORMAT_XI	=	(0x5 << 23),
-	OPC_RH850_FORMAT_XII=	(0x6<< 23),
+	OPC_RH850_LDSR			=	(0x0 << 23),
+	OPC_RH850_FORMAT_IX		=	(0x1 << 23),
+	OPC_RH850_FORMAT_X		=	(0x2 << 23),
+	OPC_RH850_MUL_INSTS		=	(0x4 << 23),
+	OPC_RH850_FORMAT_XI		=	(0x5 << 23),
+	OPC_RH850_FORMAT_XII	=	(0x6 << 23),
+	OPC_RH850_ADF_MAC_MACU	= (0x7 << 23),
+};
+
+#define MASK_OP_FORMAT_IX(op) (op & (0x3 << 21))
+enum {
+	OPC_RH850_BINS_0	= (0x0  << 21),
+	OPC_RH850_BINS_1	= (0x1  << 21),
+	OPC_RH850_BINS_2	= (0x2  << 21),
+	OPC_RH850_CLR1		= (0x3  << 21),
+	//OPC_RH850_LDSR		= (0x1  << 21),
 };
 
 #define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))
@@ -170,13 +180,14 @@ enum {
 	OPC_RH850_JARL	= (0XC18 << 11)
 };
 
-#define MASK_OP_FORMAT_IX(op) (op & (0x7 << 21))
+#define MASK_OP_FORMAT_XI(op) (op & (0x7F << 16))
 enum {
-	OPC_RH850_BINS_0	= (0x4  << 21),
-	OPC_RH850_BINS_1	= (0x5  << 21),
-	OPC_RH850_BINS_2	= (0x6  << 21),
-	OPC_RH850_CLR1		= (0x7  << 21),
-	//OPC_RH850_LDSR		= (0x1  << 21),
+	OPC_RH850_DIVH 	= (0x0 << 16),
+	OPC_RH850_DIVHU = (0x2 << 16),
+	OPC_RH850_DIV 	= (0x40 << 16),
+	OPC_RH850_DIVQ 	= (0x7C << 16),
+	OPC_RH850_DIVQU	= (0x7E << 16),
+	OPC_RH850_DIVU 	= (0x42 << 16)
 };
 
 

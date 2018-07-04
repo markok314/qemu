@@ -373,18 +373,18 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					//LDSR
 					break;
 				case OPC_RH850_FORMAT_IX:		//format IX instructions
-					formXop = extract32(ctx->opcode, 21, 2);
+					formXop = MASK_OP_FORMAT_IX(ctx->opcode);	//mask on bits 21, 22
 					switch(formXop){
-						case 0x0:
+						case OPC_RH850_BINS_0:
 							//BINS0
 							break;
-						case 0x1:
+						case OPC_RH850_BINS_1:
 							//BINS1
 							break;
-						case 0x2:
+						case OPC_RH850_BINS_2:
 							//BINS2
 							break;
-						case 0x3:
+						case OPC_RH850_CLR1:
 							if (extract32(ctx->opcode, 19, 1) == 0){
 								//CLR1
 							} else if (extract32(ctx->opcode, 19, 1) == 1){
@@ -415,7 +415,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 					}
 					break;
-				case 0x4:		//MUL instructions
+				case OPC_RH850_MUL_INSTS:		//MUL instructions
 					if (extract32(ctx->opcode, 22, 1) == 0){
 						// MUL in format XI
 						break;
@@ -425,30 +425,30 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					}
 					break;
 
-				case 0x5:					// DIV instructions in format XI
+				case OPC_RH850_FORMAT_XI:					// DIV instructions in format XI
 					formXop = extract32(ctx->opcode, 16, 7);
 					switch(formXop){
-						case 0x0:
+						case OPC_RH850_DIVH:
 							//DIVH
 							break;
-						case 0x2:
+						case OPC_RH850_DIVHU:
 							//DIVHU
 							break;
-						case 0x40:
+						case OPC_RH850_DIV:
 							//DIV
 							break;
-						case 0x7C:
+						case OPC_RH850_DIVQ:
 							//DIVQ
 							break;
-						case 0x7E:
+						case OPC_RH850_DIVQU:
 							//DIVQU
 							break;
-						case 0x42:
+						case OPC_RH850_DIVU:
 							//DIVU
 							break;
 					}
 					break;
-				case 0x6:	// 0110 //format XII instructions
+				case OPC_RH850_FORMAT_XII:	// 0110 //format XII instructions
 									//excluding MUL and including CMOV
 					if (extract32(ctx->opcode, 22, 1) == 1){
 						formXop = extract32(ctx->opcode, 17, 2);
@@ -471,7 +471,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						}
 
 					}
-				case 0x7:		//ADF, MAC, MACU
+				case OPC_RH850_ADF_MAC_MACU:		//ADF, MAC, MACU
 					formXop = extract32(ctx->opcode, 21, 2);
 					switch(formXop){
 						case 0x1:
