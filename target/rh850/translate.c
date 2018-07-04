@@ -493,7 +493,6 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
 	int rs2;
-	int rd;
 	uint32_t op;
 	uint32_t subOpCheck;
 
