@@ -28,29 +28,15 @@ enum {
 	OPC_RH850_ST_LD_1 = (0x3D << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
 	//OPC_RH850_LDHU  = (0x3F << 5),	//bits 11-15 are not all 0
 
-	OPC_RH850_32bit_1 = (0x3F << 5),	//this is 111111
-
-	/* FORMAT I */
-	OPC_RH850_NOP 	= (0x0 << 5),
-	OPC_RH850_SYNCI = (0x1C),
-	OPC_RH850_SYNCE = (0x1D),
-	OPC_RH850_SYNCM = (0x1E),
-	OPC_RH850_SYNCP = (0x1F),
-	OPC_RH850_MOV 	= (0x0 << 5),
+	/* FORMAT I */						// unique opcodes and grouped instructions
+	OPC_RH850_16bit_0 = (0x0 << 5),		// group with opcode 0x0 (nop, synci, synce, syncm, syncp, mov)
+	OPC_RH850_16bit_2 = (0x2 << 5),		// group with opcode 0x2 (rie, switch, divh, fetrap)
+	OPC_RH850_16bit_4 = (0x4 << 5),		// group with opcode 0x4 (zyb, satsub)
+	OPC_RH850_16bit_5 = (0x5 << 5),		// group with opcode 0x5 (sxb, satsub)
+	OPC_RH850_16bit_6 = (0x6 << 5),		// group with opcode 0x6 (zyh, satadd)
+	OPC_RH850_16bit_7 = (0x7 << 5),		// group with opcode 0x7 (sxh, mulh)
 	OPC_RH850_NOT 	= (0x1 << 5),
-	OPC_RH850_RIE 	= (0x2 << 5),		//both regs are 0
-	OPC_RH850_SWITCH = (0x2 << 5),		//bits 4-0 are not all 0, bits 15-11 are 0
-	OPC_RH850_DIVH 	= (0x2 << 5),		//don't allow registers to be r0
-	OPC_RH850_FETRAP = (0x2 << 5),		//bits 4-0 are 0
 	OPC_RH850_JMP 	= (0x3 << 5),
-	OPC_RH850_ZYB 	= (0x4 << 5),		//bits 15-11 are 0
-	OPC_RH850_SATSUBR = (0x4 << 5),
-	OPC_RH850_SXB 	= (0x5 << 5),		//bits 15-11 are 0
-	OPC_RH850_SATSUB = (0x5 << 5),
-	OPC_RH850_ZYH 	= (0x6 << 5),		//bits 15-11 are 0
-	OPC_RH850_SATADD = (0x6 << 5),
-	OPC_RH850_SXH	= (0x7 << 5),		//bits 15-11 are 0
-	OPC_RH850_MULH	= (0x7 << 5),		//bits 15-11 are not all 0
 	OPC_RH850_OR 	= (0x8 << 5),
 	OPC_RH850_XOR 	= (0x9 << 5),
 	OPC_RH850_AND 	= (0xA << 5),
@@ -60,17 +46,21 @@ enum {
 	OPC_RH850_ADD 	= (0xE << 5),
 	OPC_RH850_CMP 	= (0xF << 5),
 
+
+	OPC_RH850_32bit_1 = (0x3F << 5),	//this is 111111
+
+
 	/* FORMAT II */
-	OPC_RH850_MOV2 = (0x10 << 5), 	 	//bits 15-11 are not all 0
-	OPC_RH850_SATADD2 = (0x11 << 5),	//bits 11-15 are not all 0
+	OPC_RH850_ADD2 = (0x12 << 5),
 	OPC_RH850_CALLT_0 = (0x10 << 5),	//bits 15-11 are 0
 	OPC_RH850_CALLT_1 = (0x11 << 5),	//bits 15-11 are 0
-	OPC_RH850_ADD2 = (0x12 << 5),
 	OPC_RH850_CMP2 = (0x13 << 5),
-	OPC_RH850_SHR = (0x14 << 5),
+	OPC_RH850_MOV2 = (0x10 << 5), 	 	//bits 15-11 are not all 0
+	OPC_RH850_MULH	= (0x17 << 5),
 	OPC_RH850_SAR = (0x15 << 5),
+	OPC_RH850_SATADD2 = (0x11 << 5),	//bits 11-15 are not all 0
 	OPC_RH850_SHL = (0x16 << 5),
-
+	OPC_RH850_SHR = (0x14 << 5),
 
 
 	/* FORMAT VI */
@@ -118,11 +108,18 @@ enum {
 	OPC_RH850_MULH2 = (0x17 << 5),		//bits 15-11 are not all 0
 
 
-    
-   
-
-    
 };
+
+#define MASK_OP_FORMAT_I_0(op)	(MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0x1F << 0)))
+enum {
+	OPC_RH850_NOP 	= OPC_RH850_16bit_0 | (0x0 << 11) | (0x0 << 0),
+	OPC_RH850_SYNCI = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1C << 0),
+	OPC_RH850_SYNCE = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1D << 0),
+	OPC_RH850_SYNCM = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1E << 0),
+	OPC_RH850_SYNCP = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1F << 0)
+};
+
+
 
 #define MASK_OP_ST_LD0(op)   (MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0xF << 16)))
 enum {
@@ -165,6 +162,16 @@ enum {
 	OPC_RH850_LDSR		= (0x1  << 21),
 };
 
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
 
 #define MASK_OP_ARITH(op)   (MASK_OP_MAJOR(op) | (op & ((0x7 << 12) | (0x7F << 25))))
 enum {

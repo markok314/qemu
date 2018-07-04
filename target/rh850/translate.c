@@ -491,6 +491,95 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 {
+	int rs1;
+	int rs2;
+	int rd;
+	uint32_t op;
+	uint32_t subOpCheck;
+
+	op = MASK_OP_MAJOR(ctx->opcode);
+	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
+	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
+
+	switch(op){
+	case OPC_RH850_16bit_0:
+		if (rs2 != 0){
+			//MOV
+			break;
+		} else {
+			subOpCheck = MASK_OP_FORMAT_I_0(op);
+			switch(subOpCheck){
+				case OPC_RH850_NOP:
+					break;
+				case OPC_RH850_SYNCI:
+					break;
+				case OPC_RH850_SYNCE:
+					break;
+				case OPC_RH850_SYNCM:
+					break;
+				case OPC_RH850_SYNCP:
+					break;
+			}
+		}
+		break;
+
+	case OPC_RH850_16bit_2:
+		if (rs2 == 0){
+			if (rs1 == 0){
+				//RIE
+				break;
+			} else {
+				//SWITCH
+				break;
+			}
+		} else {
+			if (rs1 == 0){
+				//FETRAP
+				break;
+			} else {
+				//DIVH
+				break;
+			}
+		}
+		break;
+
+	case OPC_RH850_16bit_4:
+		if (rs2 == 0){
+			//ZYB
+			break;
+		} else {
+			//SATSUBR
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_5:
+		break;
+	case OPC_RH850_16bit_6:
+		break;
+	case OPC_RH850_16bit_7:
+		break;
+	case OPC_RH850_NOT:
+		break;
+	case OPC_RH850_JMP:
+		break;
+	case OPC_RH850_OR:
+		break;
+	case OPC_RH850_XOR:
+		break;
+	case OPC_RH850_AND:
+		break;
+	case OPC_RH850_TST:
+		break;
+	case OPC_RH850_SUBR:
+		break;
+	case OPC_RH850_SUB:
+		break;
+	case OPC_RH850_ADD:
+		break;
+	case OPC_RH850_CMP:
+		break;
+	}
+
 
 }
 
