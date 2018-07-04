@@ -233,6 +233,34 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 	}
 }
 
+static void tcg_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+{
+	TCGv r1 = tcg_temp_new();		//temp
+	TCGv r2 = tcg_temp_new();		//temp
+	gen_get_gpr(r1, rs1);			//loading rs1 to t0
+	gen_get_gpr(r2, rs2);			//loading rs1 to t0
+
+	switch(operation){
+		case 1:
+			tcg_gen_add_tl(r2, r2, r1); //ADD
+		break;
+		case 2:
+			tcg_gen_sub_tl(r2, r2, r1);	//SUB
+		break;
+		case 3:
+			tcg_gen_sub_tl(r2, r1, r2);	//SUBR
+		break;
+		case 4:
+			tcg_gen_or_tl(r2, r2, r1); //OR
+		break;
+		case 5:
+			tcg_gen_xor_tl(r2, r2, r1);	//XOR
+		break;
+	}
+	tcg_temp_free(r1);
+	tcg_temp_free(r2);
+}
+
 static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
@@ -601,6 +629,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_OR:
+
 		break;
 	case OPC_RH850_XOR:
 		break;
@@ -611,8 +640,10 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_SUBR:
 		break;
 	case OPC_RH850_SUB:
+		tcg_arithmetic(ctx, 0, rs1,rs2, 2);
 		break;
 	case OPC_RH850_ADD:
+		tcg_arithmetic(ctx, 0, rs1,rs2, 1);
 		break;
 	case OPC_RH850_CMP:
 		break;
