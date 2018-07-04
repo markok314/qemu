@@ -36,7 +36,7 @@ enum {
 	OPC_RH850_16bit_6 = (0x6 << 5),		// group with opcode 0x6 (zyh, satadd)
 	OPC_RH850_16bit_7 = (0x7 << 5),		// group with opcode 0x7 (sxh, mulh)
 	OPC_RH850_NOT 	= (0x1 << 5),
-	OPC_RH850_JMP 	= (0x3 << 5),
+	OPC_RH850_16bit_3 	= (0x3 << 5), 	//group with opcode 0x3 (jmp,sld.bu,sld.hu)
 	OPC_RH850_OR 	= (0x8 << 5),
 	OPC_RH850_XOR 	= (0x9 << 5),
 	OPC_RH850_AND 	= (0xA << 5),
@@ -47,7 +47,7 @@ enum {
 	OPC_RH850_CMP 	= (0xF << 5),
 	OPC_RH850_16bit_16 = (0x10 << 5),	// group with opcode 0x10 (mov,callt)
 	OPC_RH850_16bit_17 = (0x11 << 5),	// group with opcode 0x11 (callt, satadd)
-	OPC_RH850_16bit_ADD= (0x12 << 5),    // group with opcode 0x12 (add)
+	OPC_RH850_16bit_ADD= (0x12 << 5),   // group with opcode 0x12 (add)
 	OPC_RH850_16bit_CMP = (0x13 << 5),	// group with opcode 0x13 (cmp)
 	OPC_RH850_16bit_SHR = (0x14 << 5),	// group with opcode 0x14 (shr)
 	OPC_RH850_16bit_SAR = (0x15 << 5),	// group with opcode 0x15 (sar)
@@ -69,6 +69,12 @@ enum {
 	OPC_RH850_SHL = (0x16 << 5),
 	OPC_RH850_SHR = (0x14 << 5),
 
+	/* FORMAT IV */
+	OPC_RH850_16bit_SLDB = (0x6 << 5),
+	OPC_RH850_16bit_SLDH = (0x8 << 5),
+	OPC_RH850_16bit_IV10 = (0xA << 5), 		// group with opcode 0xA (sld.w,sst.w)
+	OPC_RH850_16bit_SSTB = (0x7 << 5),
+	OPC_RH850_16bit_SSTH = (0x9 << 5),
 
 	/* FORMAT VI */
 	OPC_RH850_ADDI	=	(0x30 << 5),

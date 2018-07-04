@@ -580,7 +580,18 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_NOT:
 		break;
-	case OPC_RH850_JMP:
+	case OPC_RH850_16bit_3:
+		if (rs2 == 0){
+			//JMP
+			break;
+		} else {
+			if(extract32(rs1,4,1)==1){
+				//SLD.HU
+			}else{
+				//SLD.BU
+			}
+			break;
+		}
 		break;
 	case OPC_RH850_OR:
 		break;
@@ -629,6 +640,29 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_MULH:
 		break;
 	}
+
+	//Format IV code bits 7-10
+	uint32_t opIV = op>>2;
+
+	switch(opIV){
+	case OPC_RH850_16bit_SLDB:
+		break;
+	case OPC_RH850_16bit_SLDH:
+		break;
+	case OPC_RH850_16bit_IV10:
+		if(extract32(rs1,0,1)==1){
+			//SST.W
+		}
+		else{
+			//SLD.H
+		}
+		break;
+	case OPC_RH850_16bit_SSTB:
+		break;
+	case OPC_RH850_16bit_SSTH:
+		break;
+	}
+
 }
 
 
