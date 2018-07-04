@@ -552,10 +552,31 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_16bit_5:
+		if (rs2 == 0){
+			//SXB
+			break;
+		} else {
+			//SATSUB
+			break;
+		}
 		break;
 	case OPC_RH850_16bit_6:
+		if (rs2 == 0){
+			//ZYH
+			break;
+		} else {
+			//SATADD
+			break;
+		}
 		break;
 	case OPC_RH850_16bit_7:
+		if (rs2 == 0){
+			//SXH
+			break;
+		} else {
+			//MULH
+			break;
+		}
 		break;
 	case OPC_RH850_NOT:
 		break;
