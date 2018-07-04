@@ -141,6 +141,16 @@ enum {
 	OPC_RH850_STH2 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0xD << 16),
 };
 
+#define MASK_OP_32BIT_SUB(op)	(op & (0xF << 23))
+enum {
+	OPC_RH850_LDSR		=	(0x0 << 23),
+	OPC_RH850_FORMAT_IX	=	(0x1 << 23),
+	OPC_RH850_FORMAT_X	=	(0x2 << 23),
+	OPC_RH850_MUL_INSTS	=	(0x4 << 23),
+	OPC_RH850_FORMAT_XI	=	(0x5 << 23),
+	OPC_RH850_FORMAT_XII=	(0x6<< 23),
+};
+
 #define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))
 enum {
 	OPC_RH850_CLL 	= (0xC1F << 11),
@@ -159,8 +169,9 @@ enum {
 	OPC_RH850_BINS_1	= (0x5  << 21),
 	OPC_RH850_BINS_2	= (0x6  << 21),
 	OPC_RH850_CLR1		= (0x7  << 21),
-	OPC_RH850_LDSR		= (0x1  << 21),
+	//OPC_RH850_LDSR		= (0x1  << 21),
 };
+
 
 
 //////////////////////////////////////////////////////////

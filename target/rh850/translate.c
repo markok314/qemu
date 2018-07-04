@@ -367,12 +367,12 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 				}
 			}
-			formXop = extract32(ctx->opcode, 23, 4);		//sub groups based on bits b23-b26
+			formXop = MASK_OP_32BIT_SUB(ctx->opcode);		//sub groups based on bits b23-b26
 			switch(formXop){
-				case 0x0:
+				case OPC_RH850_LDSR:
 					//LDSR
 					break;
-				case 0x1:		//format IX instructions
+				case OPC_RH850_FORMAT_IX:		//format IX instructions
 					formXop = extract32(ctx->opcode, 21, 2);
 					switch(formXop){
 						case 0x0:
@@ -393,7 +393,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 					}
 					break;
-				case 0x2:	// 0010 //format X instructions
+				case OPC_RH850_FORMAT_X:	// 0010 //format X instructions
 							// 		//(+JARL- added due to MASK_OP_FORMAT_X matching)
 					formXop = MASK_OP_FORMAT_X(ctx->opcode);
 					switch(formXop){
