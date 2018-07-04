@@ -1,4 +1,4 @@
-   name    timeOfAssembly
+ name    timeOfAssembly
    PUBLIC      __iar_program_start
 
    section .text:CODE(2)
@@ -111,16 +111,18 @@ __iar_program_start:
 	DIVU r15, r16, r17
 	DIVQ r18, r19, r21
 	DIVQU r22, r23, r2
-	BGE 0x4
-	BGT 0x4
-	JARL 0xc, r18
-	JARL 0xc4, r24
-	JARL [r27], r21
-	JMP [r6]
+	BGE 0x2
+	BGT 0x2
+	JARL 0x4, r18
+	JARL 0x4, r24
+	JARL [r21], r21
+        ADDI r21, 0x6
+	JMP [r21]
 	; JMP 0x12 [r6]
-	JR 0x68
-	JR 0xfe
-	LOOP r6, 0xde
+	JR 0x4
+	JR 0x4
+        MOV 0x1, r21
+	LOOP r21, 0xde
 	CLR1 4, 0x12 [r3]
 	CLR1 r16, [r2]
 	NOT1 3, 0x34 [r4]
