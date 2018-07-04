@@ -90,6 +90,8 @@ enum {
 
 	OPC_RH850_CLR	=	(0x3E << 5),
 
+	OPC_RH850_FORMAT_V_XIII = (0x1E << 6),
+
 	////////////////////////////////////////
 
     OPC_RISC_LUI    = (0x37),
@@ -195,6 +197,23 @@ enum {
 	OPC_RH850_DIVQU	= (0x7E << 16),
 	OPC_RH850_DIVU 	= (0x42 << 16)
 };
+
+#define MASK_OP_FORMAT_XII(op) (op & (0x3 << 17))
+enum {
+	OPC_RH850_BSW	= (0x0 << 17),
+	OPC_RH850_HSW	= (0x2 << 17),
+	OPC_RH850_HSH	= (0x3 << 17)
+};
+
+#define MASK_OP_ADF_MAC_MACU(op) (op & (0x3 << 21))
+enum {
+	OPC_RH850_ADF	= (0x1 << 21),
+	OPC_RH850_MAC	= (0x2 << 21),
+	OPC_RH850_MACU	= (0x3 << 21)
+};
+
+#define MASK_OP_FORMAT_V_FORMAT_XIII(op) (op & (0x1F << 6))
+
 
 
 

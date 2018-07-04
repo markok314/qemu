@@ -448,43 +448,50 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 					}
 					break;
+
 				case OPC_RH850_FORMAT_XII:	// 0110 //format XII instructions
 									//excluding MUL and including CMOV
 					if (extract32(ctx->opcode, 22, 1) == 1){
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
-						case 0x0:
+						case OPC_RH850_BSW:
 							//BSW
 							break;
-						case 0x2:
+						case OPC_RH850_HSW:
 							//HSW
 							break;
-						case 0x3:
+						case OPC_RH850_HSH:
 							//HSH
 							break;
 						}
 					} else if (extract32(ctx->opcode, 22, 1) == 0) { //here we have two CMOV ins
 						if (extract32(ctx->opcode, 21, 1) == 1){
 							//CMOV in format XI
-						} else if (extract32(ctx->opcode, 21, 0) == 1){
+						} else if (extract32(ctx->opcode, 21, 1) == 0){
 							//CMOV in format XII
 						}
 
 					}
+					break;
+
 				case OPC_RH850_ADF_MAC_MACU:		//ADF, MAC, MACU
 					formXop = extract32(ctx->opcode, 21, 2);
 					switch(formXop){
-						case 0x1:
+						case OPC_RH850_ADF:
 							//ADF
 							break;
-						case 0x2:
+						case OPC_RH850_MAC:
 							//MAC
 							break;
-						case 0x3:
+						case OPC_RH850_MACU:
 							//MACU
 							break;
 					}
 			}
+	}
+
+	if (MASK_OP_FORMAT_V_FORMAT_XIII(ctx->opcode) == OPC_RH850_FORMAT_V_XIII){
+
 	}
 
 }
