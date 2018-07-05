@@ -49,6 +49,7 @@ jstring Hex(LONG intValue, int numOfDigits)
 {
 	int remainder=0;
 	char hexStr[12]="";
+	char outStr[12]="";
 	jstring output;
 
 	int counter=0;
@@ -90,9 +91,18 @@ jstring Hex(LONG intValue, int numOfDigits)
 					hexStr[counter]='f'; break;
 		}
 		intValue = intValue/16;
+		counter++;
+	}
+	for(int i=0;i<numOfDigits-counter;i++){
+		outStr[i] = '0';
 	}
 
-	output = hexStr;
+	for(int i=0;i<counter;i++){
+		outStr[i+(numOfDigits-counter)] = hexStr[counter-1-i];
+	}
+	output = outStr;
+
+
 
 	return output;
 }
@@ -649,8 +659,8 @@ jstring CDisassemblerNEC850::NecGetDisp5(const u32 dwInst)
 	LONG lDisp = NecExtractBits(dwInst, 0, 5);
 	SignExtend(lDisp, 5);
 	jstring Operand;
-	Operand = StrF(lDisp);
-	//Operand = Hex(lDisp, 1);
+	//Operand = StrF(lDisp);
+	Operand = Hex(lDisp, 6);
 	return Operand;
 }
 
@@ -680,7 +690,7 @@ jstring CDisassemblerNEC850::NecGetImmN16(const u32 dwInst)
 	SignExtend(lDisp, 16);
 	jstring Operand;
 	//Operand = StrF(lDisp);
-	Operand = Hex(lDisp, 2);
+	Operand = Hex(lDisp, 6);
 	return Operand;
 }
 
@@ -698,7 +708,7 @@ jstring CDisassemblerNEC850::NecGetDisp16(const u32 dwInst)
   else
 	    ///Operand = StrF(lDisp, 2);
   //Operand = StrF(lDisp);
-  Operand = Hex(lDisp, 2);
+  Operand = Hex(lDisp, 6);
 	return Operand;
 }
 
@@ -719,7 +729,8 @@ jstring CDisassemblerNEC850::NecGetDisp23(const u32 dwInst, const u32 dwInst1)
 	SignExtend(lDisp, 23);
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
-	Operand = StrF(lDisp); ///, 3);
+	//Operand = StrF(lDisp); ///, 3);
+	Operand = Hex(lDisp, 6);
 	return Operand;
 }
 
@@ -729,7 +740,8 @@ jstring CDisassemblerNEC850::NecGetDisp23Z0(const u32 dwInst, const u32 dwInst1)
 	SignExtend(lDisp, 23);
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
-	Operand = StrF(lDisp); ///, 4);
+	//Operand = StrF(lDisp); ///, 4);
+	Operand = Hex(lDisp, 6);
 	return Operand;
 }
 

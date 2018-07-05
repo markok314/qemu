@@ -1,65 +1,130 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
-	<storageModule moduleId="org.eclipse.cdt.core.settings">
-		<cconfiguration id="org.eclipse.cdt.core.default.config.1882619105">
-			<storageModule buildSystemId="org.eclipse.cdt.core.defaultConfigDataProvider" id="org.eclipse.cdt.core.default.config.1882619105" moduleId="org.eclipse.cdt.core.settings" name="Configuration">
-				<externalSettings/>
-				<extensions/>
-			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-		</cconfiguration>
-	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.core.pathentry">
-		<pathentry base-path="qemu" include="include/block" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/chardev" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/crypto" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/disas" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/exec" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/fpu" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/hw" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/io" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/libdecnumber" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/migration" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/monitor" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/net" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/qapi" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/qemu" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/qom" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/scsi" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/standard-headers" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/sysemu" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include/ui" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="accel/kvm" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="accel/stubs" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="accel/tcg" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/accel" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/accel/stubs" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/accel/tcg" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/fpu" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/9pfs" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/adc" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/arm" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/block" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/block/dataplane" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/char" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/core" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/cpu" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/display" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/dma" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/gpio" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/i2c" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/input" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/intc" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="arm-softmmu/hw/misc" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="disas" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="disas/libvixl" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="disas/libvixl/vixl" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="disas/libvixl/vixl/a64" kind="inc" path="" system="true"/>
-		<pathentry base-path="qemu" include="include" kind="inc" path="" system="true"/>
-		<pathentry kind="src" path=""/>
-		<pathentry kind="out" path=""/>
-	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
-	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+    	
+    <storageModule moduleId="org.eclipse.cdt.core.settings">
+        		
+        <cconfiguration id="org.eclipse.cdt.core.default.config.1882619105">
+            			
+            <storageModule buildSystemId="org.eclipse.cdt.core.defaultConfigDataProvider" id="org.eclipse.cdt.core.default.config.1882619105" moduleId="org.eclipse.cdt.core.settings" name="Configuration">
+                				
+                <externalSettings/>
+                				
+                <extensions/>
+                			
+            </storageModule>
+            			
+            <storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+            		
+        </cconfiguration>
+        	
+    </storageModule>
+    	
+    <storageModule moduleId="org.eclipse.cdt.core.pathentry">
+        		
+        <pathentry base-path="qemu" include="include/block" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/chardev" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/crypto" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/disas" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/exec" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/fpu" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/hw" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/io" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/libdecnumber" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/migration" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/monitor" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/net" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/qapi" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/qemu" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/qom" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/scsi" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/standard-headers" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/sysemu" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include/ui" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="accel/kvm" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="accel/stubs" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="accel/tcg" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/accel" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/accel/stubs" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/accel/tcg" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/fpu" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/9pfs" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/adc" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/arm" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/block" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/block/dataplane" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/char" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/core" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/cpu" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/display" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/dma" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/gpio" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/i2c" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/input" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/intc" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="arm-softmmu/hw/misc" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="disas" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="disas/libvixl" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="disas/libvixl/vixl" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="disas/libvixl/vixl/a64" kind="inc" path="" system="true"/>
+        		
+        <pathentry base-path="qemu" include="include" kind="inc" path="" system="true"/>
+        		
+        <pathentry kind="src" path=""/>
+        		
+        <pathentry kind="out" path=""/>
+        	
+    </storageModule>
+    	
+    <storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+    	
+    <storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+    	
+    <storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+    
 </cproject>
