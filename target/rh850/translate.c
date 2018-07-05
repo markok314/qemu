@@ -520,6 +520,18 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 	if (MASK_OP_FORMAT_V_FORMAT_XIII(ctx->opcode) == OPC_RH850_FORMAT_V_XIII){
 
+		if(extract32(ctx->opcode, 16, 1) == 0){
+
+			if (extract32(ctx->opcode, 11, 5) == 0){
+				//JR
+			} else {
+				//JARL2
+			}
+		} else if (extract32(ctx->opcode, 16, 3) == 0x3){
+			//PREPARE2
+		} else if (extract32(ctx->opcode, 16, 3) == 0x1){
+			//PREPARE1
+		}
 	}
 
 }
