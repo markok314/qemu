@@ -67,6 +67,7 @@ private:
   jstring NecGetDisp16(const u32 dwInst);
   jstring NecGetDisp17(const u32 dwInst);
 
+
   jstring GetBitManOperand(const u32 dwInst);
   jstring NecGetRegListItem(jstring strList, u32 dwReg);
   jstring NecGetRegList(const u32 dwInst);

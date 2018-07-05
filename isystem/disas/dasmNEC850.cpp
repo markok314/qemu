@@ -30,7 +30,7 @@ void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst, int insLe
 	for ( int i=0; i<8; i++)
 		instr[i] = 0;
 	for ( int i=0; i<insLen; i++)
-		instr[i] = (inst >> (8*i)) & 0x0FF;  //we need
+		instr[i] = (inst >> (8*i)) & 0x0FF;
 
 	p->Disasm( instr, rjstrDasm, buflen);
 	//printf("%s\n", rjstrDasm.c_str());
@@ -44,6 +44,58 @@ void SignExtend(LONG & lDisp, uint8_t n)
 		lDisp += ((1 << (64 - n)) - 1) << n;
 }
 
+
+jstring Hex(LONG intValue, int numOfDigits)
+{
+	int remainder=0;
+	char hexStr[12]="";
+	jstring output;
+
+	int counter=0;
+	while(intValue>0){
+		remainder = intValue%16;
+
+		switch(remainder){
+		case 0:
+					hexStr[counter]='0'; break;
+		case 1:
+					hexStr[counter]='1'; break;
+		case 2:
+					hexStr[counter]='2'; break;
+		case 3:
+					hexStr[counter]='3'; break;
+		case 4:
+					hexStr[counter]='4'; break;
+		case 5:
+					hexStr[counter]='5'; break;
+		case 6:
+					hexStr[counter]='6'; break;
+		case 7:
+					hexStr[counter]='7'; break;
+		case 8:
+					hexStr[counter]='8'; break;
+		case 9:
+					hexStr[counter]='9'; break;
+		case 10:
+					hexStr[counter]='a'; break;
+		case 11:
+					hexStr[counter]='b'; break;
+		case 12:
+					hexStr[counter]='c'; break;
+		case 13:
+					hexStr[counter]='d'; break;
+		case 14:
+					hexStr[counter]='e'; break;
+		case 15:
+					hexStr[counter]='f'; break;
+		}
+		intValue = intValue/16;
+	}
+
+	output = hexStr;
+
+	return output;
+}
 
 CDisassemblerNEC850::CDisassemblerNEC850(): CDisassemblerBase(FALSE)
 {
@@ -627,10 +679,12 @@ jstring CDisassemblerNEC850::NecGetImmN16(const u32 dwInst)
 	LONG lDisp = NecExtractBits(dwInst, 16, 32);
 	SignExtend(lDisp, 16);
 	jstring Operand;
-	Operand = StrF(lDisp);
-	//Operand = Hex(lDisp, 2);
+	//Operand = StrF(lDisp);
+	Operand = Hex(lDisp, 2);
 	return Operand;
 }
+
+
 
 jstring CDisassemblerNEC850::NecGetDisp16(const u32 dwInst)
 {
@@ -643,7 +697,8 @@ jstring CDisassemblerNEC850::NecGetDisp16(const u32 dwInst)
     Operand = "-" + StrF(-lDisp);///
   else
 	    ///Operand = StrF(lDisp, 2);
-  Operand = StrF(lDisp);
+  //Operand = StrF(lDisp);
+  Operand = Hex(lDisp, 2);
 	return Operand;
 }
 
