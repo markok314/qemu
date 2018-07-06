@@ -5,7 +5,7 @@
    <VersionLow>1</VersionLow>
   </REG_HEADER>
   <REG_ROOT>
-   <RegVer>1279369216</RegVer>
+   <RegVer>1279381504</RegVer>
    <Project>
     <CompilerType>0</CompilerType>
     <GlobalOptions>
@@ -220,6 +220,12 @@
          <CompilerOptions>-On --core rh850 --data_model small --code_model normal  --debug -I $(IRFDIR) -I ../../common -I ../../common/itest  $(EDNAME)</CompilerOptions>
         </FileOptios>
        </File.24>
+       <File.25>
+        <FileName>$(IRFDIR)..\test_disas_1.s</FileName>
+        <FileOptios>
+         <AssemblerOptions>--core=rh850 --debug -o $(OUTPUTDIR) $(EDNAME)</AssemblerOptions>
+        </FileOptios>
+       </File.25>
        <File.3>
         <FileName>$(IRFDIR)..\..\common\ioModuleStub.c</FileName>
         <FileOptios>
