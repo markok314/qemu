@@ -233,6 +233,34 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 	}
 }
 
+static void tcg_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+{
+	TCGv r1 = tcg_temp_new();		//temp
+	TCGv r2 = tcg_temp_new();		//temp
+	gen_get_gpr(r1, rs1);			//loading rs1 to t0
+	gen_get_gpr(r2, rs2);			//loading rs1 to t0
+
+	switch(operation){
+		case 1:
+			tcg_gen_add_tl(r2, r2, r1); //ADD
+		break;
+		case 2:
+			tcg_gen_sub_tl(r2, r2, r1);	//SUB
+		break;
+		case 3:
+			tcg_gen_sub_tl(r2, r1, r2);	//SUBR
+		break;
+		case 4:
+			tcg_gen_or_tl(r2, r2, r1); //OR
+		break;
+		case 5:
+			tcg_gen_xor_tl(r2, r2, r1);	//XOR
+		break;
+	}
+	tcg_temp_free(r1);
+	tcg_temp_free(r2);
+}
+
 static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
@@ -367,24 +395,24 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 				}
 			}
-			formXop = extract32(ctx->opcode, 23, 4);		//sub groups based on bits b23-b26
+			formXop = MASK_OP_32BIT_SUB(ctx->opcode);		//sub groups based on bits b23-b26
 			switch(formXop){
-				case 0x0:
+				case OPC_RH850_LDSR:
 					//LDSR
 					break;
-				case 0x1:		//format IX instructions
-					formXop = extract32(ctx->opcode, 21, 2);
+				case OPC_RH850_FORMAT_IX:		//format IX instructions
+					formXop = MASK_OP_FORMAT_IX(ctx->opcode);	//mask on bits 21, 22
 					switch(formXop){
-						case 0x0:
+						case OPC_RH850_BINS_0:
 							//BINS0
 							break;
-						case 0x1:
+						case OPC_RH850_BINS_1:
 							//BINS1
 							break;
-						case 0x2:
+						case OPC_RH850_BINS_2:
 							//BINS2
 							break;
-						case 0x3:
+						case OPC_RH850_CLR1:
 							if (extract32(ctx->opcode, 19, 1) == 0){
 								//CLR1
 							} else if (extract32(ctx->opcode, 19, 1) == 1){
@@ -393,7 +421,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 					}
 					break;
-				case 0x2:	// 0010 //format X instructions
+				case OPC_RH850_FORMAT_X:	// 0010 //format X instructions
 							// 		//(+JARL- added due to MASK_OP_FORMAT_X matching)
 					formXop = MASK_OP_FORMAT_X(ctx->opcode);
 					switch(formXop){
@@ -415,7 +443,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 					}
 					break;
-				case 0x4:		//MUL instructions
+				case OPC_RH850_MUL_INSTS:		//MUL instructions
 					if (extract32(ctx->opcode, 22, 1) == 0){
 						// MUL in format XI
 						break;
@@ -425,72 +453,265 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					}
 					break;
 
-				case 0x5:					// DIV instructions in format XI
+				case OPC_RH850_FORMAT_XI:					// DIV instructions in format XI
 					formXop = extract32(ctx->opcode, 16, 7);
 					switch(formXop){
-						case 0x0:
+						case OPC_RH850_DIVH:
 							//DIVH
 							break;
-						case 0x2:
+						case OPC_RH850_DIVHU:
 							//DIVHU
 							break;
-						case 0x40:
+						case OPC_RH850_DIV:
 							//DIV
 							break;
-						case 0x7C:
+						case OPC_RH850_DIVQ:
 							//DIVQ
 							break;
-						case 0x7E:
+						case OPC_RH850_DIVQU:
 							//DIVQU
 							break;
-						case 0x42:
+						case OPC_RH850_DIVU:
 							//DIVU
 							break;
 					}
 					break;
-				case 0x6:	// 0110 //format XII instructions
+
+				case OPC_RH850_FORMAT_XII:	// 0110 //format XII instructions
 									//excluding MUL and including CMOV
 					if (extract32(ctx->opcode, 22, 1) == 1){
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
-						case 0x0:
+						case OPC_RH850_BSW:
 							//BSW
 							break;
-						case 0x2:
+						case OPC_RH850_HSW:
 							//HSW
 							break;
-						case 0x3:
+						case OPC_RH850_HSH:
 							//HSH
 							break;
 						}
 					} else if (extract32(ctx->opcode, 22, 1) == 0) { //here we have two CMOV ins
 						if (extract32(ctx->opcode, 21, 1) == 1){
 							//CMOV in format XI
-						} else if (extract32(ctx->opcode, 21, 0) == 1){
+						} else if (extract32(ctx->opcode, 21, 1) == 0){
 							//CMOV in format XII
 						}
 
 					}
-				case 0x7:		//ADF, MAC, MACU
+					break;
+
+				case OPC_RH850_ADF_MAC_MACU:		//ADF, MAC, MACU
 					formXop = extract32(ctx->opcode, 21, 2);
 					switch(formXop){
-						case 0x1:
+						case OPC_RH850_ADF:
 							//ADF
 							break;
-						case 0x2:
+						case OPC_RH850_MAC:
 							//MAC
 							break;
-						case 0x3:
+						case OPC_RH850_MACU:
 							//MACU
 							break;
 					}
 			}
 	}
 
+	if (MASK_OP_FORMAT_V_FORMAT_XIII(ctx->opcode) == OPC_RH850_FORMAT_V_XIII){
+
+		if(extract32(ctx->opcode, 16, 1) == 0){
+
+			if (extract32(ctx->opcode, 11, 5) == 0){
+				//JR
+			} else {
+				//JARL2
+			}
+		} else if (extract32(ctx->opcode, 16, 3) == 0x3){
+			//PREPARE2
+		} else if (extract32(ctx->opcode, 16, 3) == 0x1){
+			//PREPARE1
+		}
+	}
+
 }
 
 static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 {
+	int rs1;
+	int rs2;
+	uint32_t op;
+	uint32_t subOpCheck;
+
+	op = MASK_OP_MAJOR(ctx->opcode);
+	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
+	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
+
+	switch(op){
+	case OPC_RH850_16bit_0:
+		if (rs2 != 0){
+			//MOV
+			break;
+		} else {
+			subOpCheck = MASK_OP_FORMAT_I_0(op);
+			switch(subOpCheck){
+				case OPC_RH850_NOP:
+					break;
+				case OPC_RH850_SYNCI:
+					break;
+				case OPC_RH850_SYNCE:
+					break;
+				case OPC_RH850_SYNCM:
+					break;
+				case OPC_RH850_SYNCP:
+					break;
+			}
+		}
+		break;
+
+	case OPC_RH850_16bit_2:
+		if (rs2 == 0){
+			if (rs1 == 0){
+				//RIE
+				break;
+			} else {
+				//SWITCH
+				break;
+			}
+		} else {
+			if (rs1 == 0){
+				//FETRAP
+				break;
+			} else {
+				//DIVH
+				break;
+			}
+		}
+		break;
+
+	case OPC_RH850_16bit_4:
+		if (rs2 == 0){
+			//ZYB
+			break;
+		} else {
+			//SATSUBR
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_5:
+		if (rs2 == 0){
+			//SXB
+			break;
+		} else {
+			//SATSUB
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_6:
+		if (rs2 == 0){
+			//ZYH
+			break;
+		} else {
+			//SATADD
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_7:
+		if (rs2 == 0){
+			//SXH
+			break;
+		} else {
+			//MULH
+			break;
+		}
+		break;
+	case OPC_RH850_NOT:
+		break;
+	case OPC_RH850_16bit_3:
+		if (rs2 == 0){
+			//JMP
+			break;
+		} else {
+			if(extract32(rs1,4,1)==1){
+				//SLD.HU
+			}else{
+				//SLD.BU
+			}
+			break;
+		}
+		break;
+	case OPC_RH850_OR:
+
+		break;
+	case OPC_RH850_XOR:
+		break;
+	case OPC_RH850_AND:
+		break;
+	case OPC_RH850_TST:
+		break;
+	case OPC_RH850_SUBR:
+		break;
+	case OPC_RH850_SUB:
+		tcg_arithmetic(ctx, 0, rs1,rs2, 2);
+		break;
+	case OPC_RH850_ADD:
+		tcg_arithmetic(ctx, 0, rs1,rs2, 1);
+		break;
+	case OPC_RH850_CMP:
+		break;
+	case OPC_RH850_16bit_16:
+		if (rs2 == 0){
+			//CALLT
+			break;
+		} else {
+			//MOV
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_17:
+		if (rs2 == 0){
+			//CALLT
+			break;
+		} else {
+			//SATADD
+			break;
+		}
+		break;
+	case OPC_RH850_16bit_ADD:
+		break;
+	case OPC_RH850_16bit_CMP:
+		break;
+	case OPC_RH850_16bit_SHR:
+		break;
+	case OPC_RH850_16bit_SAR:
+		break;
+	case OPC_RH850_16bit_SHL:
+		break;
+	case OPC_RH850_16bit_MULH:
+		break;
+	}
+
+	//Format IV code bits 7-10
+	uint32_t opIV = op>>2;
+
+	switch(opIV){
+	case OPC_RH850_16bit_SLDB:
+		break;
+	case OPC_RH850_16bit_SLDH:
+		break;
+	case OPC_RH850_16bit_IV10:
+		if(extract32(rs1,0,1)==1){
+			//SST.W
+		}
+		else{
+			//SLD.H
+		}
+		break;
+	case OPC_RH850_16bit_SSTB:
+		break;
+	case OPC_RH850_16bit_SSTH:
+		break;
+	}
 
 }
 
