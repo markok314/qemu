@@ -112,7 +112,7 @@ __iar_program_start:
 	JARL 0x4, r18
 	JARL 0x4, r24
 	JARL [r21], r21
-        ADDI r21, 0x6
+        ADDI 0x6,r0,r21
 	JMP [r21]
 	; JMP 0x12 [r6]  IAR assembler does not compile this ???
         DB 0xff, 0x06, 0x4a, 00, 00, 00
