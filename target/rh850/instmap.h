@@ -58,7 +58,6 @@ enum {
 
 
 	/* FORMAT II */
-	OPC_RH850_ADD2 = (0x12 << 5),
 	OPC_RH850_CALLT_0 = (0x10 << 5),	//bits 15-11 are 0
 	OPC_RH850_CALLT_1 = (0x11 << 5),	//bits 15-11 are 0
 	OPC_RH850_CMP2 = (0x13 << 5),

@@ -233,16 +233,18 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 	}
 }
 
-static void tcg_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
 {
 	TCGv r1 = tcg_temp_new();		//temp
 	TCGv r2 = tcg_temp_new();		//temp
 	gen_get_gpr(r1, rs1);			//loading rs1 to t0
-	gen_get_gpr(r2, rs2);			//loading rs1 to t0
+	gen_get_gpr(r2, rs2);			//loading rs2 to t1
+	int imm = rs1;
+	TCGv tcg_imm = tcg_temp_new();
 
 	switch(operation){
 		case 1:
-			tcg_gen_add_tl(r2, r2, r1); //ADD
+			tcg_gen_add_tl(r2, r2, r1); //ADD FORMAT 1
 		break;
 		case 2:
 			tcg_gen_sub_tl(r2, r2, r1);	//SUB
@@ -256,6 +258,23 @@ static void tcg_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 		case 5:
 			tcg_gen_xor_tl(r2, r2, r1);	//XOR
 		break;
+		case 6:
+			tcg_gen_addi_tl(r2,r2, imm); //ADD FORMAT 2 IMM
+		break;
+		case 7:
+			tcg_gen_and_tl(r2,r2, r1); //AND
+		break;
+		case 8:
+			tcg_gen_mul_tl(r2,r2, r1); //MULH
+		break;
+		case 9:
+			tcg_gen_addi_tl(tcg_imm,tcg_imm, imm); //ADD FORMAT 2 IMM
+			tcg_gen_mul_tl(r2,r2,tcg_imm); //MULH FORMAT 2 IMM
+		break;
+		case 10:
+			tcg_gen_ext16s_tl(r1, r1); //SXH
+		break;
+
 	}
 	tcg_temp_free(r1);
 	tcg_temp_free(r2);
@@ -619,9 +638,11 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_7:
 		if (rs2 == 0){
 			//SXH
+			decode_arithmetic(ctx, 0, rs1,rs2, 10);
 			break;
 		} else {
 			//MULH
+			decode_arithmetic(ctx, 0, rs1,rs2, 8);
 			break;
 		}
 		break;
@@ -641,21 +662,24 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_OR:
-
+		decode_arithmetic(ctx, 0, rs1,rs2, 4);
 		break;
 	case OPC_RH850_XOR:
+		decode_arithmetic(ctx, 0, rs1,rs2, 5);
 		break;
 	case OPC_RH850_AND:
+		decode_arithmetic(ctx, 0, rs1,rs2, 7);
 		break;
 	case OPC_RH850_TST:
 		break;
 	case OPC_RH850_SUBR:
+		decode_arithmetic(ctx, 0, rs1,rs2, 3);
 		break;
 	case OPC_RH850_SUB:
-		tcg_arithmetic(ctx, 0, rs1,rs2, 2);
+		decode_arithmetic(ctx, 0, rs1,rs2, 2);
 		break;
 	case OPC_RH850_ADD:
-		tcg_arithmetic(ctx, 0, rs1,rs2, 1);
+		decode_arithmetic(ctx, 0, rs1,rs2, 1);
 		break;
 	case OPC_RH850_CMP:
 		break;
@@ -678,6 +702,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_16bit_ADD:
+		decode_arithmetic(ctx, 0, rs1,rs2, 6);
 		break;
 	case OPC_RH850_16bit_CMP:
 		break;
@@ -688,6 +713,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_SHL:
 		break;
 	case OPC_RH850_16bit_MULH:
+		decode_arithmetic(ctx, 0, rs1,rs2, 9);
 		break;
 	}
 
