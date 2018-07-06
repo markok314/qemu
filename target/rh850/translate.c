@@ -760,7 +760,7 @@ static void decode_opc(CPURH850State *env, DisasContext *ctx)
 	 */
 
     /* checking for 48-bit instructions */
-    if (extract32(ctx->opcode, 6, 11) == 0x41e){			//bits are 10000011110
+    if ( (extract32(ctx->opcode, 6, 11) == 0x41e) || (extract32(ctx->opcode, 5, 11) == 0x31) || (extract32(ctx->opcode, 5, 11) == 0x37) ){			//bits are 10000011110
     	ctx->next_pc = ctx->pc + 6;
     	decode_RH850_48(env, ctx);
     } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
