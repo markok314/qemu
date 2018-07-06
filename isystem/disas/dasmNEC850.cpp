@@ -1838,8 +1838,8 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
   {
     switch(dwForm1)
     {
-    case 0x6: SET_STR(bQD, Instruction, "SLD.BU"); SET_STR(bQD, Operand, "#"+jstring(Long2Str(NecExtractBits(dwInst, 0, 4))) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.BU
-    case 0x7:	SET_STR(bQD, Instruction, "SLD.HU"); SET_STR(bQD, Operand, "#"+jstring(Long2Str(NecExtractBits(dwInst, 0, 4) << 1)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.HU
+    case 0x6: SET_STR(bQD, Instruction, "SLD.BU"); SET_STR(bQD, Operand, "#"+jstring(Hex(NecExtractBits(dwInst, 0, 4),4)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.BU
+    case 0x7:	SET_STR(bQD, Instruction, "SLD.HU"); SET_STR(bQD, Operand, "#"+jstring(Hex((NecExtractBits(dwInst, 0, 4) << 1),4)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.HU
       //return nec16bitLdSt;
     }
   }
@@ -1982,18 +1982,18 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         //!! Dodaj m_pAnalyze->m_wFlags status tudi za pogojne skoke..
         return 2; //return necCondBranch; // Bcond
       }
-    case 0x6:	SET_STR(bQD, Instruction, "SLD.B"); SET_STR(bQD, Operand, jstring(ToString(NecExtractBits(dwInst, 0, 7))) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.B
-    case 0x7:	SET_STR(bQD, Instruction, "SST.B"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + ToString(NecExtractBits(dwInst, 0, 7)) + "[R30]"); return 2; // SST.B
-    case 0x8:	SET_STR(bQD, Instruction, "SLD.H"); SET_STR(bQD, Operand, jstring(ToString(NecExtractBits(dwInst, 0, 7) << 1)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // // SLD.H
-    case 0x9:	SET_STR(bQD, Instruction, "SST.H"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + ToString(NecExtractBits(dwInst, 0, 7) << 1) + "[R30]"); return 2; // SST.H
+    case 0x6:	SET_STR(bQD, Instruction, "SLD.B"); SET_STR(bQD, Operand, jstring(Hex(NecExtractBits(dwInst, 0, 7), 4)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.B
+    case 0x7:	SET_STR(bQD, Instruction, "SST.B"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + Hex(NecExtractBits(dwInst, 0, 7), 4) + "[R30]"); return 2; // SST.B
+    case 0x8:	SET_STR(bQD, Instruction, "SLD.H"); SET_STR(bQD, Operand, jstring(Hex((NecExtractBits(dwInst, 0, 7) << 1), 4)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // // SLD.H
+    case 0x9:	SET_STR(bQD, Instruction, "SST.H"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + Hex((NecExtractBits(dwInst, 0, 7) << 1),4) + "[R30]"); return 2; // SST.H
     case 0xA:	
       if (NecBitIsSet(dwInst, 0))
       {
-        SET_STR(bQD, Instruction, "SST.W"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," +jstring(ToString(NecExtractBits(dwInst, 1, 7) << 2)) + "[R30]"); return 2; // SST.W
+        SET_STR(bQD, Instruction, "SST.W"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," +jstring(Hex((NecExtractBits(dwInst, 1, 7) << 2),4)) + "[R30]"); return 2; // SST.W
       }
       else															 
       {
-        SET_STR(bQD, Instruction, "SLD.W"); SET_STR(bQD, Operand, jstring(ToString(NecExtractBits(dwInst, 1, 7) << 2)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.W
+        SET_STR(bQD, Instruction, "SLD.W"); SET_STR(bQD, Operand, jstring(Hex((NecExtractBits(dwInst, 1, 7) << 2),4)) + "[R30]," + NecGetReg(NecExtractBits(dwInst, 11, 16))); return 2; // SLD.W
       }
     }
   }
