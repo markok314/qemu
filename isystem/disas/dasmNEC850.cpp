@@ -576,8 +576,8 @@ jstring CDisassemblerNEC850::NecGetImm9(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 5) + (NecExtractBits(dwInst, 18, 22) << 5);	
 	jstring strImm;
-	strImm = "#"+StrF(dwImm);
-	//strImm = "#"+Hex(dwImm, 2);
+	//strImm = "#"+StrF(dwImm);
+	strImm = "#"+Hex(dwImm, 4);
 	return strImm;
 }
 
@@ -585,8 +585,8 @@ jstring CDisassemblerNEC850::NecGetImm5_11(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 11, 16);	
 	jstring strImm;
-	strImm = "#"+StrF(dwImm);
-	//strImm = "#"+Hex(dwImm, 1);
+	//strImm = "#"+StrF(dwImm);
+	strImm = "#"+Hex(dwImm, 4);
 	return strImm;
 }
 
@@ -594,8 +594,8 @@ jstring CDisassemblerNEC850::NecGetImm4(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 4);	
 	jstring strImm;
-	strImm = "#"+StrF(dwImm);
-	//strImm = "#"+Hex(dwImm, 1);
+	//strImm = "#"+StrF(dwImm);
+	strImm = "#"+Hex(dwImm, 4);
 	return strImm;
 }
 
@@ -604,8 +604,8 @@ jstring CDisassemblerNEC850::NecGetImm5_18(const u32 dwInst)
 	DWORD dwImm = NecExtractBits(dwInst, 18, 22);
   dwImm = 32 - (dwImm << 1);	
 	jstring strImm;
-	strImm = "#"+StrF(dwImm);
-	//strImm = "#"+Hex(dwImm, 2);
+	//strImm = "#"+StrF(dwImm);
+	strImm = "#"+Hex(dwImm, 4);
 	return strImm;
 }
 
@@ -613,15 +613,16 @@ jstring CDisassemblerNEC850::NecGetImm5(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 5);	
 	jstring strImm;
-	strImm = "#"+StrF(dwImm);
-	//strImm = "#"+Hex(dwImm, 1);
+	//strImm = "#"+StrF(dwImm);
+	strImm = "#"+Hex(dwImm, 4);
 	return strImm;
 }
 
 jstring CDisassemblerNEC850::NecGetImm32(const u32 dwImm)
 {
 	jstring strImm;
-	strImm = "#"+StrF(dwImm);
+	//strImm = "#"+StrF(dwImm);
+	strImm = "#"+Hex(dwImm, 4);
 	return strImm;
 }
 
@@ -629,8 +630,8 @@ jstring CDisassemblerNEC850::NecGetImm6(const u32 dwInst)
 {
 	DWORD dwImm = NecExtractBits(dwInst, 0, 6);	
 	jstring strImm;
-	strImm = "#"+StrF(dwImm);
-	//strImm = "#"+Hex(dwImm, 1);
+	//strImm = "#"+StrF(dwImm);
+	strImm = "#"+Hex(dwImm, 4);
 	return strImm;
 }
 
@@ -660,7 +661,7 @@ jstring CDisassemblerNEC850::NecGetDisp5(const u32 dwInst)
 	SignExtend(lDisp, 5);
 	jstring Operand;
 	//Operand = StrF(lDisp);
-	Operand = Hex(lDisp, 6);
+	Operand = Hex(lDisp, 4);
 	return Operand;
 }
 
@@ -690,7 +691,7 @@ jstring CDisassemblerNEC850::NecGetImmN16(const u32 dwInst)
 	SignExtend(lDisp, 16);
 	jstring Operand;
 	//Operand = StrF(lDisp);
-	Operand = Hex(lDisp, 6);
+	Operand = Hex(lDisp, 4);
 	return Operand;
 }
 
@@ -703,12 +704,12 @@ jstring CDisassemblerNEC850::NecGetDisp16(const u32 dwInst)
 	jstring Operand;
 	//Operand = ToString(lDisp);  // decimal
   if (lDisp < 0)
-	///Operand = "-" + StrF(-lDisp, 2);
-    Operand = "-" + StrF(-lDisp);///
+	Operand = "-" + Hex(-lDisp, 4);
+    //Operand = "-" + StrF(-lDisp);///
   else
 	    ///Operand = StrF(lDisp, 2);
   //Operand = StrF(lDisp);
-  Operand = Hex(lDisp, 6);
+  Operand = Hex(lDisp, 4);
 	return Operand;
 }
 
@@ -730,7 +731,7 @@ jstring CDisassemblerNEC850::NecGetDisp23(const u32 dwInst, const u32 dwInst1)
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	//Operand = StrF(lDisp); ///, 3);
-	Operand = Hex(lDisp, 6);
+	Operand = Hex(lDisp, 4);
 	return Operand;
 }
 
@@ -741,7 +742,7 @@ jstring CDisassemblerNEC850::NecGetDisp23Z0(const u32 dwInst, const u32 dwInst1)
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	//Operand = StrF(lDisp); ///, 4);
-	Operand = Hex(lDisp, 6);
+	Operand = Hex(lDisp, 4);
 	return Operand;
 }
 
@@ -752,7 +753,7 @@ jstring CDisassemblerNEC850::GetBitManOperand(const u32 dwInst)
 	SignExtend(lDisp, 16);
 	jstring Operand;
 
-	Operand = strBit + jstring(",") + jstring(StrF(lDisp)) + jstring("[") + NecGetReg(NecExtractBits(dwInst, 0, 5)) + jstring("]");
+	Operand = strBit + jstring(",") + jstring(Hex(lDisp, 4)) + jstring("[") + NecGetReg(NecExtractBits(dwInst, 0, 5)) + jstring("]");
 	return Operand;
 }
 
