@@ -369,53 +369,13 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	TCGv r1 = tcg_temp_local_new();		//temp
 	TCGv r2 = tcg_temp_local_new();		//temp
 
-	printf("test 1 %d \n",env->progRegs[1]);
-	printf("test 7 %d \n",env->progRegs[7]);
+	gen_get_gpr(r1, rs1);		//loading rs1 to r1
+	gen_get_gpr(r2, rs2);		//loading rs2 to r2
 
-	gen_get_gpr(r1, env->progRegs[1]);		//loading rs1 to r1
-	gen_get_gpr(r2, env->progRegs[7]);		//loading rs2 to r2
-
-	//gen_get_gpr(r1,rs1);
-	//gen_get_gpr(r2,rs2);
 	switch(op){
 
 		case OPC_RH850_LDB:			// LD.B
-			printf("Register 1 %d \n" , rs1);
-			printf("Register 2 %d \n" , rs2);
-			//env->progRegs[7] = 100;
-
-			tcg_gen_xor_tl(r2, r1, r2);
-
-			//POTREBNO SHRANITI REZULTAT NAZAJ V PRAVI REGISTER V ENV
-
-
-
-			//tcg_gen_qemu_st16(r2,(env->progRegs[7]), ctx->mem_idx);
-
-			//env->progRegs[7] = (target_ulong) *r2;
-
-			//tcg_gen_qemu_st16(r2, r1, ctx->mem_idx);
-			//gen_set_gpr(env->progRegs[rs1],r1);
-			//gen_set_gpr(env->progRegs[rs2],r2);
-
-			//printf("Cpu_gpr %d \n" , cpu_gpr[rs1]);
-			//printf("Cpu_gpr %d \n" , cpu_gpr[rs1]);
-			//cpu_gpr je TCG
-
-			//gen_set_gpr(env->progRegs[1],r1);
-			//gen_set_gpr(env->progRegs[2],r2);
-
-			printf("Register 1 %d \n" , rs1);
-			printf("Register 2 %d \n" , rs2);
-
-			tcg_temp_free(r1);
-			tcg_temp_free(r2);
-
-
-
-
-
-	        //gen_load(ctx, MO_SB, rd, rs1, imm);
+	        gen_load(ctx, MO_SB, rd, rs1, imm);
 	    	break;
 
 	    case OPC_RH850_LDH_LDW:		//
