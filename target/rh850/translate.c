@@ -193,9 +193,6 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,    //make 
     tcg_temp_free(dat);
 }
 
-
-
-
 static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
@@ -242,40 +239,51 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	int imm = rs1;
 	TCGv tcg_imm = tcg_temp_new();
 
-	switch(operation){
+	switch(operation) {
+		case 0:
+			tcg_gen_mov_tl(r2, r1); // MOV (Format 1)
+			break;
 		case 1:
 			tcg_gen_add_tl(r2, r2, r1); //ADD FORMAT 1
-		break;
+			break;
 		case 2:
 			tcg_gen_sub_tl(r2, r2, r1);	//SUB
-		break;
+			break;
 		case 3:
 			tcg_gen_sub_tl(r2, r1, r2);	//SUBR
-		break;
+			break;
 		case 4:
 			tcg_gen_or_tl(r2, r2, r1); //OR
-		break;
+			break;
 		case 5:
 			tcg_gen_xor_tl(r2, r2, r1);	//XOR
-		break;
+			break;
 		case 6:
-			tcg_gen_addi_tl(r2,r2, imm); //ADD FORMAT 2 IMM
-		break;
+			tcg_gen_addi_tl(r2, r2, imm); //ADD FORMAT 2 IMM
+			break;
 		case 7:
-			tcg_gen_and_tl(r2,r2, r1); //AND
-		break;
+			tcg_gen_and_tl(r2, r2, r1); //AND
+			break;
 		case 8:
-			tcg_gen_mul_tl(r2,r2, r1); //MULH
-		break;
+			tcg_gen_mul_tl(r2, r2, r1); //MULH
+			break;
 		case 9:
 			tcg_gen_addi_tl(tcg_imm,tcg_imm, imm); //ADD FORMAT 2 IMM
 			tcg_gen_mul_tl(r2,r2,tcg_imm); //MULH FORMAT 2 IMM
-		break;
+			break;
 		case 10:
 			tcg_gen_ext16s_tl(r1, r1); //SXH
-		break;
-
+			break;
+		case 16:
+			tcg_gen_movi_tl(r2, imm); // MOV imm. Format 2
+			break;
 	}
+
+	// MOV 0x5, r1
+	// MOV 0x6, r2
+
+	gen_set_gpr(rs2, r2);
+
 	tcg_temp_free(r1);
 	tcg_temp_free(r2);
 }
@@ -559,17 +567,19 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
 	int rs2;
+	int imm;
 	uint32_t op;
 	uint32_t subOpCheck;
 
 	op = MASK_OP_MAJOR(ctx->opcode);
 	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
 	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
+	imm = rs1;
 
 	switch(op){
 	case OPC_RH850_16bit_0:
-		if (rs2 != 0){
-			//MOV
+		if (rs2 != 0) {
+			decode_arithmetic(ctx, 0, rs1, rs2, 0);	// MOV Format 1
 			break;
 		} else {
 			subOpCheck = MASK_OP_FORMAT_I_0(op);
@@ -688,7 +698,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			//CALLT
 			break;
 		} else {
-			//MOV
+			decode_arithmetic(ctx, 0, imm, rs2, 16);	//MOV immediate
 			break;
 		}
 		break;
@@ -744,23 +754,10 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 
 static void decode_opc(CPURH850State *env, DisasContext *ctx)
 {
-    /* check for compressed insn */
-	/*
-    if (extract32(ctx->opcode, 0, 2) != 3) {
-        if (!rh850_has_ext(env, RVC)) {
-            gen_exception_illegal(ctx);
-        } else {
-            ctx->next_pc = ctx->pc + 2;
-            decode_RV32_64C(env, ctx);
-        }
-    } else {
-        ctx->next_pc = ctx->pc + 4;
-        decode_RV32_64G(env, ctx);
-    }
-	 */
-
     /* checking for 48-bit instructions */
-    if ( (extract32(ctx->opcode, 6, 11) == 0x41e) || (extract32(ctx->opcode, 5, 11) == 0x31) || (extract32(ctx->opcode, 5, 11) == 0x37) ){			//bits are 10000011110
+    if ( (extract32(ctx->opcode, 6, 11) == 0x41e) ||
+    		(extract32(ctx->opcode, 5, 11) == 0x31) ||
+			(extract32(ctx->opcode, 5, 11) == 0x37) ) { //bits are 10000011110
     	ctx->next_pc = ctx->pc + 6;
     	decode_RH850_48(env, ctx);
     } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
@@ -787,7 +784,8 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
-    ctx.singlestep_enabled = cs->singlestep_enabled;
+    ///ctx.singlestep_enabled = cs->singlestep_enabled;
+    ctx.singlestep_enabled = 1;///
 
     ctx.tb = tb;
     ctx.bstate = BS_NONE;
