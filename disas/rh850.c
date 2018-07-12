@@ -2983,6 +2983,7 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 	if ( ((inst >> 6) & 0x7ff) == 0x41e  || ((inst >> 5) & 0x7FF) == 0x31 || ((inst >> 5) & 0x7FF) == 0x37  ){
 		len = 6;
 		//this is a 48-bit instruction
+		//add JRL and JR, both have opcode 0x17
 	} else if ( ((inst >> 9) & (0x3)) == 0x3 ){
 		len = 4;
 		//this is a 32-bit instruction

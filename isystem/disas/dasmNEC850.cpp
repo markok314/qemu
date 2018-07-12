@@ -650,7 +650,7 @@ jstring CDisassemblerNEC850::NecGetDisp22(const u32 dwInst)
 	SignExtend(lDisp, 22);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
-	Operand = NecAdrToSymbol(dwAddr);
+	Operand = Hex(dwAddr, 4);
 	return Operand;
 	}
 
@@ -671,7 +671,7 @@ jstring CDisassemblerNEC850::NecGetDisp9(const u32 dwInst)
 	SignExtend(lDisp, 9);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
-	Operand = NecAdrToSymbol(dwAddr);
+	Operand = Hex(dwAddr, 4);
 	return Operand;
 }
 
@@ -748,7 +748,7 @@ jstring CDisassemblerNEC850::NecGetDisp23Z0(const u32 dwInst, const u32 dwInst1)
 
 jstring CDisassemblerNEC850::GetBitManOperand(const u32 dwInst)
 {
-	jstring strBit = "#" + StrF(NecExtractBits(dwInst, 11, 14));
+	jstring strBit = "#" + Hex(NecExtractBits(dwInst, 11, 14), 4);
 	LONG lDisp = (LONG) NecExtractBits(dwInst, 16, 32);
 	SignExtend(lDisp, 16);
 	jstring Operand;
@@ -1005,7 +1005,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           SET_STR(bQD, Instruction, "SASF"); SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 0, 4)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16))); 
           if (0x5 != NecExtractBits(dwInst, 0, 4))
-            FlagConditional();
+            //FlagConditional();
           return 4; // SASF
         }
       case 0x0000: 
@@ -1013,7 +1013,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
           SET_STR(bQD, Instruction, "SETF"); 
           SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 0, 4)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16))); 
           if (0x5 != NecExtractBits(dwInst, 0, 4))
-            FlagConditional();
+            //FlagConditional();
           return 4; // SETF
         }
       }
@@ -1243,15 +1243,16 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
             }
           }
         }
-        if (!bFound)
-        	break;
-        dwForm2 = NecExtractBits(dwInst, 21, 27);
-        if ((dwForm2 == 0x19) & (!NecBitIsSet(dwInst, 16)))
-        {
-          SET_STR(bQD, Instruction, "CMOV"); SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 17, 21)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 32)));           
-          FlagConditional();
-          return 4;
-        }				
+        if (!bFound){
+        	//break;
+			dwForm2 = NecExtractBits(dwInst, 21, 27);
+			if ((dwForm2 == 0x19) & (!NecBitIsSet(dwInst, 16)))
+			{
+			  SET_STR(bQD, Instruction, "CMOV"); SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 17, 21)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 32)));
+			  //FlagConditional();
+			  return 4;
+			}
+        }
         //return necExtended3;
       }
     }
@@ -1288,7 +1289,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         if (((NecExtractBits(dwInst, 21, 27) == 0x18) && (!NecBitIsSet(dwInst, 16))))
         {
           SET_STR(bQD, Instruction, "CMOV"); SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 1, 5)) + "," + NecGetImm5(dwInst) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," +	NecGetReg(NecExtractBits(dwInst, 27, 32))); 
-          FlagConditional();
+          //FlagConditional();
           return 4; // CMOV
         }
       }
@@ -1317,7 +1318,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         SET_STR(bQD, Instruction, "ADF"); 
         SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 17, 21)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 32))); 
         if (0x5 != NecExtractBits(dwInst, 17, 21))
-          FlagConditional();
+          //FlagConditional();
         return 4;
       }
     case 0x0E3F:
@@ -1325,7 +1326,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         SET_STR(bQD, Instruction, "SBF"); 
         SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 17, 21)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 32))); 
         if (0x5 != NecExtractBits(dwInst, 17, 21))
-          FlagConditional();
+          //FlagConditional();
         return 4;
       }
     }
