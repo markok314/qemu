@@ -646,7 +646,7 @@ jstring CDisassemblerNEC850::NecGetDisp32(const u32 dwInst, const u32 dwInst1)
 
 jstring CDisassemblerNEC850::NecGetDisp22(const u32 dwInst)
 	{
-	LONG lDisp = NecExtractBits(dwInst, 16, 32) | (NecExtractBits(dwInst, 0, 6) << 16);
+	LONG lDisp = ( NecExtractBits(dwInst, 16, 32) << 6 )| NecExtractBits(dwInst, 0, 6) ;
 	SignExtend(lDisp, 22);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
