@@ -237,7 +237,9 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	gen_get_gpr(r1, rs1);			//loading rs1 to t0
 	gen_get_gpr(r2, rs2);			//loading rs2 to t1
 	int imm = rs1;
+	int imm_16;
 	TCGv tcg_imm = tcg_temp_new();
+
 
 	switch(operation) {
 		case 0:
@@ -274,8 +276,18 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 10:
 			tcg_gen_ext16s_tl(r1, r1); //SXH
 			break;
+		case 11:
+			tcg_gen_not_i32(r2, r1);	//NOT
+			break;
+		case 12:
+			//r1 = ( r1 & (0xFF) );	//divide with only half word of r1
+			tcg_gen_div_i32(r2, r2, r1);	//DIVH
 		case 16:
 			tcg_gen_movi_tl(r2, imm); // MOV imm. Format 2
+			break;
+		case 17:
+			imm_16 = extract32(ctx->opcode, 16, 12);
+			tcg_gen_andi_i32(r2, r1, imm_16);
 			break;
 	}
 
@@ -402,7 +414,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	decode_arithmetic(ctx, 0, rs1,rs2, 6);
 	    	break;
 	    case OPC_RH850_ANDI:
-
+	    	decode_arithmetic(ctx, 0, rs1, rs2, 17);
 	    	break;
 	    case OPC_RH850_MOVEA:
 
@@ -618,6 +630,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 				break;
 			} else {
 				//DIVH
+				decode_arithmetic(ctx, 0, rs1, rs2, 12);
 				break;
 			}
 		}
@@ -662,6 +675,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_NOT:
+		decode_arithmetic(ctx, 0, rs1, rs2, 11);
 		break;
 	case OPC_RH850_16bit_3:
 		if (rs2 == 0){
