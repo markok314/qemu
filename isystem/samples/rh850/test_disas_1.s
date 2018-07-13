@@ -109,6 +109,7 @@ __iar_program_start:
 	DIVQU r22, r23, r2
 	BGE 0x2
 	BGT 0x2
+        BC 0x2
 	JARL 0x4, r18
 	JARL 0x4, r24
 	JARL [r21], r21
