@@ -107,8 +107,26 @@ __iar_program_start:
 	DIVU r15, r16, r17
 	DIVQ r18, r19, r21
 	DIVQU r22, r23, r2
-	BGE 0x2
-	BGT 0x2
+	BC 0x2
+        BE 0x2
+        BGE 0x2
+        BGT 0x2
+        BH 0x2
+        BL 0x2
+        BLE 0x2
+        BLT 0x2
+        BN 0x2
+        BNC 0x2
+        BNE 0x2
+        BNH 0x2
+        BNL 0x2
+        BNV 0x2
+        BNZ 0x2
+        BP 0x2
+        BR 0x2
+        BSA 0x2
+        BV 0x2
+        BZ 0x2
 	JARL 0x4, r18
 	JARL 0x4, r24
 	JARL [r21], r21
