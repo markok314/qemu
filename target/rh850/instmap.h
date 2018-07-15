@@ -78,7 +78,7 @@ enum {
 	/* FORMAT VI */
 	OPC_RH850_ADDI	=	(0x30 << 5),
 	OPC_RH850_ANDI	=	(0x36 << 5),
-	OPC_RH850_MOVEA	=	(0x31 << 5),
+	OPC_RH850_MOVEA	=	(0x31 << 5),     	// this is also MOV 3, which is 48 bit
 	OPC_RH850_MOVHI	=	(0x32 << 5),
 
 	/* FORMAT VII */
@@ -492,6 +492,7 @@ enum {
 #define GET_RM(inst)   extract32(inst, 12, 3)
 #define GET_RD(inst)   extract32(inst, 7, 5)
 #define GET_IMM(inst)  sextract64(inst, 20, 12)
+#define GET_IMM_32(inst)	extract32(inst, 16, 32)
 
 /* RVC decoding macros */
 #define GET_C_IMM(inst)             (extract32(inst, 2, 5) \
