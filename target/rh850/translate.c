@@ -248,6 +248,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 
 	TCGv tcg_r3 = tcg_temp_new();
 	TCGv tcg_cond = tcg_temp_new();
+	TCGv tcg_temp = tcg_temp_new();
 
 	switch(operation) {
 		case 0:
@@ -317,18 +318,73 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 16:
 			tcg_gen_movi_tl(r2, imm); // MOV imm. Format 2
 			break;
-		case 17:
+		case 17://ANDI
 			imm_16 = extract32(ctx->opcode, 16, 12);
 			tcg_gen_andi_i32(r2, r1, imm_16);
 			break;
-		case 18:
+		case 18://MOV?
 			imm_32 = extract32(ctx->opcode, 16, 32);
 			tcg_gen_movi_i32(r1, imm_32);
 			break;
-	}
+		case 19: //MUL FORMAT XI
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_mul_tl(r2, r2, r1);
 
-	// MOV 0x5, r1
-	// MOV 0x6, r2
+			// R3(higher 32 bits) IN R2(lower 32 bits)
+			tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
+			tcg_gen_sar_tl(tcg_r3, r2,tcg_temp);
+			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
+			gen_set_gpr(int_rs3,tcg_r3);
+			break;
+		case 20: //MUL FORMAT XII
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			imm_32 = extract32(ctx->opcode, 19, 4);
+			gen_get_gpr(tcg_imm32,imm_32);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_mul_tl(r2, r2, tcg_imm32);
+
+			// R3(higher 32 bits) IN R2(lower 32 bits)
+			tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
+			tcg_gen_sar_tl(tcg_r3, r2,tcg_temp);
+			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
+			gen_set_gpr(int_rs3,tcg_r3);
+			break;
+		case 21: //MULHI
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			gen_get_gpr(tcg_imm32,imm_32);
+			tcg_gen_andi_tl(tcg_temp, r1,0xFFFF); //GET LOWER 15 BITS OF R1
+			tcg_gen_mul_tl(r2, tcg_temp, tcg_imm32);
+			break;
+		case 22://MULU FORMAT XI
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_mul_tl(r2, r2, r1);
+
+			// R3(higher 32 bits) IN R2(lower 32 bits)
+			tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
+			tcg_gen_shr_tl(tcg_r3, r2,tcg_temp);
+			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
+			gen_set_gpr(int_rs3,tcg_r3);
+			break;
+		case 23://MULU FORMAT XII
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			imm_32 = extract32(ctx->opcode, 19, 4);
+			gen_get_gpr(tcg_imm32,imm_32);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_ext32u_tl(tcg_imm32, tcg_imm32); //ZERO EXTENDED IMM
+			tcg_gen_mul_tl(r2, r2, tcg_imm32);
+
+			// R3(higher 32 bits) IN R2(lower 32 bits)
+			tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
+			tcg_gen_sar_tl(tcg_r3, r2,tcg_temp);
+			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
+			gen_set_gpr(int_rs3,tcg_r3);
+			break;
+	}
 
 	gen_set_gpr(rs2, r2);
 
