@@ -384,13 +384,76 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
 			break;
+
+		case 24: //SATADD FORMAT I
+			tcg_gen_add_tl(r2, r1, r2);
+			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+
+			break;
+		case 25: //SATADD FORMAT II
+			gen_get_gpr(tcg_imm32,imm);
+			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_addi_tl(r2, r1, imm);
+			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+
+			break;
+		case 26: //SATADD FORMAT XI
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_add_tl(tcg_r3, r1, r2);
+			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+
+			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+		case 27: //SATSUB FORMAT I
+			tcg_gen_sub_tl(r2, r2, r1);
+			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+
+			break;
+		case 28://SATSUB FORMAT XI
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_sub_tl(tcg_r3, r2, r1);
+			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+
+			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+		case 29: //SATSUBI
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			gen_get_gpr(tcg_imm32,imm_32);
+			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_sub_tl(r2, r2, tcg_imm32);
+			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+
+			break;
+		case 30: //SATSUBR
+			tcg_gen_sub_tl(r2, r1, r2);
+			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+
+			break;
 	}
 
 	gen_set_gpr(rs2, r2);
 
 	tcg_temp_free(r1);
 	tcg_temp_free(r2);
+	tcg_temp_free(tcg_r3);
+	tcg_temp_free(tcg_cond);
+	tcg_temp_free(tcg_temp);
 }
+/*POSSIBLE TCG_COND
+
+TCG_COND_EQ
+TCG_COND_NE
+TCG_COND_LT // signed
+TCG_COND_GE // signed
+TCG_COND_LE // signed
+TCG_COND_GT // signed
+TCG_COND_LTU // unsigned
+TCG_COND_GEU // unsigned
+TCG_COND_LEU // unsigned
+TCG_COND_GTU // unsigned
+*/
 
 static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
