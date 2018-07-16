@@ -564,9 +564,6 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 			tcg_gen_bswap32_tl(tcg_r3, tcg_r2);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
-		case 19:
-
-			break;
 	}
 
 	tcg_temp_free(tcg_r1);
@@ -812,12 +809,15 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						switch(formXop){
 						case OPC_RH850_BSW:
 							//BSW
+							decode_data_manipulation(ctx,0, rs1, rs2, 18);
 							break;
 						case OPC_RH850_HSW:
 							//HSW
+							decode_data_manipulation(ctx,0, rs1, rs2, 16);
 							break;
 						case OPC_RH850_HSH:
 							//HSH
+							decode_data_manipulation(ctx,0, rs1, rs2, 17);
 							break;
 						}
 					} else if (extract32(ctx->opcode, 22, 1) == 0) { //here we have two CMOV ins
@@ -951,7 +951,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_7:
 		if (rs2 == 0){
 			//SXH
-			decode_arithmetic(ctx, 0, rs1,rs2, 10);
+			decode_data_manipulation(ctx,0, rs1, rs2, 3);
 			break;
 		} else {
 			//MULH
@@ -1021,10 +1021,13 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_CMP:
 		break;
 	case OPC_RH850_16bit_SHR:
+		decode_data_manipulation(ctx,0, rs1, rs2, 6);
 		break;
 	case OPC_RH850_16bit_SAR:
+		decode_data_manipulation(ctx,0, rs1, rs2, 12);
 		break;
 	case OPC_RH850_16bit_SHL:
+		decode_data_manipulation(ctx,0, rs1, rs2, 9);
 		break;
 	case OPC_RH850_16bit_MULH:
 		decode_arithmetic(ctx, 0, rs1,rs2, 9);
