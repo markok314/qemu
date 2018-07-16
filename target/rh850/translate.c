@@ -239,8 +239,15 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	int imm = rs1;
 	int imm_16;
 	int imm_32;
-	TCGv tcg_imm = tcg_temp_new();
 
+	int int_rs3;
+	int int_cond;
+
+	TCGv tcg_imm = tcg_temp_new();
+	TCGv tcg_imm32 = tcg_temp_new();
+
+	TCGv tcg_r3 = tcg_temp_new();
+	TCGv tcg_cond = tcg_temp_new();
 
 	switch(operation) {
 		case 0:
@@ -283,6 +290,30 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 12:
 			//r1 = ( r1 & (0xFF) );	//divide with only half word of r1
 			tcg_gen_div_i32(r2, r2, r1);	//DIVH
+			break;
+		case 13: //ADDI
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			gen_get_gpr(tcg_imm32,imm_32);
+			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_addi_tl(r2,r1, imm_32);
+			break;
+		case 14: //ADF
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			int_cond = extract32(ctx->opcode, 17, 4);
+			gen_get_gpr(tcg_r3,int_rs3);
+			gen_get_gpr(tcg_cond,int_cond);
+			//if condition then
+			tcg_gen_addi_tl(r2, r2, 1);
+			tcg_gen_add_tl(tcg_r3, r2, r1);
+			//else
+			tcg_gen_add_tl(tcg_r3, r2, r1);
+			break;
+		case 15://ANDI
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			gen_get_gpr(tcg_imm32,imm_32);
+			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_and_tl(r2, r1, tcg_imm32);
+			break;
 		case 16:
 			tcg_gen_movi_tl(r2, imm); // MOV imm. Format 2
 			break;
