@@ -455,7 +455,7 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 	TCGv tcg_r2 = tcg_temp_new();
 	TCGv tcg_r3 = tcg_temp_new();
 	TCGv tcg_imm = tcg_temp_new();
-
+	TCGv tcg_temp = tcg_temp_new();
 
 	int int_imm = rs1; //imm is usually in r1(5-0)
 	int int_rs3;
@@ -546,13 +546,34 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 			tcg_gen_rotl_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
+		case 16: //HSW
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			tcg_gen_andi_tl(tcg_temp, tcg_r2, 0xffff);
+			tcg_gen_shli_tl(tcg_temp, tcg_temp, 0xe);
+			tcg_gen_andi_tl(tcg_r2, tcg_r2, 0xffff0000);
+			tcg_gen_or_tl(tcg_r3, tcg_r2, tcg_temp);
+			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+		case 17: //HSH
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_set_gpr(int_rs3, tcg_r1);
+			break;
+		case 18: //BSW
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_bswap32_tl(tcg_r3, tcg_r2);
+			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+		case 19:
 
+			break;
 	}
 
 	tcg_temp_free(tcg_r1);
 	tcg_temp_free(tcg_r2);
 	tcg_temp_free(tcg_r3);
 	tcg_temp_free(tcg_imm);
+	tcg_temp_free(tcg_temp);
 
 }
 
