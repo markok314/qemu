@@ -655,7 +655,9 @@ static void decode_branch_operations(DisasContext *ctx, int memop, int rs1, int 
 	gen_get_gpr(tcg_r2, rs2);
 
 	//TESTING
+
 	printf("test");
+	//gen_goto_tb(ctx,2, 0x2);
 	tcg_gen_movi_tl(cpu_pc, 0x0);
 }
 
