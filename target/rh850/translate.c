@@ -646,6 +646,18 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 	tcg_temp_free(tcg_temp);
 
 }
+static void decode_branch_operations(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+{
+	TCGv tcg_r1 = tcg_temp_new();
+	TCGv tcg_r2 = tcg_temp_new();
+
+	gen_get_gpr(tcg_r1, rs1);
+	gen_get_gpr(tcg_r2, rs2);
+
+	//TESTING
+	printf("test");
+	tcg_gen_movi_tl(cpu_pc, 0x0);
+}
 
 static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
@@ -991,6 +1003,9 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 				break;
 			}
 		}
+		break;
+	case OPC_RH850_BCOND:
+		decode_branch_operations(ctx, 0, rs1, rs2, 1);
 		break;
 
 	case OPC_RH850_16bit_4:

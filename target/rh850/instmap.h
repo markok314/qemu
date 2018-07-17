@@ -16,6 +16,35 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+enum{
+	/*SIGNED INT*/
+	COND_RH850_BGE = 1110,
+	COND_RH850_BGT = 1111,
+	COND_RH850_BLE = 0111,
+	COND_RH850_BLT = 0110,
+	/*UNSIGNED INT*/
+	COND_RH850_BH = 1011,
+	COND_RH850_BL = 0001,
+	COND_RH850_BNH = 0011,
+	COND_RH850_BNL = 1001,
+	/*COMMON*/
+	COND_RH850_BE = 0010,
+	COND_RH850_BNE = 1010,
+	/*OTHERS*/
+	COND_RH850_BC = 0001,
+	COND_RH850_BF = 1010,
+	COND_RH850_BN = 0100,
+	COND_RH850_BNC = 1001,
+	COND_RH850_BNV = 1000,
+	COND_RH850_BNZ = 1010,
+	COND_RH850_BP = 1100,
+	COND_RH850_BR = 0101,
+	COND_RH850_BSA = 1101,
+	COND_RH850_BT = 0010,
+	COND_RH850_BV = 0000,
+	COND_RH850_BZ = 0010,
+};
+
 #define MASK_OP_MAJOR(op)  (op & (0x3F << 5))	//most instructions for rh850 have opcodes at bits 5-10
 enum {
 
@@ -67,6 +96,9 @@ enum {
 	OPC_RH850_SATADD2 = (0x11 << 5),	//bits 11-15 are not all 0
 	OPC_RH850_SHL = (0x16 << 5),
 	OPC_RH850_SHR = (0x14 << 5),
+
+	/*FORMAT III */
+	OPC_RH850_BCOND = (0xB << 7), //unique
 
 	/* FORMAT IV */
 	OPC_RH850_16bit_SLDB = (0x6 << 5),
