@@ -456,12 +456,14 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 	TCGv tcg_r3 = tcg_temp_new();
 	TCGv tcg_imm = tcg_temp_new();
 	TCGv tcg_temp = tcg_temp_new();
+	TCGv tcg_temp2 = tcg_temp_new();
 
 	int int_imm = rs1; //imm is usually in r1(5-0)
 	int int_rs3;
+	//int int_cond;
 
-	gen_get_gpr(tcg_r1, rs1); //loading rs1 to t0
-	gen_get_gpr(tcg_r2, rs2); //loading rs2 to t1
+	gen_get_gpr(tcg_r1, rs1);
+	gen_get_gpr(tcg_r2, rs2);
 
 	switch(operation) {
 		case 1: //ZXH
@@ -563,6 +565,77 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_bswap32_tl(tcg_r3, tcg_r2);
 			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+		case 19: //BSH
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			tcg_gen_mov_tl(tcg_temp2, tcg_r2);
+
+			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0xff000000);
+			tcg_gen_shri_tl(tcg_temp, tcg_temp, 0x8);
+			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0x00ff0000);
+
+			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0x00ff0000);
+			tcg_gen_shli_tl(tcg_temp, tcg_temp, 0x8);
+			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0xff000000);
+
+			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0x0000ff00);
+			tcg_gen_shri_tl(tcg_temp, tcg_temp, 0x8);
+			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0x000000ff);
+
+			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0x000000ff);
+			tcg_gen_shli_tl(tcg_temp, tcg_temp, 0x8);
+			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0x0000ff00);
+
+			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+		case 20: //SETF
+			//int_cond = extract32(ctx->opcode,0,4);
+			//TODO if cond is true then
+			tcg_gen_movi_tl(tcg_r2, 0x1);
+			//else
+			tcg_gen_movi_tl(tcg_r2, 0x0);
+
+			gen_set_gpr(rs2, tcg_r2);
+			break;
+		case 21://SASF
+			//int_cond = extract32(ctx->opcode,0,4);
+			//TODO if cond is true then
+			tcg_gen_shli_tl(tcg_r2, tcg_r2, 0x1);
+			tcg_gen_ori_tl(tcg_r2, tcg_r2, 0x00000001);
+			//else
+			tcg_gen_shli_tl(tcg_r2, tcg_r2, 0x1);
+			tcg_gen_ori_tl(tcg_r2, tcg_r2, 0x00000000);
+
+			gen_set_gpr(rs2, tcg_r2);
+			break;
+		case 22://CMOV XI
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			//int_cond = extract32(ctx->opcode, 17, 4);
+			//TODO if cond is true then
+			tcg_gen_mov_tl(tcg_r3, tcg_r1);
+			//else
+			tcg_gen_mov_tl(tcg_r3, tcg_r2);
+
+			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+		case 23://CMOV XII
+			int_rs3 = extract32(ctx->opcode, 26, 5);
+			gen_get_gpr(tcg_r3,int_rs3);
+			//int_cond = extract32(ctx->opcode, 17, 4);
+			//TODO if cond is true then
+			tcg_gen_movi_tl(tcg_temp, int_imm);
+			tcg_gen_ext32s_tl(tcg_temp, tcg_temp);
+			tcg_gen_mov_tl(tcg_r3, tcg_temp);
+			//else
+			tcg_gen_mov_tl(tcg_r3, tcg_r2);
+
+			gen_set_gpr(int_rs3, tcg_r3);
+
+			break;
+		case 24://BINS
+			//TODO
 			break;
 	}
 
