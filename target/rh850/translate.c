@@ -249,50 +249,68 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	switch(operation) {
 		case 0:
 			tcg_gen_mov_tl(r2, r1); // MOV (Format 1)
+			gen_set_gpr(rs2, r2);
 			break;
 		case 1:
 			tcg_gen_add_tl(r2, r2, r1); //ADD FORMAT 1
+			gen_set_gpr(rs2, r2);
 			break;
 		case 2:
 			tcg_gen_sub_tl(r2, r2, r1);	//SUB
+			gen_set_gpr(rs2, r2);
 			break;
 		case 3:
 			tcg_gen_sub_tl(r2, r1, r2);	//SUBR
+			gen_set_gpr(rs2, r2);
 			break;
 		case 4:
 			tcg_gen_or_tl(r2, r2, r1); //OR
+			gen_set_gpr(rs2, r2);
 			break;
 		case 5:
 			tcg_gen_xor_tl(r2, r2, r1);	//XOR
+			gen_set_gpr(rs2, r2);
 			break;
 		case 6:
 			tcg_gen_addi_tl(r2, r2, imm); //ADD FORMAT 2 IMM
+			gen_set_gpr(rs2, r2);
 			break;
 		case 7:
 			tcg_gen_and_tl(r2, r2, r1); //AND
+			gen_set_gpr(rs2, r2);
 			break;
-		case 8:
-			tcg_gen_mul_tl(r2, r2, r1); //MULH
+		case 8://MULH
+			tcg_gen_andi_tl(r2, r2,0x0000FFFF);
+			tcg_gen_andi_tl(r1, r1,0x0000FFFF);
+			tcg_gen_mul_tl(r2, r2, r1);
+			gen_set_gpr(rs2, r2);
 			break;
-		case 9:
-			tcg_gen_addi_tl(tcg_imm,tcg_imm, imm); //ADD FORMAT 2 IMM
-			tcg_gen_mul_tl(r2,r2,tcg_imm); //MULH FORMAT 2 IMM
+		case 9://MULH FORMAT 2 IMM
+			tcg_gen_movi_tl(tcg_imm, imm);
+			tcg_gen_andi_tl(tcg_imm, tcg_imm,0x0000FFFF);
+			tcg_gen_andi_tl(r1, r1,0x0000FFFF);
+			tcg_gen_mul_tl(r2, tcg_imm, r1);
+			gen_set_gpr(rs2, r2);
 			break;
-		case 10:
-			tcg_gen_ext16s_tl(r1, r1); //SXH
+		case 10://SXH
+			tcg_gen_ext16s_tl(r1, r1);
+			gen_set_gpr(rs1, r1);
 			break;
-		case 11:
-			tcg_gen_not_i32(r2, r1);	//NOT
+		case 11://NOT
+			tcg_gen_not_i32(r2, r1);
+			gen_set_gpr(rs2, r2);
 			break;
-		case 12:
-			//r1 = ( r1 & (0xFF) );	//divide with only half word of r1
-			tcg_gen_div_i32(r2, r2, r1);	//DIVH
+		case 12://DIVH
+			tcg_gen_andi_i32(r1, r1,0x0000ffff);
+			tcg_gen_div_i32(r2, r2, r1);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 13: //ADDI
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
 			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
 			tcg_gen_addi_tl(r2,r1, imm_32);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 14: //ADF
 			int_rs3 = extract32(ctx->opcode, 26, 5);
@@ -303,23 +321,28 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_add_tl(tcg_r3, r2, r1);
 			//else
 			tcg_gen_add_tl(tcg_r3, r2, r1);
+			gen_set_gpr(int_rs3, tcg_r3);
 			break;
 		case 15://ANDI
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
 			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
 			tcg_gen_and_tl(r2, r1, tcg_imm32);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 16:
 			tcg_gen_movi_tl(r2, imm); // MOV imm. Format 2
+			gen_set_gpr(rs2, r2);
 			break;
 		case 17://ANDI
 			imm_16 = extract32(ctx->opcode, 16, 12);
 			tcg_gen_andi_i32(r2, r1, imm_16);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 18://MOV?
 			imm_32 = extract64(ctx->opcode, 16, 32);
-			tcg_gen_movi_i32(r1, imm_32);
+			tcg_gen_movi_i32(r2, imm_32);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 19: //MUL FORMAT XI
 			int_rs3 = extract32(ctx->opcode, 26, 5);
@@ -331,6 +354,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_sar_tl(tcg_r3, r2,tcg_temp);
 			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 20: //MUL FORMAT XII
 			int_rs3 = extract32(ctx->opcode, 26, 5);
@@ -352,6 +376,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
 			tcg_gen_andi_tl(tcg_temp, r1,0xFFFF); //GET LOWER 15 BITS OF R1
 			tcg_gen_mul_tl(r2, tcg_temp, tcg_imm32);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 22://MULU FORMAT XI
 			int_rs3 = extract32(ctx->opcode, 26, 5);
@@ -363,6 +388,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_shr_tl(tcg_r3, r2,tcg_temp);
 			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 23://MULU FORMAT XII
 			int_rs3 = extract32(ctx->opcode, 26, 5);
@@ -378,19 +404,20 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_sar_tl(tcg_r3, r2,tcg_temp);
 			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
+			gen_set_gpr(rs2, r2);
 			break;
 
 		case 24: //SATADD FORMAT I
 			tcg_gen_add_tl(r2, r1, r2);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-
+			gen_set_gpr(rs2, r2);
 			break;
 		case 25: //SATADD FORMAT II
 			tcg_gen_movi_tl(tcg_imm32, imm);
 			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
 			tcg_gen_addi_tl(r2, r1, imm);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-
+			gen_set_gpr(rs2, r2);
 			break;
 		case 26: //SATADD FORMAT XI
 			int_rs3 = extract32(ctx->opcode, 26, 5);
@@ -403,7 +430,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 27: //SATSUB FORMAT I
 			tcg_gen_sub_tl(r2, r2, r1);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-
+			gen_set_gpr(rs2, r2);
 			break;
 		case 28://SATSUB FORMAT XI
 			int_rs3 = extract32(ctx->opcode, 26, 5);
@@ -419,16 +446,16 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
 			tcg_gen_sub_tl(r2, r2, tcg_imm32);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-
+			gen_set_gpr(rs2, r2);
 			break;
 		case 30: //SATSUBR
 			tcg_gen_sub_tl(r2, r1, r2);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-
+			gen_set_gpr(rs2, r2);
 			break;
 	}
 
-	gen_set_gpr(rs2, r2);
+
 
 	tcg_temp_free(r1);
 	tcg_temp_free(r2);
@@ -893,7 +920,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 										//SHL format XI
 										decode_data_manipulation(ctx,0, rs1, rs2, 10);
 									}
-
 								}
 							}
 							break;
