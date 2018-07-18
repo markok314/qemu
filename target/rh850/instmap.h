@@ -198,13 +198,17 @@ enum {
 	OPC_RH850_ADF_MAC_MACU	= (0x7 << 23),
 };
 
-#define MASK_OP_FORMAT_IX(op) (op & (0x3 << 21))
+#define MASK_OP_FORMAT_IX(op) (op & (0x3F << 21))
 enum {
-	OPC_RH850_BINS_0	= (0x0  << 21),
-	OPC_RH850_BINS_1	= (0x1  << 21),
-	OPC_RH850_BINS_2	= (0x2  << 21),
-	OPC_RH850_CLR1		= (0x3  << 21),
+	OPC_RH850_SETF		= (0x0  << 21),
 	//OPC_RH850_LDSR		= (0x1  << 21),
+	OPC_RH850_CLR1		= (0x3  << 21),
+	OPC_RH850_BINS_0	= (0x4  << 21), //BINS0,SHR
+	OPC_RH850_BINS_1	= (0x5  << 21), //BINS1,SAR,
+	OPC_RH850_BINS_2	= (0x6  << 21),	//BINS2,SHL
+	OPC_RH850_NOT1		= (0x7  << 21),
+	OPC_RH850_SASF		= (0x10  << 21),
+	OPC_RH850_SCHOL		= (0x1B  << 21),
 };
 
 #define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))
@@ -524,7 +528,7 @@ enum {
 #define GET_RM(inst)   extract32(inst, 12, 3)
 #define GET_RD(inst)   extract32(inst, 7, 5)
 #define GET_IMM(inst)  sextract64(inst, 20, 12)
-#define GET_IMM_32(inst)	extract32(inst, 16, 32)
+#define GET_IMM_32(inst)	sextract64(inst, 16, 32)
 
 /* RVC decoding macros */
 #define GET_C_IMM(inst)             (extract32(inst, 2, 5) \
