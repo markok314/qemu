@@ -622,7 +622,7 @@ jstring CDisassemblerNEC850::NecGetImm32(const u32 dwImm)
 {
 	jstring strImm;
 	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 4);
+	strImm = "#"+Hex(dwImm, 6);
 	return strImm;
 }
 

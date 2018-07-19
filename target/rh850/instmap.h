@@ -220,7 +220,13 @@ enum {
 	OPC_RH850_EIRET	= (0X900 << 11),
 	OPC_RH850_FERET	= (0X940 << 11),
 	OPC_RH850_HALT	= (0X400 << 11),
-	OPC_RH850_JARL	= (0XC18 << 11)
+	OPC_RH850_JARL	= (0XC18 << 11),
+	OPC_RH850_SNOOZE	= (0x401 << 11),
+	OPC_RH850_SYSCALL	= (0xC1A << 11),
+	OPC_RH850_TRAP	= (0x0 << 11),
+	OPC_RH850_PREF	= (0xC1B << 11)
+	//don't forget RIE and CACHE
+
 };
 
 #define MASK_OP_FORMAT_XI(op) (op & (0x7F << 16))

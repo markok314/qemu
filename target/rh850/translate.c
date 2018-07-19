@@ -238,6 +238,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	gen_get_gpr(r2, rs2);			//loading rs2 to t1
 	int imm = rs1;
 	int imm_16;
+	long imm_323;
 	int imm_32;
 	int int_rs3;
 	TCGv tcg_imm = tcg_temp_new();
@@ -339,9 +340,12 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_andi_i32(r2, r1, imm_16);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 18://MOV?
-			imm_32 = extract64(ctx->opcode, 16, 32);
-			tcg_gen_movi_i32(r2, imm_32);
+		case 18://MOV3   ---  48bit instruction
+			imm_323 = extract64(ctx->opcode, 16, 32);
+			//tcg_gen_movi_tl(tcg_imm32, imm_32);
+			//tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32);
+			printf("This is 32bit immediate: %x", ctx->opcode);
+			tcg_gen_movi_i32(r2, imm_323);
 			gen_set_gpr(rs2, r2);
 			break;
 		case 19: //MUL FORMAT XI
@@ -755,9 +759,11 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
 	uint32_t op;
 	int sub_opcode;
+	int rs2;
 
 	op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
 	sub_opcode = GET_RS2(ctx->opcode);
+	rs2 = GET_RS1(ctx->opcode);
 
 	switch(op){
 
@@ -773,7 +779,10 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 			}//else false instruction
 			break;
 	}
-
+	if(extract32(ctx->opcode, 5, 11) == 0x31){		//this is MOV3(48bit inst)
+		printf("%lx", sextract64(ctx->opcode, 0, 48));
+		decode_arithmetic(ctx, 0, 0, rs2, 18);
+	}
 }
 
 static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
@@ -951,6 +960,14 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_HALT:
 							break;
 						case OPC_RH850_JARL:
+							break;
+						case OPC_RH850_SNOOZE:
+							break;
+						case OPC_RH850_SYSCALL:
+							break;
+						case OPC_RH850_TRAP:
+							break;
+						case OPC_RH850_PREF:
 							break;
 					}
 					break;
@@ -1254,12 +1271,12 @@ static void decode_opc(CPURH850State *env, DisasContext *ctx)
 {
     /* checking for 48-bit instructions */
     if ( (extract32(ctx->opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
-    		(extract32(ctx->opcode, 5, 11) == 0x31) ||	//MOV3
+    		(extract32(ctx->opcode, 5, 11) == 0x31) ||	//MOV3 needs to be checked here
 			(extract32(ctx->opcode, 5, 11) == 0x37) ) { //this fits for JMP2(48-bit) and LOOP(32-bit!!!!!)
     	ctx->next_pc = ctx->pc + 6;
     	decode_RH850_48(env, ctx);
     } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
-    	ctx->next_pc = ctx->pc + 4;							// MOV3 fits in this group, bit is 48bit inst!!!
+    	ctx->next_pc = ctx->pc + 4;
     	decode_RH850_32(env, ctx);
     } else {
     	ctx->next_pc = ctx->pc + 2;
