@@ -86,16 +86,6 @@ enum {
 	OPC_RH850_32bit_1 = (0x3F << 5),	//this is 111111
 
 
-	/* FORMAT II */
-	OPC_RH850_CALLT_0 = (0x10 << 5),	//bits 15-11 are 0
-	OPC_RH850_CALLT_1 = (0x11 << 5),	//bits 15-11 are 0
-	OPC_RH850_CMP2 = (0x13 << 5),
-	OPC_RH850_MOV2 = (0x10 << 5), 	 	//bits 15-11 are not all 0
-	OPC_RH850_MULH	= (0x17 << 5),
-	OPC_RH850_SAR = (0x15 << 5),
-	OPC_RH850_SATADD2 = (0x11 << 5),	//bits 11-15 are not all 0
-	OPC_RH850_SHL = (0x16 << 5),
-	OPC_RH850_SHR = (0x14 << 5),
 
 	/*FORMAT III */
 	OPC_RH850_BCOND = (0xB << 7), //unique
@@ -112,10 +102,14 @@ enum {
 	OPC_RH850_ANDI	=	(0x36 << 5),
 	OPC_RH850_MOVEA	=	(0x31 << 5),     	// this is also MOV 3, which is 48 bit
 	OPC_RH850_MOVHI	=	(0x32 << 5),
+	OPC_RH850_ORI	=	(0x34 << 5),
+	OPC_RH850_SATSUBI=	(0x33 << 5),
+	OPC_RH850_XORI	=	(0x35 << 5),
+
 
 	/* FORMAT VII */
 
-	OPC_RH850_LOOP	=	(0x37 << 5),
+	OPC_RH850_LOOP	=	(0x37 << 5), 		//same as MULHI in format VI !!!!
 
 	/* FORMAT VIII */
 
@@ -189,40 +183,40 @@ enum {
 
 #define MASK_OP_32BIT_SUB(op)	(op & (0xF << 23))
 enum {
-	OPC_RH850_LDSR_RIE_SETF_STSR	=	(0x0 << 23),	//and RIE, SETF, STSR??
+	OPC_RH850_LDSR_RIE_SETF_STSR	=	(0x0 << 23),
 	OPC_RH850_FORMAT_IX		=	(0x1 << 23),	// 0001
 	OPC_RH850_FORMAT_X		=	(0x2 << 23),	// 0010
-	OPC_RH850_MUL_INSTS		=	(0x4 << 23),	// 0100 this is also SASF
+	OPC_RH850_MUL_INSTS		=	(0x4 << 23),	// 0100 this is also for SASF
 	OPC_RH850_FORMAT_XI		=	(0x5 << 23),	// 0101
 	OPC_RH850_FORMAT_XII	=	(0x6 << 23),	// 0110
-	OPC_RH850_ADF_MAC_MACU	= (0x7 << 23),
+	OPC_RH850_ADDIT_ARITH	=	(0x7 << 23)		// 0111
 };
 
 #define MASK_OP_FORMAT_IX(op) (op & (0x3 << 21))   //0001 on b26-b23
 enum {
-	//OPC_RH850_SETF		= (0x0  << 21),		//this will never happen
-	//OPC_RH850_LDSR		= (0x1  << 21),
-	OPC_RH850_BINS_0	= (0x0  << 21), //BINS0,SHR
+	OPC_RH850_BINS_0	= (0x0  << 21), //BINS0,SHR, SHR2
 	OPC_RH850_BINS_1	= (0x1  << 21), //BINS1,SAR,SAR2
-	OPC_RH850_BINS_2	= (0x2  << 21),	//BINS2,SHL, SHL2
-	OPC_RH850_CLR1		= (0x3  << 21),	//clr1, set, tst1, not1
+	OPC_RH850_BINS_2	= (0x2  << 21),	//BINS2,SHL, SHL2, ROTL, ROTL2
+	OPC_RH850_CLR1		= (0x3  << 21),	//clr1, set, tst1, not1, caxi
 };
 
 #define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))	//0010 on b26-b23
 enum {
-	OPC_RH850_CLL 	= (0xC1F << 11),	//this can also be CACHE
-	OPC_RH850_CTRET	= (0x880 << 11),
-	OPC_RH850_DI	= (0xC00 << 11),
-	OPC_RH850_EI	= (0XC10 << 11),
-	OPC_RH850_EIRET	= (0X900 << 11),
-	OPC_RH850_FERET	= (0X940 << 11),
-	OPC_RH850_HALT	= (0X400 << 11),
-	OPC_RH850_JARL	= (0XC18 << 11),
-	OPC_RH850_SNOOZE	= (0x401 << 11),
-	OPC_RH850_SYSCALL	= (0xC1A << 11),
-	OPC_RH850_TRAP	= (0x0 << 11),
-	OPC_RH850_PREF	= (0xC1B << 11)
-	//don't forget RIE and CACHE
+	OPC_RH850_CLL_CACHE = 	(0xB07 << 13), //shifted to 13th bit!
+	OPC_RH850_CTRET		= 	(0x880 << 11),
+	OPC_RH850_DI		= 	(0xC00 << 11),
+	OPC_RH850_EI		= 	(0XC10 << 11),
+	OPC_RH850_EIRET		= 	(0X900 << 11),
+	OPC_RH850_FERET		= 	(0X940 << 11),
+	OPC_RH850_HALT		= 	(0X400 << 11),
+	OPC_RH850_JARL3		= 	(0XC18 << 11),
+	OPC_RH850_SNOOZE	= 	(0x401 << 11),
+	OPC_RH850_SYSCALL	= 	(0xC1A << 11),
+	OPC_RH850_TRAP		= 	(0x000 << 11),
+	OPC_RH850_PREF		= 	(0xC1B << 11),
+	OPC_RH850_POPSP		= 	(0xC0C << 11),
+	OPC_RH850_PUSHSP	= 	(0xC08 << 11),
+	//don't forget CACHE
 
 };
 
@@ -241,19 +235,25 @@ enum {
 	OPC_RH850_BSW	= (0x0 << 17),
 	OPC_RH850_HSW	= (0x2 << 17),
 	OPC_RH850_HSH	= (0x3 << 17),
-	// add SCHOL, SCHOR, SCH1L, SCH1R
+	// SCHOL, SCHOR, SCH1L, SCH1R
 	OPC_RH850_SCH0R	= (0x0 << 17),
-	OPC_RH850_SCH1R	= (0x1 << 17),
+	OPC_RH850_SCH1R	= (0x1 << 17), //this is also STCW
 	OPC_RH850_SCH0L	= (0x2 << 17),
 	OPC_RH850_SCH1L	= (0x3 << 17),
 
+
 };
 
-#define MASK_OP_ADF_MAC_MACU(op) (op & (0x3 << 21))
+#define MASK_ADDIT_ARITH_OP(op) (op & (0x3 << 21))
 enum {
-	OPC_RH850_ADF	= (0x1 << 21),
-	OPC_RH850_MAC	= (0x2 << 21),
-	OPC_RH850_MACU	= (0x3 << 21)
+	OPC_RH850_SBF_SATSUB3	= (0x0 << 21),
+	OPC_RH850_ADF_SATADD3	= (0x1 << 21),
+	OPC_RH850_MAC		= (0x2 << 21),
+	OPC_RH850_MACU		= (0x3 << 21),
+
+
+
+
 };
 
 #define MASK_OP_FORMAT_V_FORMAT_XIII(op) (op & (0x1F << 6))

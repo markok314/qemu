@@ -852,7 +852,21 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    case OPC_RH850_MOVHI:
 
 	    	break;
+	    case OPC_RH850_ORI:
+
+	    	break;
+	    case OPC_RH850_SATSUBI:
+
+	    	break;
+	    case OPC_RH850_XORI:
+
+	    	break;
 	    case OPC_RH850_LOOP:
+	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
+	    		//loop
+	    	} else {
+	    		//mulhi
+	    	}
 
 	    	break;
 	    case OPC_RH850_CLR:
@@ -882,10 +896,10 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						}
 						break;
 					case 1:
-						//ldsr
+						//LDSR
 						break;
 					case 2:
-						//stsr
+						//STSR
 						break;
 					}
 					break;
@@ -930,7 +944,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							else{
 								if (extract32(ctx->opcode, 17, 1) == 0){
 									if (extract32(ctx->opcode, 18, 1) == 1){
-										//ROTL
+										//ROTL1
 										decode_data_manipulation(ctx,0, rs1, rs2, 14);
 									}
 									else{
@@ -939,7 +953,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 									}
 								}else{
 									if (extract32(ctx->opcode, 18, 1) == 1){
-										//ROTL
+										//ROTL2
 										decode_data_manipulation(ctx,0, rs1, rs2, 15);
 									}
 									else{
@@ -950,19 +964,38 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							}
 							break;
 						case OPC_RH850_CLR1:
-							if (extract32(ctx->opcode, 19, 1) == 0){
+							check32bitZERO = extract32(ctx->opcode, 16, 3);
+							switch(check32bitZERO){
+							case 0:
+								//SET
+								break;
+							case 2:
+								//NOT1
+								break;
+							case 4:
 								//CLR1
-							} else if (extract32(ctx->opcode, 19, 1) == 1){
-								//CAXI
+								break;
+							case 6:
+								if (extract32(ctx->opcode, 19, 1) == 0){
+									//TST1
+								} else {
+									//CAXI
+								}
 							}
+
 							break;
 					}
 					break;
 				case OPC_RH850_FORMAT_X:	// 0010 //format X instructions
-							// 		//(+JARL- added due to MASK_OP_FORMAT_X matching)
+							// 		//(+JARL3 - added due to MASK_OP_FORMAT_X matching)
 					formXop = MASK_OP_FORMAT_X(ctx->opcode);
 					switch(formXop){
-						case OPC_RH850_CLL:
+						case OPC_RH850_CLL_CACHE:
+							if ((extract32(ctx->opcode, 27, 5) == 0x1E) && (extract32(ctx->opcode, 0, 5) == 0x1F)){
+								//CLL
+							} else {
+								//CACHE; if cacheop bits are 1111110, opcode matches CLL ins
+							}
 							break;
 						case OPC_RH850_CTRET:
 							break;
@@ -976,7 +1009,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 						case OPC_RH850_HALT:
 							break;
-						case OPC_RH850_JARL:
+						case OPC_RH850_JARL3:
 							break;
 						case OPC_RH850_SNOOZE:
 							break;
@@ -986,14 +1019,32 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 						case OPC_RH850_PREF:
 							break;
+						case OPC_RH850_POPSP:
+							break;
+						case OPC_RH850_PUSHSP:
+							break;
+
 					}
 					break;
 				case OPC_RH850_MUL_INSTS:		//MUL instructions
 					if (extract32(ctx->opcode, 22, 1) == 0){
-						// MUL in format XI
+						if (extract32(ctx->opcode, 21, 1) == 0){
+							//SASF
+						} else {
+							if (extract32(ctx->opcode, 17, 1) == 1){
+								// MULU in format XI
+							} else {
+								// MUL in format XI
+							}
+
+						}
 						break;
 					} else if (extract32(ctx->opcode, 22, 1) == 1){
-						// MUL in format XII
+						if (extract32(ctx->opcode, 17, 1) == 1){
+							// MULU in format XII
+						} else {
+							// MUL in format XII
+						}
 						break;
 					}
 					break;
@@ -1057,7 +1108,12 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							//SCH0R
 							break;
 						case OPC_RH850_SCH1R:
-							//SCH1R
+							if (extract32(ctx->opcode, 19, 2) == 0x0){
+								//SCH1R
+							} else if (extract32(ctx->opcode, 19, 2) == 0x3){
+								//STCW
+							}
+
 							break;
 						case OPC_RH850_SCH0L:
 							//SCH0L
@@ -1070,11 +1126,23 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					}
 					break;
 
-				case OPC_RH850_ADF_MAC_MACU:		//ADF, MAC, MACU
+				case OPC_RH850_ADDIT_ARITH:
 					formXop = extract32(ctx->opcode, 21, 2);
 					switch(formXop){
-						case OPC_RH850_ADF:
-							//ADF
+						case OPC_RH850_ADF_SATADD3:
+							if (extract32(ctx->opcode, 16, 5) == 0x1A){
+								// SATADD3
+							} else {
+								// ADF
+							}
+							break;
+						case OPC_RH850_SBF_SATSUB3:
+							if (extract32(ctx->opcode, 16, 5) == 0x1A){
+								// SATSUB3
+							} else {
+								// SBF
+							}
+							break;
 							break;
 						case OPC_RH850_MAC:
 							//MAC
@@ -1093,7 +1161,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 			if (extract32(ctx->opcode, 11, 5) == 0){
 				//JR
 			} else {
-				//JARL2
+				//JARL1
 			}
 		} else if (extract32(ctx->opcode, 16, 3) == 0x3){
 			//PREPARE2
@@ -1308,8 +1376,8 @@ static void decode_opc(CPURH850State *env, DisasContext *ctx)
 {
     /* checking for 48-bit instructions */
     if ( (extract32(ctx->opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
-    		(extract32(ctx->opcode, 5, 11) == 0x31) ||	//MOV3 needs to be checked here
-			(extract32(ctx->opcode, 5, 11) == 0x37) ) { //this fits for JMP2(48-bit) and LOOP(32-bit!!!!!)
+    		(extract32(ctx->opcode, 5, 11) == 0x31) ||	//b11-b15 are 0 for MOVE3, otherwise MOVEA
+			(extract32(ctx->opcode, 5, 11) == 0x37) ) { //this fits for JMP2(48-bit), MULHI(32-bit) and LOOP(32-bit!!!!!)
     	ctx->next_pc = ctx->pc + 6;
     	decode_RH850_48(env, ctx);
     } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
