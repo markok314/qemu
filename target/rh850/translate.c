@@ -793,6 +793,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	uint32_t op;
 	uint32_t formXop;
 	uint32_t checkXII;
+	uint32_t check32bitZERO;
 	target_long imm;
 	target_long imm_32;
 
@@ -870,8 +871,22 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 			}
 			formXop = MASK_OP_32BIT_SUB(ctx->opcode);		//sub groups based on bits b23-b26
 			switch(formXop){
-				case OPC_RH850_LDSR:
-					//LDSR   check if this can also be RIE!!!!
+				case OPC_RH850_LDSR_RIE_SETF_STSR:
+					check32bitZERO = extract32(ctx->opcode, 21, 2);
+					switch(check32bitZERO){
+					case 0:
+						if(extract32(ctx->opcode, 4, 1)==1){
+							//RIE
+						} else {
+							//SETF
+						}
+						break;
+					case 1:
+						//ldsr
+						break;
+					case 2:
+						//stsr
+					}
 					break;
 				case OPC_RH850_FORMAT_IX:		//format IX instructions
 					formXop = MASK_OP_FORMAT_IX(ctx->opcode);	//mask on bits 21, 22

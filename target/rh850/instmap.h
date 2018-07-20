@@ -189,10 +189,10 @@ enum {
 
 #define MASK_OP_32BIT_SUB(op)	(op & (0xF << 23))
 enum {
-	OPC_RH850_LDSR			=	(0x0 << 23),	//and RIE, SETF, STSR??
+	OPC_RH850_LDSR_RIE_SETF_STSR	=	(0x0 << 23),	//and RIE, SETF, STSR??
 	OPC_RH850_FORMAT_IX		=	(0x1 << 23),	// 0001
 	OPC_RH850_FORMAT_X		=	(0x2 << 23),	// 0010
-	OPC_RH850_MUL_INSTS		=	(0x4 << 23),	// 0100
+	OPC_RH850_MUL_INSTS		=	(0x4 << 23),	// 0100 this is also SASF
 	OPC_RH850_FORMAT_XI		=	(0x5 << 23),	// 0101
 	OPC_RH850_FORMAT_XII	=	(0x6 << 23),	// 0110
 	OPC_RH850_ADF_MAC_MACU	= (0x7 << 23),
