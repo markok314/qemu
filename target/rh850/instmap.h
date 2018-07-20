@@ -189,31 +189,28 @@ enum {
 
 #define MASK_OP_32BIT_SUB(op)	(op & (0xF << 23))
 enum {
-	OPC_RH850_LDSR			=	(0x0 << 23),
-	OPC_RH850_FORMAT_IX		=	(0x1 << 23),
-	OPC_RH850_FORMAT_X		=	(0x2 << 23),
-	OPC_RH850_MUL_INSTS		=	(0x4 << 23),
-	OPC_RH850_FORMAT_XI		=	(0x5 << 23),
-	OPC_RH850_FORMAT_XII	=	(0x6 << 23),
+	OPC_RH850_LDSR			=	(0x0 << 23),	//and RIE, SETF, STSR??
+	OPC_RH850_FORMAT_IX		=	(0x1 << 23),	// 0001
+	OPC_RH850_FORMAT_X		=	(0x2 << 23),	// 0010
+	OPC_RH850_MUL_INSTS		=	(0x4 << 23),	// 0100
+	OPC_RH850_FORMAT_XI		=	(0x5 << 23),	// 0101
+	OPC_RH850_FORMAT_XII	=	(0x6 << 23),	// 0110
 	OPC_RH850_ADF_MAC_MACU	= (0x7 << 23),
 };
 
-#define MASK_OP_FORMAT_IX(op) (op & (0x3F << 21))
+#define MASK_OP_FORMAT_IX(op) (op & (0x3 << 21))   //0001 on b26-b23
 enum {
-	OPC_RH850_SETF		= (0x0  << 21),
+	//OPC_RH850_SETF		= (0x0  << 21),		//this will never happen
 	//OPC_RH850_LDSR		= (0x1  << 21),
-	OPC_RH850_CLR1		= (0x3  << 21),
-	OPC_RH850_BINS_0	= (0x4  << 21), //BINS0,SHR
-	OPC_RH850_BINS_1	= (0x5  << 21), //BINS1,SAR,
-	OPC_RH850_BINS_2	= (0x6  << 21),	//BINS2,SHL
-	OPC_RH850_NOT1		= (0x7  << 21),
-	OPC_RH850_SASF		= (0x10  << 21),
-	OPC_RH850_SCHOL		= (0x1B  << 21),
+	OPC_RH850_BINS_0	= (0x0  << 21), //BINS0,SHR
+	OPC_RH850_BINS_1	= (0x1  << 21), //BINS1,SAR,SAR2
+	OPC_RH850_BINS_2	= (0x2  << 21),	//BINS2,SHL, SHL2
+	OPC_RH850_CLR1		= (0x3  << 21),	//clr1, set, tst1, not1
 };
 
-#define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))
+#define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))	//0010 on b26-b23
 enum {
-	OPC_RH850_CLL 	= (0xC1F << 11),
+	OPC_RH850_CLL 	= (0xC1F << 11),	//this can also be CACHE
 	OPC_RH850_CTRET	= (0x880 << 11),
 	OPC_RH850_DI	= (0xC00 << 11),
 	OPC_RH850_EI	= (0XC10 << 11),
@@ -243,7 +240,13 @@ enum {
 enum {
 	OPC_RH850_BSW	= (0x0 << 17),
 	OPC_RH850_HSW	= (0x2 << 17),
-	OPC_RH850_HSH	= (0x3 << 17)
+	OPC_RH850_HSH	= (0x3 << 17),
+	// add SCHOL, SCHOR, SCH1L, SCH1R
+	OPC_RH850_SCH0R	= (0x0 << 17),
+	OPC_RH850_SCH1R	= (0x1 << 17),
+	OPC_RH850_SCH0L	= (0x2 << 17),
+	OPC_RH850_SCH1L	= (0x3 << 17),
+
 };
 
 #define MASK_OP_ADF_MAC_MACU(op) (op & (0x3 << 21))

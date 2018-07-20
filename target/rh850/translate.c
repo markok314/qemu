@@ -792,6 +792,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	int rd;
 	uint32_t op;
 	uint32_t formXop;
+	uint32_t checkXII;
 	target_long imm;
 	target_long imm_32;
 
@@ -870,7 +871,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 			formXop = MASK_OP_32BIT_SUB(ctx->opcode);		//sub groups based on bits b23-b26
 			switch(formXop){
 				case OPC_RH850_LDSR:
-					//LDSR
+					//LDSR   check if this can also be RIE!!!!
 					break;
 				case OPC_RH850_FORMAT_IX:		//format IX instructions
 					formXop = MASK_OP_FORMAT_IX(ctx->opcode);	//mask on bits 21, 22
@@ -1007,7 +1008,16 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 				case OPC_RH850_FORMAT_XII:	// 0110 //format XII instructions
 									//excluding MUL and including CMOV
-					if (extract32(ctx->opcode, 22, 1) == 1){
+					checkXII = extract32(ctx->opcode, 21, 2);
+
+					switch(checkXII){
+					case 0:
+						//CMOV in format XII
+						break;
+					case 1:
+						//CMOV in format XI
+						break;
+					case 2:
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
 						case OPC_RH850_BSW:
@@ -1023,11 +1033,22 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							decode_data_manipulation(ctx,0, rs1, rs2, 17);
 							break;
 						}
-					} else if (extract32(ctx->opcode, 22, 1) == 0) { //here we have two CMOV ins
-						if (extract32(ctx->opcode, 21, 1) == 1){
-							//CMOV in format XI
-						} else if (extract32(ctx->opcode, 21, 1) == 0){
-							//CMOV in format XII
+						break;
+					case 3:	//these are SCHOL, SCHOR, SCH1L, SCH1R
+						formXop = extract32(ctx->opcode, 17, 2);
+						switch(formXop){
+						case OPC_RH850_SCH0R:
+							//SCH0R
+							break;
+						case OPC_RH850_SCH1R:
+							//SCH1R
+							break;
+						case OPC_RH850_SCH0L:
+							//SCH0L
+							break;
+						case OPC_RH850_SCH1L:
+							//SCH1L
+							break;
 						}
 
 					}
