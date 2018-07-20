@@ -886,6 +886,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						break;
 					case 2:
 						//stsr
+						break;
 					}
 					break;
 				case OPC_RH850_FORMAT_IX:		//format IX instructions
