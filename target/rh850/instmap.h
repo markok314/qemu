@@ -246,7 +246,7 @@ enum {
 
 #define MASK_ADDIT_ARITH_OP(op) (op & (0x3 << 21))
 enum {
-	OPC_RH850_SBF_SATSUB3	= (0x0 << 21),
+	OPC_RH850_SBF_SATSUB2	= (0x0 << 21),
 	OPC_RH850_ADF_SATADD3	= (0x1 << 21),
 	OPC_RH850_MAC		= (0x2 << 21),
 	OPC_RH850_MACU		= (0x3 << 21),

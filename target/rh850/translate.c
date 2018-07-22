@@ -411,19 +411,19 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 
-		case 24: //SATADD FORMAT I
+		case 24: //SATADD1 FORMAT I
 			tcg_gen_add_tl(r2, r1, r2);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
 			gen_set_gpr(rs2, r2);
 			break;
-		case 25: //SATADD FORMAT II
+		case 25: //SATADD2 FORMAT II
 			tcg_gen_movi_tl(tcg_imm32, imm);
 			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
 			tcg_gen_addi_tl(r2, r1, imm);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
 			gen_set_gpr(rs2, r2);
 			break;
-		case 26: //SATADD FORMAT XI
+		case 26: //SATADD3 FORMAT XI
 			int_rs3 = extract32(ctx->opcode, 26, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_add_tl(tcg_r3, r1, r2);
@@ -779,9 +779,17 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 			}//else false instruction
 			break;
 	}
-	if(extract32(ctx->opcode, 5, 11) == 0x31){		//this is MOV3(48bit inst)
+	if(extract32(ctx->opcode, 5, 11) == 0x31){
 		printf("%lx", sextract64(ctx->opcode, 0, 48));
-		decode_arithmetic(ctx, 0, 0, rs2, 18);
+		decode_arithmetic(ctx, 0, 0, rs2, 18);				// this is MOV3 (48bit inst)
+	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
+		// this is JMP2 (48bit inst)
+	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
+		if (rs2 == 0x0){
+			// this is JR2 (48bit inst)
+		} else {
+			// this is JARL2 (48bit inst)
+		}
 	}
 }
 
@@ -1131,14 +1139,14 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					switch(formXop){
 						case OPC_RH850_ADF_SATADD3:
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
-								// SATADD3
+								// SATADD3 (format XI)
 							} else {
 								// ADF
 							}
 							break;
-						case OPC_RH850_SBF_SATSUB3:
+						case OPC_RH850_SBF_SATSUB2:
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
-								// SATSUB3
+								// SATSUB2 (format XI)
 							} else {
 								// SBF
 							}
@@ -1257,7 +1265,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			decode_data_manipulation(ctx,0,rs1,rs2,1);
 			break;
 		} else {
-			//SATADD
+			//SATADD1 (format I)
 			break;
 		}
 		break;
@@ -1324,7 +1332,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			//CALLT
 			break;
 		} else {
-			//SATADD
+			//SATADD2 (format II)
 			break;
 		}
 		break;
@@ -1376,9 +1384,12 @@ static void decode_opc(CPURH850State *env, DisasContext *ctx)
 {
     /* checking for 48-bit instructions */
     if ( (extract32(ctx->opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
-    		(extract32(ctx->opcode, 5, 11) == 0x31) ||	//b11-b15 are 0 for MOVE3, otherwise MOVEA
-			(extract32(ctx->opcode, 5, 11) == 0x37) ) { //this fits for JMP2(48-bit), MULHI(32-bit) and LOOP(32-bit!!!!!)
-    	ctx->next_pc = ctx->pc + 6;
+    		(extract32(ctx->opcode, 5, 11) == 0x31) ||	// MOVE3
+			(extract32(ctx->opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
+    													//!! we took an additional bit,
+    													//!! to differ it from the LOOP instruction
+			(extract32(ctx->opcode, 5, 11) == 0x17) ) { //this is for 48bit JARL and JR (format VI)
+					ctx->next_pc = ctx->pc + 6;
     	decode_RH850_48(env, ctx);
     } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
     	ctx->next_pc = ctx->pc + 4;
