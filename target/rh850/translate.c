@@ -430,7 +430,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 26: //SATADD3 FORMAT XI
-			int_rs3 = extract32(ctx->opcode, 26, 5);
+			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_add_tl(tcg_r3, r1, r2);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
@@ -1142,10 +1142,16 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 
 				case OPC_RH850_ADDIT_ARITH:
+					printf("\n additional arithmetic \n");
 					formXop = extract32(ctx->opcode, 21, 2);
+					printf("formXop = %x", formXop);
 					switch(formXop){
+
 						case OPC_RH850_ADF_SATADD3:
+							printf("it came here \n");
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
+								printf("rvdfve \n");
+								decode_arithmetic(ctx, 0, rs1, rs2, 26);
 								// SATADD3 (format XI)
 							} else {
 								// ADF
