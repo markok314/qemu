@@ -237,7 +237,6 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	gen_get_gpr(r1, rs1);			//loading rs1 to t0
 	gen_get_gpr(r2, rs2);			//loading rs2 to t1
 	int imm = rs1;
-	int imm_16;
 	long imm_323;
 	int imm_32;
 	int int_rs3;
@@ -273,7 +272,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 6:
-			tcg_gen_addi_tl(r2, r2, imm); //ADD FORMAT 2 IMM
+			tcg_gen_addi_tl(r2, r2, imm); //ADD FORMAT 2
 			gen_set_gpr(rs2, r2);
 			break;
 		case 7:
@@ -298,8 +297,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 10://SXH			//this is a duplicate, the correct SXH is in data_manipulation
-			tcg_gen_ext16s_tl(r1, r1);
-			gen_set_gpr(rs1, r1);
+
 			break;
 		case 11://NOT
 			tcg_gen_not_i32(r2, r1);
@@ -332,7 +330,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 15://ANDI
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_ext16u_tl(tcg_imm32, tcg_imm32);
 			tcg_gen_and_tl(r2, r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
@@ -345,10 +343,8 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_andi_i32(r2, r2, 0xFFFF); //cutting to 16 bits
 			gen_set_gpr(rs2, r2);
 			break;
-		case 17://ANDI
-			imm_16 = extract32(ctx->opcode, 16, 12);
-			tcg_gen_andi_i32(r2, r1, imm_16);
-			gen_set_gpr(rs2, r2);
+		case 17://ANDI		this is a duplicate, the correct ANDI is at case 15
+
 			break;
 		case 18://MOV3   ---  48bit instruction
 			imm_323 = extract64(ctx->opcode, 16, 32);
@@ -858,7 +854,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	decode_arithmetic(ctx, 0, rs1,rs2, 13);
 	    	break;
 	    case OPC_RH850_ANDI:
-	    	decode_arithmetic(ctx, 0, rs1, rs2, 17);
+	    	decode_arithmetic(ctx, 0, rs1, rs2, 15);
 	    	break;
 	    case OPC_RH850_MOVEA:
 	    	if ( extract32(ctx->opcode, 11, 5) == 0 ){
@@ -1349,7 +1345,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_16bit_ADD:
-		decode_arithmetic(ctx, 0, rs1,rs2, 6);	//add immediate
+		decode_arithmetic(ctx, 0, rs1,rs2, 6);	//add format II
 		break;
 	case OPC_RH850_16bit_CMP:
 		break;
