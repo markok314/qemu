@@ -303,6 +303,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			break;
 		case 12://DIVH
 			tcg_gen_andi_i32(r1, r1,0x0000ffff);
+			// needs to be sign-extended
 			tcg_gen_div_i32(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
@@ -500,25 +501,25 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 		case 1: //ZXH
 			printf("ZXH \n");
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFFFF);
-			tcg_gen_ext32u_tl(tcg_r1, tcg_r1);
+			tcg_gen_ext16u_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
 		case 2: //ZXB
 			printf("ZXB \n");
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFF);
-			tcg_gen_ext32u_tl(tcg_r1, tcg_r1);
+			tcg_gen_ext8u_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
 		case 3://SXH
 			printf("SXH \n");
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFFFF);
-			tcg_gen_ext32s_tl(tcg_r1, tcg_r1);
+			tcg_gen_ext16s_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
 		case 4://SXB
-			printf("SXB \n");
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFF);
-			tcg_gen_ext32s_tl(tcg_r1, tcg_r1);
+			printf("SXB  \n");
+			tcg_gen_ext8s_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
 		case 5: //SHR Format IX
@@ -990,7 +991,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 									//CAXI
 								}
 							}
-
 							break;
 					}
 					break;
@@ -1002,7 +1002,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							if ((extract32(ctx->opcode, 27, 5) == 0x1E) && (extract32(ctx->opcode, 0, 5) == 0x1F)){
 								//CLL
 							} else {
-								//CACHE; if cacheop bits are 1111110, opcode matches CLL ins
+								//CACHE; if cacheop bits are 1111110, opcode matches CLL ins,
+								//then thay are THE SAME instruction, so this should be correct
 							}
 							break;
 						case OPC_RH850_CTRET:
@@ -1246,6 +1247,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//SATSUBR
+			decode_arithmetic(ctx, 0, rs1, rs2, 30);
 			break;
 		}
 		break;
@@ -1337,7 +1339,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_16bit_ADD:
-		decode_arithmetic(ctx, 0, rs1,rs2, 6);
+		decode_arithmetic(ctx, 0, rs1,rs2, 6);	//add immediate
 		break;
 	case OPC_RH850_16bit_CMP:
 		break;
