@@ -309,10 +309,10 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			break;
 		case 13: //ADDI
 			imm_32 = extract32(ctx->opcode, 16, 16);
-			printf("addi imm = %x", imm_32);
+			printf("addi imm = %x \n", imm_32);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
 			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
-			tcg_gen_addi_tl(r2,r1, imm_32);
+			tcg_gen_add_tl(r2,r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
 		case 14: //ADF
