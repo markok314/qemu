@@ -302,15 +302,16 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 12://DIVH
-			tcg_gen_andi_i32(r1, r1,0x0000ffff);
-			// needs to be sign-extended
+			tcg_gen_andi_i32(r1, r1,0x0000ffff); //can not be tested due to MOV3 troubles
+			tcg_gen_ext16s_i32(r1, r1);
 			tcg_gen_div_i32(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
 		case 13: //ADDI
 			imm_32 = extract32(ctx->opcode, 16, 16);
+			printf("addi imm = %x", imm_32);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
 			tcg_gen_addi_tl(r2,r1, imm_32);
 			gen_set_gpr(rs2, r2);
 			break;
@@ -850,7 +851,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	//this is STORE HALFWORD
 	    	break;
 	    case OPC_RH850_ADDI:
-	    	decode_arithmetic(ctx, 0, rs1,rs2, 6);
+	    	printf("ADDI");
+	    	decode_arithmetic(ctx, 0, rs1,rs2, 13);
 	    	break;
 	    case OPC_RH850_ANDI:
 	    	decode_arithmetic(ctx, 0, rs1, rs2, 17);
