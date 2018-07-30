@@ -280,20 +280,24 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_and_tl(r2, r2, r1); //AND
 			gen_set_gpr(rs2, r2);
 			break;
-		case 8://MULH
+		case 8://MULH (format I)
 			tcg_gen_andi_tl(r2, r2,0x0000FFFF);
 			tcg_gen_andi_tl(r1, r1,0x0000FFFF);
 			tcg_gen_mul_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 9://MULH FORMAT 2 IMM
+		case 9://MULH (format II)
+			if ((imm & 0x10) == 0x10){
+				imm = imm | (0x7 << 5);
+			}
+			// signed multiplication!!!
 			tcg_gen_movi_tl(tcg_imm, imm);
+			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
 			tcg_gen_andi_tl(tcg_imm, tcg_imm,0x0000FFFF);
-			tcg_gen_andi_tl(r1, r1,0x0000FFFF);
-			tcg_gen_mul_tl(r2, tcg_imm, r1);
+			tcg_gen_mul_tl(r2, r2, tcg_imm);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 10://SXH			//this is a duplicate, the correct inst is in data_manipulation
+		case 10://SXH			//this is a duplicate, the correct SXH is in data_manipulation
 			tcg_gen_ext16s_tl(r1, r1);
 			gen_set_gpr(rs1, r1);
 			break;
@@ -309,9 +313,8 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			break;
 		case 13: //ADDI
 			imm_32 = extract32(ctx->opcode, 16, 16);
-			printf("addi imm = %x \n", imm_32);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
+			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32);
 			tcg_gen_add_tl(r2,r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
