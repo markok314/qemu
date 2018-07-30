@@ -293,7 +293,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_mul_tl(r2, tcg_imm, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 10://SXH
+		case 10://SXH			//this is a duplicate, the correct inst is in data_manipulation
 			tcg_gen_ext16s_tl(r1, r1);
 			gen_set_gpr(rs1, r1);
 			break;
@@ -333,7 +333,12 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 16:
-			tcg_gen_movi_tl(r2, imm); // MOV imm. Format 2
+			if ((imm & 0x10) == 0x10){	//extending 5bit immediate to 8 bits
+				imm = imm | (0x7 << 5);
+			}
+			tcg_gen_movi_tl(r2, imm); // MOV Format 2
+			tcg_gen_ext8s_i32(r2, r2);	//extending to 32 bits
+			tcg_gen_andi_i32(r2, r2, 0xFFFF); //cutting to 16 bits
 			gen_set_gpr(rs2, r2);
 			break;
 		case 17://ANDI
@@ -1325,7 +1330,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			//CALLT
 			break;
 		} else {
-			decode_arithmetic(ctx, 0, imm, rs2, 16);	//MOV immediate
+			decode_arithmetic(ctx, 0, imm, rs2, 16);	//MOV format II
 			break;
 		}
 		break;
