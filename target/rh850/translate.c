@@ -159,8 +159,12 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
 {
     TCGv t0 = tcg_temp_new();
     TCGv t1 = tcg_temp_new();
+    TCGv tcg_imm = tcg_temp_new();
+
     gen_get_gpr(t0, rs1);
-    tcg_gen_addi_tl(t0, t0, imm);
+    tcg_gen_movi_i32(tcg_imm, imm);
+    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+    tcg_gen_add_tl(t0, t0, tcg_imm);
 
     if (memop < 0) {
         gen_exception_illegal(ctx);
@@ -168,7 +172,10 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
     }
 
     tcg_gen_qemu_ld_tl(t1, t0, ctx->mem_idx, memop);
+    tcg_gen_ext8s_i32(t0, t0);
     gen_set_gpr(rd, t1);
+    printf("to je memidx = %x /n", ctx->mem_idx);
+
     tcg_temp_free(t0);
     tcg_temp_free(t1);
 }
@@ -178,10 +185,14 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,    //make 
 {
     TCGv t0 = tcg_temp_new();		//temp
     TCGv dat = tcg_temp_new();		//temp
+    TCGv tcg_imm = tcg_temp_new();
+
     gen_get_gpr(t0, rs1);			//loading rs1 to t0
-    tcg_gen_addi_tl(t0, t0, imm);	//adding displacement to t0
+    tcg_gen_movi_i32(tcg_imm, imm);
+    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+
+    tcg_gen_add_tl(t0, t0, tcg_imm);	//adding displacement to t0
     gen_get_gpr(dat, rs2);			//getting data from rs2
-    //int memop = tcg_memop_lookup[(opc >> 12) & 0x7]; 		//pass memop in arguments?
 
     if (memop < 0) {
         gen_exception_illegal(ctx);
@@ -189,6 +200,9 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,    //make 
     }
 
     tcg_gen_qemu_st_tl(dat, t0, ctx->mem_idx, memop);
+    printf("to je memidx = %x /n", ctx->mem_idx);
+
+    gen_set_gpr(13, t0);
     tcg_temp_free(t0);
     tcg_temp_free(dat);
 }
@@ -234,6 +248,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 {
 	TCGv r1 = tcg_temp_new();		//temp
 	TCGv r2 = tcg_temp_new();		//temp
+	TCGv comp = tcg_temp_new();
 	gen_get_gpr(r1, rs1);			//loading rs1 to t0
 	gen_get_gpr(r2, rs2);			//loading rs2 to t1
 	int imm = rs1;
@@ -245,6 +260,8 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 
 	TCGv tcg_r3 = tcg_temp_new();
 	TCGv tcg_temp = tcg_temp_new();
+
+	TCGLabel *l = gen_new_label();
 
 	switch(operation) {
 		case 0:
@@ -435,8 +452,21 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_add_tl(tcg_r3, r1, r2);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
 
+			tcg_gen_movi_i32(comp, 0x7fffffff);
+			tcg_gen_brcond_tl(TCG_COND_LT, tcg_r3, comp, l);
+
+
+			tcg_gen_movi_i32(tcg_r3, 0x34);
+			//gen_set_label(l);
+
 			gen_set_gpr(int_rs3, tcg_r3);
+
+			gen_set_label(l);
+
+			//gen_set_gpr(int_rs3, tcg_r3);
+
 			break;
+
 		case 27: //SATSUB FORMAT I
 			tcg_gen_sub_tl(r2, r2, r1);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
@@ -810,6 +840,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	uint32_t check32bitZERO;
 	target_long imm;
 	target_long imm_32;
+	target_long ld_imm;
 
 	op = MASK_OP_MAJOR(ctx->opcode);
 	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
@@ -819,6 +850,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	TCGv r1 = tcg_temp_local_new();		//temp
 	TCGv r2 = tcg_temp_local_new();		//temp
 	imm_32 = GET_IMM_32(ctx->opcode);
+	ld_imm = extract32(ctx->opcode, 16, 16);
 
 	gen_get_gpr(r1, rs1);		//loading rs1 to r1
 	gen_get_gpr(r2, rs2);		//loading rs2 to r2
@@ -826,7 +858,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	switch(op){
 
 		case OPC_RH850_LDB:			// LD.B
-	        gen_load(ctx, MO_SB, rd, rs1, imm);
+	        gen_load(ctx, MO_SB, rd, rs1, ld_imm);
 	    	break;
 
 	    case OPC_RH850_LDH_LDW:		//
