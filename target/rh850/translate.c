@@ -412,7 +412,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 22://MULU FORMAT XI
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_mul_tl(r2, r2, r1);
+			//tcg_gen_mul_tl(r2, r2, r1);
 			tcg_gen_mulsu2_i32(r2, tcg_r3, r2, r1);
 
 			// R3(higher 32 bits) IN R2(lower 32 bits)
