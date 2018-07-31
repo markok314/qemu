@@ -232,14 +232,14 @@ enum {
 
 #define MASK_OP_FORMAT_XII(op) (op & (0x3 << 17))
 enum {
-	OPC_RH850_BSW	= (0x0 << 17),
-	OPC_RH850_HSW	= (0x2 << 17),
-	OPC_RH850_HSH	= (0x3 << 17),
+	OPC_RH850_BSW	= (0x0 << 0),
+	OPC_RH850_HSW	= (0x2 << 0),
+	OPC_RH850_HSH	= (0x3 << 0),
 	// SCHOL, SCHOR, SCH1L, SCH1R
-	OPC_RH850_SCH0R	= (0x0 << 17),
-	OPC_RH850_SCH1R	= (0x1 << 17), //this is also STCW
-	OPC_RH850_SCH0L	= (0x2 << 17),
-	OPC_RH850_SCH1L	= (0x3 << 17),
+	OPC_RH850_SCH0R	= (0x0 << 0),
+	OPC_RH850_SCH1R	= (0x1 << 0), //this is also STCW
+	OPC_RH850_SCH0L	= (0x2 << 0),
+	OPC_RH850_SCH1L	= (0x3 << 0),
 
 
 };
