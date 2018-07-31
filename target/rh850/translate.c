@@ -412,29 +412,25 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 22://MULU FORMAT XI
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
-			//tcg_gen_mul_tl(r2, r2, r1);
 			tcg_gen_mulsu2_i32(r2, tcg_r3, r2, r1);
 
-			// R3(higher 32 bits) IN R2(lower 32 bits)
-			//tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
-			//tcg_gen_shr_tl(tcg_r3, r2,tcg_temp);
-			//tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
 		case 23://MULU FORMAT XII
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
-			imm_32 = extract32(ctx->opcode, 19, 4);
-			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_ext32u_tl(tcg_imm32, tcg_imm32); //ZERO EXTENDED IMM
-			tcg_gen_mul_tl(r2, r2, tcg_imm32);
+			imm_32 = extract32(ctx->opcode, 18, 4);
 
-			// R3(higher 32 bits) IN R2(lower 32 bits)
-			tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
-			tcg_gen_sar_tl(tcg_r3, r2,tcg_temp);
-			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
+			tcg_gen_movi_tl(tcg_imm32, imm_32);
+			tcg_gen_movi_tl(tcg_imm, rs1);
+
+			tcg_gen_shli_i32(tcg_imm32, tcg_imm32, 0x5);
+			tcg_gen_or_i32(tcg_imm32, tcg_imm32, tcg_imm);
+			tcg_gen_ext16u_tl(tcg_imm32, tcg_imm32);
+
+			tcg_gen_mulsu2_i32(r2, tcg_r3, tcg_imm32, r2);
+
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
@@ -1097,7 +1093,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						break;
 					} else if (extract32(ctx->opcode, 22, 1) == 1){
 						if (extract32(ctx->opcode, 17, 1) == 1){
-							// MULU in format XII
+							decode_arithmetic(ctx, 0, rs1, rs2, 23);// MULU in format XII
 						} else {
 							// MUL in format XII
 						}
