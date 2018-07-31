@@ -364,8 +364,13 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_gen_ext8s_i32(r2, r2);	//extending to 32 bits
 			gen_set_gpr(rs2, r2);
 			break;
-		case 17://ANDI		this is a duplicate, the correct ANDI is at case 15
+		case 17://MOVEA
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			tcg_gen_movi_i32(tcg_imm, imm_32);
+			tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
 
+			tcg_gen_add_i32(r2, tcg_imm, r1);
+			gen_set_gpr(rs2, r2);
 			break;
 		case 18://MOV3   ---  48bit instruction
 			imm_323 = extract64(ctx->opcode, 16, 32);
@@ -379,6 +384,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			int_rs3 = extract32(ctx->opcode, 26, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mul_tl(r2, r2, r1);
+			//tcg_gen_muls2_i32()
 
 			// R3(higher 32 bits) IN R2(lower 32 bits)
 			tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
@@ -405,7 +411,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 21: //MULHI
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			tcg_gen_andi_tl(tcg_temp, r1,0xFFFF); //GET LOWER 15 BITS OF R1
+			tcg_gen_andi_tl(tcg_temp, r1,0xFFFF); //GET LOWER 16 BITS OF R1
 			tcg_gen_mul_tl(r2, tcg_temp, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
@@ -492,6 +498,31 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 		case 30: //SATSUBR
 			tcg_gen_sub_tl(r2, r1, r2);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+			gen_set_gpr(rs2, r2);
+			break;
+		case 31: //MOVHI
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			tcg_gen_movi_i32(tcg_imm, imm_32);
+			tcg_gen_shli_i32(tcg_imm, tcg_imm, 0x10);
+
+			tcg_gen_add_i32(r2, tcg_imm, r1);
+			gen_set_gpr(rs2, r2);
+			break;
+		case 32: //ORI
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			tcg_gen_movi_i32(tcg_imm, imm_32);
+			tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
+
+			tcg_gen_or_i32(r2, r1, tcg_imm);
+			gen_set_gpr(rs2, r2);
+
+			break;
+		case 33: //XORI
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			tcg_gen_movi_i32(tcg_imm, imm_32);
+			tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
+
+			tcg_gen_xor_i32(r2, r1, tcg_imm);
 			gen_set_gpr(rs2, r2);
 			break;
 	}
@@ -898,20 +929,21 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    		decode_arithmetic(ctx, 0, imm_32, rs1, 18);
 	    		//this is MOV3
 	    	} else {
+	    		decode_arithmetic(ctx, 0, rs1, rs2, 17);
 	    		//MOVEA
 	    	}
 	    	break;
 	    case OPC_RH850_MOVHI:
-
+	    	decode_arithmetic(ctx, 0, rs1, rs2, 31);
 	    	break;
 	    case OPC_RH850_ORI:
-
+	    	decode_arithmetic(ctx, 0, rs1, rs2, 32);
 	    	break;
 	    case OPC_RH850_SATSUBI:
 
 	    	break;
 	    case OPC_RH850_XORI:
-
+	    	decode_arithmetic(ctx, 0, rs1, rs2, 33);
 	    	break;
 	    case OPC_RH850_LOOP:
 	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
