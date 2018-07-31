@@ -410,19 +410,20 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 22://MULU FORMAT XI
-			int_rs3 = extract32(ctx->opcode, 26, 5);
+			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mul_tl(r2, r2, r1);
+			tcg_gen_mulsu2_i32(r2, tcg_r3, r2, r1);
 
 			// R3(higher 32 bits) IN R2(lower 32 bits)
-			tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
-			tcg_gen_shr_tl(tcg_r3, r2,tcg_temp);
-			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
+			//tcg_gen_addi_tl(tcg_temp, tcg_temp, 32);
+			//tcg_gen_shr_tl(tcg_r3, r2,tcg_temp);
+			//tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
 		case 23://MULU FORMAT XII
-			int_rs3 = extract32(ctx->opcode, 26, 5);
+			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			imm_32 = extract32(ctx->opcode, 19, 4);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
@@ -618,16 +619,16 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 			tcg_gen_sar_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
-		case 14: // ROTL Format ? Imm
+		case 14: // ROTL Format VII Imm
 			printf("ROTL z imm\n");
 			tcg_gen_movi_tl(tcg_imm, int_imm);
-			tcg_gen_ext32u_tl(tcg_imm, tcg_imm);
+			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_rotl_tl(tcg_r3, tcg_r2, tcg_imm);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
-		case 15: // ROTL Format ?
+		case 15: // ROTL Format VII
 			printf("ROTL \n");
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
@@ -1087,7 +1088,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							//SASF
 						} else {
 							if (extract32(ctx->opcode, 17, 1) == 1){
-								// MULU in format XI
+								decode_arithmetic(ctx, 0, rs1, rs2, 22);// MULU in format XI
 							} else {
 								// MUL in format XI
 							}
