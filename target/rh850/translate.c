@@ -289,7 +289,12 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 6:
-			tcg_gen_addi_tl(r2, r2, imm); //ADD FORMAT 2
+			if((imm & 0x10) == 0x10){
+				imm = imm | (0x7 << 5);
+			}
+			tcg_gen_movi_i32(tcg_imm, imm);
+			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
+			tcg_gen_add_tl(r2, r2, tcg_imm); //ADD FORMAT 2
 			gen_set_gpr(rs2, r2);
 			break;
 		case 7:
@@ -357,7 +362,6 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			}
 			tcg_gen_movi_tl(r2, imm); // MOV Format 2
 			tcg_gen_ext8s_i32(r2, r2);	//extending to 32 bits
-			tcg_gen_andi_i32(r2, r2, 0xFFFF); //cutting to 16 bits
 			gen_set_gpr(rs2, r2);
 			break;
 		case 17://ANDI		this is a duplicate, the correct ANDI is at case 15
