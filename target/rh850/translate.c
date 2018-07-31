@@ -569,13 +569,13 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 		case 6: //SHR Format II
 			printf("SHR Format II\n");
 			tcg_gen_movi_tl(tcg_imm, int_imm);
-			tcg_gen_ext32u_tl(tcg_imm, tcg_imm);
+			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
 			tcg_gen_shr_tl(tcg_r2, tcg_r2, tcg_imm);
 			gen_set_gpr(rs2, tcg_r2);
 			break;
 		case 7: //SHR Format XI
 			printf("SHR Format XI\n");
-			int_rs3 = extract32(ctx->opcode, 26, 5);
+			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_shr_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
@@ -594,7 +594,7 @@ static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int 
 			break;
 		case 10://SHL Format XI
 			printf("SHL Format XI \n");
-			int_rs3 = extract32(ctx->opcode, 26, 5);
+			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_shl_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
