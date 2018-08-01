@@ -829,6 +829,21 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 }
 
+static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
+
+	TCGv dest = tcg_temp_new();
+	gen_get_gpr(dest, rs1);
+
+	switch(operation){
+	case 0:
+		printf("skocni ukaz se bo izvedel \n");
+		tcg_gen_mov_tl(cpu_pc, dest);
+		ctx->next_pc = ctx->pc+8;
+		break;
+	}
+
+};
+
 static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
 	uint32_t op;
@@ -1371,6 +1386,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_3:
 		if (rs2 == 0){
+			gen_jmp(ctx, rs1, rs2, 0);
 			//JMP
 			break;
 		} else {
