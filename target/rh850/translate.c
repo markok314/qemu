@@ -457,21 +457,23 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_add_tl(tcg_r3, r1, r2);
-			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
 
-			tcg_gen_movi_i32(comp, 0x7fffffff);
+			gen_set_gpr(int_rs3, tcg_r3);
+
+			tcg_gen_movi_i32(comp, 0x7fff0000);
 			tcg_gen_brcond_tl(TCG_COND_LT, tcg_r3, comp, l);
 
+			tcg_gen_movi_i32(tcg_r3, 0x1);
 
-			tcg_gen_movi_i32(tcg_r3, 0x34);
-			//gen_set_label(l);
+			gen_set_gpr(int_rs3, tcg_r3);
+
+			tcg_gen_movi_i32(comp, 0x80000000);
+			tcg_gen_brcond_tl(TCG_COND_GT,tcg_r3,comp, l);
+			tcg_gen_movi_i32(tcg_r3, 0x2);
 
 			gen_set_gpr(int_rs3, tcg_r3);
 
 			gen_set_label(l);
-
-			//gen_set_gpr(int_rs3, tcg_r3);
-
 			break;
 
 		case 27: //SATSUB FORMAT I
