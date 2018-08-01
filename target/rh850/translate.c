@@ -515,8 +515,8 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 
 			tcg_gen_or_i32(r2, r1, tcg_imm);
 			gen_set_gpr(rs2, r2);
-
 			break;
+
 		case 33: //XORI
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_i32(tcg_imm, imm_32);
