@@ -441,19 +441,19 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 
-		case 24: //SATADD1 FORMAT I
+		case 24: //SATADD1 FORMAT I: SATADD reg1, reg2
 			tcg_gen_add_tl(r2, r1, r2);
-			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+			//TODO:SATURATED TO 7FFFFFFFH OR 80000000H
 			gen_set_gpr(rs2, r2);
 			break;
-		case 25: //SATADD2 FORMAT II
+		case 25: //SATADD2 FORMAT II, SATADD imm5, reg2
 			tcg_gen_movi_tl(tcg_imm32, imm);
 			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
 			tcg_gen_addi_tl(r2, r1, imm);
-			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+			//TODO:SATURATED TO 7FFFFFFFH OR 80000000H
 			gen_set_gpr(rs2, r2);
 			break;
-		case 26: //SATADD3 FORMAT XI
+		case 26: //SATADD3 FORMAT XI: SATADD reg1, reg2, reg3
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_add_tl(tcg_r3, r1, r2);
