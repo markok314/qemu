@@ -172,10 +172,14 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
         return;
     }
 
-    tcg_gen_qemu_ld_tl(t1, t0, ctx->mem_idx, memop);
+    tcg_gen_qemu_ld_tl(t1, t0, 0, MO_8);
     tcg_gen_ext8s_i32(t0, t0);
     gen_set_gpr(rd, t1);
-    printf("to je memidx = %x /n", ctx->mem_idx);
+
+    printf("\n");
+	printf("To je reg = vsebina:r%x \n", rd);
+	printf("To je naslov = vsebina:r%x + %x \n", rs1, imm);
+	printf("\n");
 
     tcg_temp_free(t0);
     tcg_temp_free(t1);
@@ -200,10 +204,13 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,    //make 
         return;
     }
 
-    tcg_gen_qemu_st_tl(dat, t0, ctx->mem_idx, memop);
-    printf("to je memidx = %x /n", ctx->mem_idx);
+    tcg_gen_qemu_st_tl(dat, t0, 0, MO_8);
 
-    gen_set_gpr(13, t0);
+    printf("\n");
+    printf("To je dat = vsebina:r%x \n", rs2);
+    printf("To je t0 = vsebina:r%x + %x \n", rs1, imm);
+    printf("\n");
+
     tcg_temp_free(t0);
     tcg_temp_free(dat);
 }
@@ -243,6 +250,45 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 			gen_store(ctx, MO_32, rs1, rs3, disp);  // get 32bits of reg3
 			break;
 	}
+}
+
+static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
+{
+	int rs1;
+	int rs3;
+	target_long disp;
+	uint32_t op;
+	rs1 = GET_RS1(ctx->opcode);
+	rs3 = GET_RS3(ctx->opcode);
+	disp = GET_DISP(ctx->opcode);
+
+
+	op = MASK_OP_ST_LD1(ctx->opcode);
+
+	switch(op) {
+		case OPC_RH850_LDBU2:
+			gen_load(ctx, MO_UB, rs1, rs3, disp);			// LD.BU (Format XIV)
+			break;
+
+		case OPC_RH850_LDHU2:
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.HU (Format XIV)
+				gen_load(ctx, MO_TESW, rs1, rs3, disp);
+			break;
+
+		case OPC_RH850_LDDW:
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
+				gen_load(ctx, MO_64, rs1, rs3, disp);
+			break;
+
+		case OPC_RH850_STDW:
+			gen_store(ctx, MO_64, rs1, rs3, disp);  //get lower 32bits + higher 32bits+1 of reg3
+			break;
+
+		case OPC_RH850_STH2:
+			gen_store(ctx, MO_16, rs1, rs3, disp);  //get lower 16bits of reg3
+			break;
+	}
+
 }
 
 static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
@@ -791,44 +837,6 @@ static void decode_branch_operations(DisasContext *ctx, int memop, int rs1, int 
 	tcg_gen_movi_tl(cpu_pc, 0x0);
 }
 
-static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
-{
-	int rs1;
-	int rs3;
-	target_long disp;
-	uint32_t op;
-	rs1 = GET_RS1(ctx->opcode);
-	rs3 = GET_RS3(ctx->opcode);
-	disp = GET_DISP(ctx->opcode);
-
-
-	op = MASK_OP_ST_LD1(ctx->opcode);
-
-	switch(op) {
-		case OPC_RH850_LDBU2:
-			gen_load(ctx, MO_UB, rs1, rs3, disp);			// LD.BU (Format XIV)
-			break;
-
-		case OPC_RH850_LDHU2:
-	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.HU (Format XIV)
-				gen_load(ctx, MO_TESW, rs1, rs3, disp);
-			break;
-
-		case OPC_RH850_LDDW:
-	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
-				gen_load(ctx, MO_64, rs1, rs3, disp);
-			break;
-
-		case OPC_RH850_STDW:
-			gen_store(ctx, MO_64, rs1, rs3, disp);  //get lower 32bits + higher 32bits+1 of reg3
-			break;
-
-		case OPC_RH850_STH2:
-			gen_store(ctx, MO_16, rs1, rs3, disp);  //get lower 16bits of reg3
-			break;
-	}
-
-}
 
 static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 
@@ -915,14 +923,14 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	switch(op){
 
 		case OPC_RH850_LDB:			// LD.B
-	        gen_load(ctx, MO_SB, rd, rs1, ld_imm);
+	        gen_load(ctx, MO_SB, rs2, rs1, ld_imm);
 	    	break;
 
 	    case OPC_RH850_LDH_LDW:		//
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H
-	    		gen_load(ctx, MO_TESW, rd, rs1, imm);
+	    		gen_load(ctx, MO_TESW, rs2, rs1, imm);
 	    	else
-	    		gen_load(ctx, MO_TESL, rd, rs1, imm);		// LD.W
+	    		gen_load(ctx, MO_TESL, rs2, rs1, imm);		// LD.W
 	    	break;
 
 	    case OPC_RH850_STB:			//this opcode is unique
@@ -1507,7 +1515,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     ctx.tb = tb;
     ctx.bstate = BS_NONE;
     ctx.flags = tb->flags;
-    ctx.mem_idx = tb->flags & TB_FLAGS_MMU_MASK;
+    ctx.mem_idx = 0;
     ctx.frm = -1;  /* unknown rounding mode */
 
     num_insns = 0;
@@ -1550,6 +1558,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 			decode_RH850_16(env, &ctx);		//be careful about JR and JARL (32-bit FORMAT VI)
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
+
         	if ( (extract32(ctx.opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
 			(extract32(ctx.opcode, 5, 11) == 0x31) ||	// MOVE3
 			(extract32(ctx.opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
