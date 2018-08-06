@@ -43,13 +43,14 @@ typedef struct DisasContext {
     target_ulong pc;
     target_ulong next_pc;
     uint32_t opcode;
+    uint32_t opcode1;
     uint32_t flags;
     uint32_t mem_idx;
     int singlestep_enabled;
     int bstate;
     /* Remember the rounding mode encoded in the previous fp instruction,
        which we have already installed into env->fp_status.  Or -1 for
-       no previous fp instruction.  Note that we exit the TB when writing
+       no previous fp instruction.  Note 32that we exit the TB when writing
        to any system register, which includes CSR_FRM, so we do not have
        to reset this known value.  */
     int frm;
@@ -252,12 +253,12 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	gen_get_gpr(r1, rs1);			//loading rs1 to t0
 	gen_get_gpr(r2, rs2);			//loading rs2 to t1
 	int imm = rs1;
-	long imm_323;
 	int imm_32;
 	int int_rs3;
+	uint64_t opcode48;
+
 	TCGv tcg_imm = tcg_temp_new();
 	TCGv tcg_imm32 = tcg_temp_new();
-
 	TCGv tcg_r3 = tcg_temp_new();
 	TCGv tcg_temp = tcg_temp_new();
 
@@ -373,11 +374,11 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 		case 18://MOV3   ---  48bit instruction
-			imm_323 = extract64(ctx->opcode, 16, 32);
-			//tcg_gen_movi_tl(tcg_imm32, imm_32);
-			//tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32);
-			printf("This is 32bit immediate: %x", ctx->opcode);
-			tcg_gen_movi_i32(r2, imm_323);
+			opcode48 = (ctx->opcode1);
+			opcode48 = (ctx->opcode) | (opcode48  << 0x20);
+			imm_32 = extract64(opcode48, 16, 32) & 0xffffffff;
+			printf("This is 32bit immediate: %x", imm_32);
+			tcg_gen_movi_i32(r2, imm_32);
 			gen_set_gpr(rs2, r2);
 			break;
 		case 19: //MUL FORMAT XI
@@ -849,10 +850,14 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 	uint32_t op;
 	int sub_opcode;
 	int rs2;
+	uint64_t opcode48;
 
 	op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
 	sub_opcode = GET_RS2(ctx->opcode);
 	rs2 = GET_RS1(ctx->opcode);
+
+	opcode48 = (ctx->opcode1);
+	opcode48 = (ctx->opcode) | (opcode48  << 0x20);
 
 	switch(op){
 
@@ -869,7 +874,6 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 			break;
 	}
 	if(extract32(ctx->opcode, 5, 11) == 0x31){
-		printf("%lx", sextract64(ctx->opcode, 0, 48));
 		decode_arithmetic(ctx, 0, 0, rs2, 18);				// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
 		// this is JMP2 (48bit inst)
@@ -1482,26 +1486,6 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 }
 
 
-static void decode_opc(CPURH850State *env, DisasContext *ctx)
-{
-    /* checking for 48-bit instructions */
-    if ( (extract32(ctx->opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
-    		(extract32(ctx->opcode, 5, 11) == 0x31) ||	// MOVE3
-			(extract32(ctx->opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
-    													//!! we took an additional bit,
-    													//!! to differ it from the LOOP instruction
-			(extract32(ctx->opcode, 5, 11) == 0x17) ) { //this is for 48bit JARL and JR (format VI)
-					ctx->next_pc = ctx->pc + 6;
-    	decode_RH850_48(env, ctx);
-    } else if (extract32(ctx->opcode, 9, 2) == 0x3){		//bits are 11
-    	ctx->next_pc = ctx->pc + 4;
-    	decode_RH850_32(env, ctx);
-    } else {
-    	ctx->next_pc = ctx->pc + 2;
-    	decode_RH850_16(env, ctx);
-
-    }
-}
 
 void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 {
@@ -1556,8 +1540,49 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
             gen_io_start();
         }
 
-        ctx.opcode = cpu_ldl_code(env, ctx.pc);
-        decode_opc(env, &ctx);
+        //ctx.opcode = cpu_ldl_code(env, ctx.pc);
+
+        ctx.opcode = cpu_lduw_code(env, ctx.pc);
+
+        if ((extract32(ctx.opcode, 9, 2) != 0x3) && (extract32(ctx.opcode, 5, 11) != 0x17)){
+        	//if(ctx.opcode!=0){printf("This is a 16 bit instruction :");}
+			ctx.next_pc = ctx.pc + 2;		//16 bit instructions
+			decode_RH850_16(env, &ctx);		//be careful about JR and JARL (32-bit FORMAT VI)
+        } else {
+        	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
+        	if ( (extract32(ctx.opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
+			(extract32(ctx.opcode, 5, 11) == 0x31) ||	// MOVE3
+			(extract32(ctx.opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
+			(extract32(ctx.opcode, 5, 11) == 0x17) ) { //this is for 48bit JARL and JR (format VI)
+
+        		ctx.opcode1 = cpu_lduw_code(env, ctx.pc+4);
+        		//if(ctx.opcode!=0){printf("This is a 48 bit instruction :");}
+				ctx.next_pc = ctx.pc + 6;
+				decode_RH850_48(env, &ctx);
+        	} else {
+        		//if(ctx.opcode!=0){printf("This is a 32 bit instruction :");}
+        		ctx.next_pc = ctx.pc + 4;
+        		decode_RH850_32(env, &ctx);
+        	}
+
+
+        }
+        //ctx.pc += 2;
+
+
+
+        /*
+
+        if (ctx.opcode.size > 16) {
+          opcode1 = cpu_lduw_code(env, ctx.pc);
+          ctx.pc += 2
+          if (opcode.size > 32) {
+             opcode2 = cpu_lduw_code(env, ctx.pc);
+             ctx.pc += 2
+          }
+        }
+        */
+        //decode_opc(env, &ctx);
         ctx.pc = ctx.next_pc;
 
         if (cs->singlestep_enabled) {
