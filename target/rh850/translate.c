@@ -309,6 +309,10 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	TCGv tcg_temp = tcg_temp_new();
 
 	TCGLabel *l = gen_new_label();
+	//TCGLabel * l1;
+	//TCGLabel * l2;
+	TCGLabel *konec;
+	TCGLabel *nadaljuj;
 
 	switch(operation) {
 		case 0:
@@ -488,11 +492,27 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			gen_set_gpr(rs2, r2);
 			break;
 
-		case 24: //SATADD1 FORMAT I: SATADD reg1, reg2
-			tcg_gen_add_tl(r2, r1, r2);
-			//TODO:SATURATED TO 7FFFFFFFH OR 80000000H
-			gen_set_gpr(rs2, r2);
-			break;
+		case 24: {//SATADD1 FORMAT I: SATADD reg1, reg2
+
+			TCGv rezultat = tcg_temp_local_new();
+			konec = gen_new_label();
+			nadaljuj = gen_new_label();
+
+			tcg_gen_add_tl(rezultat, r1, r2);
+
+			tcg_gen_brcondi_tl(TCG_COND_LE, rezultat, 0x7fffffff, nadaljuj);
+			tcg_gen_movi_i32(rezultat, 0x7fffffff);
+			tcg_gen_br(konec);
+
+			gen_set_label(nadaljuj);
+			tcg_gen_brcondi_tl(TCG_COND_GE, rezultat, 0x80000000, konec);
+			tcg_gen_movi_i32(rezultat, 0x80000000);
+
+			gen_set_label(konec);
+			gen_set_gpr(rs2, rezultat);
+			tcg_temp_free(rezultat);
+
+		}	break;
 		case 25: //SATADD2 FORMAT II, SATADD imm5, reg2
 			tcg_gen_movi_tl(tcg_imm32, imm);
 			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
@@ -1379,6 +1399,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//SATADD1 (format I)
+			decode_arithmetic(ctx, 0, rs1, rs2, 24);
 			break;
 		}
 		break;
