@@ -6,4 +6,5 @@
         jarl 0x12346, lp
         jmp 0x12 [r6]
         ld.bu 0xf[r5],r6
+        bgt 0x2
         
