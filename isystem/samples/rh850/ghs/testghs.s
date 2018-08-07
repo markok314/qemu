@@ -1,4 +1,6 @@
 .text
+.global _main
+_main:
         ld.b 0x1[r7],r1
         ld.b 0x5 [r6],r1
         jarl 0x4, r18
