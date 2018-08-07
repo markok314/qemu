@@ -295,7 +295,7 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 {
 	TCGv r1 = tcg_temp_new();		//temp
 	TCGv r2 = tcg_temp_new();		//temp
-	TCGv comp = tcg_temp_new();
+	//TCGv comp = tcg_temp_new();
 	gen_get_gpr(r1, rs1);			//loading rs1 to t0
 	gen_get_gpr(r2, rs2);			//loading rs2 to t1
 	int imm = rs1;
@@ -308,12 +308,12 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 	TCGv tcg_r3 = tcg_temp_new();
 	TCGv tcg_temp = tcg_temp_new();
 
-	TCGLabel *l = gen_new_label();
+	//TCGLabel *l = gen_new_label();
 	//TCGLabel * l1;
 	//TCGLabel * l2;
-	TCGLabel *konec;
-	TCGLabel *nadaljuj;
-
+	TCGLabel *end;
+	TCGLabel *cont;
+	TCGLabel *cont2;
 	switch(operation) {
 		case 0:
 			tcg_gen_mov_tl(r2, r1); // MOV (Format 1)
@@ -427,7 +427,6 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			opcode48 = (ctx->opcode1);
 			opcode48 = (ctx->opcode) | (opcode48  << 0x20);
 			imm_32 = extract64(opcode48, 16, 32) & 0xffffffff;
-			printf("This is 32bit immediate: %x", imm_32);
 			tcg_gen_movi_i32(r2, imm_32);
 			gen_set_gpr(rs2, r2);
 			break;
@@ -494,54 +493,149 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 
 		case 24: {//SATADD1 FORMAT I: SATADD reg1, reg2
 
-			TCGv rezultat = tcg_temp_local_new();
-			konec = gen_new_label();
-			nadaljuj = gen_new_label();
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv min = tcg_temp_local_new();
+			TCGv max = tcg_temp_local_new();
+			TCGv zero = tcg_temp_local_new();
+			tcg_gen_movi_i32(min, 0x80000000);
+			tcg_gen_movi_i32(max, 0x7fffffff);
+			tcg_gen_mov_i32(r1_local, r1);
+			tcg_gen_mov_i32(r2_local, r2);
+			tcg_gen_movi_i32(zero, 0x0);
+			end = gen_new_label();
+			cont = gen_new_label();
+			cont2 = gen_new_label();
 
-			tcg_gen_add_tl(rezultat, r1, r2);
+			tcg_gen_add_i32(result, r1_local, r2_local);
 
-			tcg_gen_brcondi_tl(TCG_COND_LE, rezultat, 0x7fffffff, nadaljuj);
-			tcg_gen_movi_i32(rezultat, 0x7fffffff);
-			tcg_gen_br(konec);
+			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
 
-			gen_set_label(nadaljuj);
-			tcg_gen_brcondi_tl(TCG_COND_GE, rezultat, 0x80000000, konec);
-			tcg_gen_movi_i32(rezultat, 0x80000000);
+			tcg_gen_sub_i32(check, max, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
+			tcg_gen_mov_i32(result, max);
+			tcg_gen_br(end);
 
-			gen_set_label(konec);
-			gen_set_gpr(rs2, rezultat);
-			tcg_temp_free(rezultat);
+			//---------------------------------------------------------------------------------
+			gen_set_label(cont);
+			tcg_gen_sub_i32(check, min, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
+			tcg_gen_mov_i32(result, min);
+
+			gen_set_label(cont2);
+			gen_set_label(end);
+			gen_set_gpr(rs2, result);
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(min);
+			tcg_temp_free(max);
+			tcg_temp_free(r1_local);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(zero);
 
 		}	break;
-		case 25: //SATADD2 FORMAT II, SATADD imm5, reg2
-			tcg_gen_movi_tl(tcg_imm32, imm);
-			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
-			tcg_gen_addi_tl(r2, r1, imm);
-			//TODO:SATURATED TO 7FFFFFFFH OR 80000000H
-			gen_set_gpr(rs2, r2);
-			break;
-		case 26: //SATADD3 FORMAT XI: SATADD reg1, reg2, reg3
+		case 25: {	//SATADD2 FORMAT II, SATADD imm5, reg2
+
+
+			TCGv imm_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv min = tcg_temp_local_new();
+			TCGv max = tcg_temp_local_new();
+			TCGv zero = tcg_temp_local_new();
+			tcg_gen_movi_i32(min, 0x80000000);
+			tcg_gen_movi_i32(max, 0x7fffffff);
+			tcg_gen_mov_i32(r2_local, r2);
+			tcg_gen_movi_i32(zero, 0x0);
+			end = gen_new_label();
+			cont = gen_new_label();
+			cont2 = gen_new_label();
+
+			if ((imm & 0x10) == 0x10){
+				imm = imm | (0x7 << 5);
+			}
+
+			tcg_gen_movi_tl(imm_local, imm);
+			tcg_gen_ext8s_tl(imm_local, imm_local);
+			printf("v satadd2 pride imm: %x \n", imm);
+						printf("v satadd2 pride rs2: r%x \n", rs2);
+
+			tcg_gen_add_i32(result, imm_local, r2_local);
+
+			tcg_gen_brcond_tl(TCG_COND_LT, imm_local, zero, cont);
+
+			tcg_gen_sub_i32(check, max, imm_local);
+			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
+			tcg_gen_mov_i32(result, max);
+			tcg_gen_br(end);
+
+			//---------------------------------------------------------------------------------
+			gen_set_label(cont);
+			tcg_gen_sub_i32(check, min, imm_local);
+			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
+			tcg_gen_mov_i32(result, min);
+
+			gen_set_label(cont2);
+			gen_set_label(end);
+			gen_set_gpr(rs2, result);
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(min);
+			tcg_temp_free(max);
+			tcg_temp_free(imm_local);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(zero);
+
+		}	break;
+		case 26: {//SATADD3 FORMAT XI: SATADD reg1, reg2, reg3
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv min = tcg_temp_local_new();
+			TCGv max = tcg_temp_local_new();
+			TCGv zero = tcg_temp_local_new();
+			tcg_gen_movi_i32(min, 0x80000000);
+			tcg_gen_movi_i32(max, 0x7fffffff);
+			tcg_gen_mov_i32(r1_local, r1);
+			tcg_gen_mov_i32(r2_local, r2);
+			tcg_gen_movi_i32(zero, 0x0);
+			end = gen_new_label();
+			cont = gen_new_label();
+			cont2 = gen_new_label();
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_add_tl(tcg_r3, r1, r2);
+			tcg_gen_add_i32(result, r1_local, r2_local);
 
-			gen_set_gpr(int_rs3, tcg_r3);
+			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);		//if (r1 > 0)
 
-			tcg_gen_movi_i32(comp, 0x7fff0000);
-			tcg_gen_brcond_tl(TCG_COND_LT, tcg_r3, comp, l);
+			tcg_gen_sub_i32(check, max, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);			//if (r2 > MAX-r1)
+			tcg_gen_mov_i32(result, max);										//return MAX;
+			tcg_gen_br(end);
 
-			tcg_gen_movi_i32(tcg_r3, 0x1);
+			//---------------------------------------------------------------------------------
+			gen_set_label(cont); 										//else
+			tcg_gen_sub_i32(check, min, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);		//if (r2 < MIN-r1)
+			tcg_gen_mov_i32(result, min);										//return MIN;
 
-			gen_set_gpr(int_rs3, tcg_r3);
+			gen_set_label(cont2);
+			gen_set_label(end);
+			gen_set_gpr(int_rs3, result);
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(min);
+			tcg_temp_free(max);
+			tcg_temp_free(r1_local);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(zero);
 
-			tcg_gen_movi_i32(comp, 0x80000000);
-			tcg_gen_brcond_tl(TCG_COND_GT,tcg_r3,comp, l);
-			tcg_gen_movi_i32(tcg_r3, 0x2);
-
-			gen_set_gpr(int_rs3, tcg_r3);
-
-			gen_set_label(l);
-			break;
+		}	break;
 
 		case 27: //SATSUB FORMAT I
 			tcg_gen_sub_tl(r2, r2, r1);
@@ -846,6 +940,9 @@ static void decode_branch_operations(DisasContext *ctx, int memop, int rs1, int 
 {
 	TCGv tcg_r1 = tcg_temp_new();
 	TCGv tcg_r2 = tcg_temp_new();
+	TCGv imm = tcg_temp_new();
+	uint32_t imm_9;
+
 
 	gen_get_gpr(tcg_r1, rs1);
 	gen_get_gpr(tcg_r2, rs2);
@@ -855,6 +952,16 @@ static void decode_branch_operations(DisasContext *ctx, int memop, int rs1, int 
 	printf("test");
 	//gen_goto_tb(ctx,2, 0x2);
 	tcg_gen_movi_tl(cpu_pc, 0x0);
+
+	switch(operation){
+		case 1:	//BCOND disp9
+			imm_9 = extract32(ctx->opcode, 4, 3) | (extract32(ctx->opcode, 11, 5) << 0x3);
+			tcg_gen_movi_i32(imm, imm_9);
+			printf("this is the displacement in BCOND: %x \n", ctx->opcode);
+			printf("this is the displacement in BCOND: %x \n", (extract32(ctx->opcode, 11, 5) << 0x3));
+			printf("this is the displacement in BCOND: %x \n", imm_9);
+	}
+
 }
 
 
@@ -1261,15 +1368,11 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 
 				case OPC_RH850_ADDIT_ARITH:
-					printf("\n additional arithmetic \n");
 					formXop = extract32(ctx->opcode, 21, 2);
-					printf("formXop = %x", formXop);
 					switch(formXop){
 
 						case OPC_RH850_ADF_SATADD3:
-							printf("it came here \n");
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
-								printf("rvdfve \n");
 								decode_arithmetic(ctx, 0, rs1, rs2, 26);
 								// SATADD3 (format XI)
 							} else {
@@ -1367,7 +1470,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			}
 		}
 		break;
-	case OPC_RH850_BCOND:
+	case OPC_RH850_BCOND: //BCOND disp9
 		decode_branch_operations(ctx, 0, rs1, rs2, 1);
 		break;
 
@@ -1468,6 +1571,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//SATADD2 (format II)
+			printf("tu smo v satadd2 \n");
+			decode_arithmetic(ctx, 0, rs1, rs2, 25);
 			break;
 		}
 		break;
