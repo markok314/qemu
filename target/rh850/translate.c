@@ -560,8 +560,6 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 
 			tcg_gen_movi_tl(imm_local, imm);
 			tcg_gen_ext8s_tl(imm_local, imm_local);
-			printf("v satadd2 pride imm: %x \n", imm);
-						printf("v satadd2 pride rs2: r%x \n", rs2);
 
 			tcg_gen_add_i32(result, imm_local, r2_local);
 
@@ -637,27 +635,151 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 
 		}	break;
 
-		case 27: //SATSUB FORMAT I
-			tcg_gen_sub_tl(r2, r2, r1);
-			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-			gen_set_gpr(rs2, r2);
-			break;
-		case 28://SATSUB FORMAT XI
-			int_rs3 = extract32(ctx->opcode, 26, 5);
-			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_sub_tl(tcg_r3, r2, r1);
-			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
+		case 27: {//SATSUB reg1, reg2
 
-			gen_set_gpr(int_rs3, tcg_r3);
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv min = tcg_temp_local_new();
+			TCGv max = tcg_temp_local_new();
+			TCGv zero = tcg_temp_local_new();
+			tcg_gen_movi_i32(min, 0x80000000);
+			tcg_gen_movi_i32(max, 0x7fffffff);
+			tcg_gen_mov_i32(r1_local, r1);
+			tcg_gen_mov_i32(r2_local, r2);
+			tcg_gen_movi_i32(zero, 0x0);
+			end = gen_new_label();
+			cont = gen_new_label();
+			cont2 = gen_new_label();
+
+			tcg_gen_neg_i32(r1_local, r1_local);
+
+			tcg_gen_add_i32(result, r1_local, r2_local);
+
+			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
+
+			tcg_gen_sub_i32(check, max, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
+			tcg_gen_mov_i32(result, max);
+			tcg_gen_br(end);
+
+			//---------------------------------------------------------------------------------
+			gen_set_label(cont);
+			tcg_gen_sub_i32(check, min, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
+			tcg_gen_mov_i32(result, min);
+
+			gen_set_label(cont2);
+			gen_set_label(end);
+			gen_set_gpr(rs2, result);
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(min);
+			tcg_temp_free(max);
+			tcg_temp_free(r1_local);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(zero);
+
+		}	break;
+		case 28: {///SATSUB reg1, reg2, reg3
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv min = tcg_temp_local_new();
+			TCGv max = tcg_temp_local_new();
+			TCGv zero = tcg_temp_local_new();
+			tcg_gen_movi_i32(min, 0x80000000);
+			tcg_gen_movi_i32(max, 0x7fffffff);
+			tcg_gen_mov_i32(r1_local, r1);
+			tcg_gen_mov_i32(r2_local, r2);
+			tcg_gen_movi_i32(zero, 0x0);
+			end = gen_new_label();
+			cont = gen_new_label();
+			cont2 = gen_new_label();
+			int_rs3 = extract32(ctx->opcode, 27, 5);
+			printf("to je rs3 %x  \n", int_rs3);
+			tcg_gen_neg_i32(r1_local, r1_local);
+
+			tcg_gen_add_i32(result, r1_local, r2_local);
+
+			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
+
+			tcg_gen_sub_i32(check, max, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
+			tcg_gen_mov_i32(result, max);
+			tcg_gen_br(end);
+
+			//---------------------------------------------------------------------------------
+			gen_set_label(cont);
+			tcg_gen_sub_i32(check, min, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
+			tcg_gen_mov_i32(result, min);
+
+			gen_set_label(cont2);
+			gen_set_label(end);
+			gen_set_gpr(int_rs3, result);
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(min);
+			tcg_temp_free(max);
+			tcg_temp_free(r1_local);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(zero);
+
+		}
 			break;
-		case 29: //SATSUBI
+		case 29: {//SATSUBI imm16, reg1, reg2
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv imm_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv min = tcg_temp_local_new();
+			TCGv max = tcg_temp_local_new();
+			TCGv zero = tcg_temp_local_new();
+			tcg_gen_movi_i32(min, 0x80000000);
+			tcg_gen_movi_i32(max, 0x7fffffff);
+			tcg_gen_mov_i32(r1_local, r1);
 			imm_32 = extract32(ctx->opcode, 16, 16);
-			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			tcg_gen_ext32s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND IMM
-			tcg_gen_sub_tl(r2, r2, tcg_imm32);
-			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-			gen_set_gpr(rs2, r2);
-			break;
+			tcg_gen_movi_i32(imm_local, imm_32);
+			tcg_gen_ext16s_i32(imm_local, imm_local);
+			tcg_gen_movi_i32(zero, 0x0);
+			end = gen_new_label();
+			cont = gen_new_label();
+			cont2 = gen_new_label();
+
+			tcg_gen_neg_i32(imm_local, imm_local);
+
+			tcg_gen_add_i32(result, r1_local, imm_local);
+
+			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
+
+			tcg_gen_sub_i32(check, max, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_LE, imm_local, check, end);
+			tcg_gen_mov_i32(result, max);
+			tcg_gen_br(end);
+
+			//---------------------------------------------------------------------------------
+			gen_set_label(cont);
+			tcg_gen_sub_i32(check, min, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_GE, imm_local, check, cont2);
+			tcg_gen_mov_i32(result, min);
+
+			gen_set_label(cont2);
+			gen_set_label(end);
+			gen_set_gpr(rs2, result);
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(min);
+			tcg_temp_free(max);
+			tcg_temp_free(r1_local);
+			tcg_temp_free(imm_local);
+			tcg_temp_free(zero);
+
+		}	break;
 		case 30: //SATSUBR
 			tcg_gen_sub_tl(r2, r1, r2);
 			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
@@ -1096,7 +1218,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	decode_arithmetic(ctx, 0, rs1, rs2, 32);
 	    	break;
 	    case OPC_RH850_SATSUBI:
-
+	    	decode_arithmetic(ctx, 0, rs1, rs2, 29);
 	    	break;
 	    case OPC_RH850_XORI:
 	    	decode_arithmetic(ctx, 0, rs1, rs2, 33);
@@ -1382,6 +1504,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_SBF_SATSUB2:
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
 								// SATSUB2 (format XI)
+								decode_arithmetic(ctx, 0, rs1, rs2, 28);
 							} else {
 								// SBF
 							}
@@ -1480,8 +1603,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			decode_data_manipulation(ctx,0,rs1,rs2,2);
 			break;
 		} else {
-			//SATSUBR
-			decode_arithmetic(ctx, 0, rs1, rs2, 30);
+			//SATSUBR (calling SATSUB reg1, reg2 but with switched registers)
+			decode_arithmetic(ctx, 0, rs2, rs1, 27);
 			break;
 		}
 		break;
@@ -1492,6 +1615,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//SATSUB
+			decode_arithmetic(ctx, 0, rs1, rs2, 27);
 			break;
 		}
 		break;
