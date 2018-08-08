@@ -46,6 +46,13 @@ typedef struct DisasContext {
     uint32_t opcode1;
     uint32_t flags;
     uint32_t mem_idx;
+
+    uint32_t Z_flag;
+    uint32_t S_flag;
+    uint32_t OV_flag;
+    uint32_t CY_flag;
+    uint32_t SAT_flag;
+
     int singlestep_enabled;
     int bstate;
     /* Remember the rounding mode encoded in the previous fp instruction,
@@ -780,11 +787,38 @@ static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, in
 			tcg_temp_free(zero);
 
 		}	break;
-		case 30: //SATSUBR
-			tcg_gen_sub_tl(r2, r1, r2);
-			//TODO:SATURED TO 7FFFFFFFH OR 80000000H
-			gen_set_gpr(rs2, r2);
-			break;
+		case 30: {	//TST reg1, reg2
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			end = gen_new_label();
+			cont = gen_new_label();
+
+			tcg_gen_mov_i32(r1_local, r1);
+			tcg_gen_mov_i32(r2_local, r2);
+
+			tcg_gen_and_i32(result, r1_local, r2_local);
+
+			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x0, cont);
+			ctx->Z_flag = 1;
+			tcg_gen_br(end);
+
+			gen_set_label(cont);
+
+			tcg_gen_andi_i32(check, result, (0x1 << 31));
+			tcg_gen_brcondi_tl(TCG_COND_NE, check, (0x1 << 31), end);
+			ctx->S_flag = 1;
+
+			gen_set_label(end);
+
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(r1_local);
+			tcg_temp_free(r2_local);
+
+		}	break;
 		case 31: //MOVHI
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_i32(tcg_imm, imm_32);
@@ -1668,6 +1702,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		decode_arithmetic(ctx, 0, rs1,rs2, 7);
 		break;
 	case OPC_RH850_TST:
+		decode_arithmetic(ctx, 0, rs1,rs2, 30);
 		break;
 	case OPC_RH850_SUBR:
 		decode_arithmetic(ctx, 0, rs1,rs2, 3);
