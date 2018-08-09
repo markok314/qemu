@@ -45,7 +45,7 @@ typedef struct DisasContext {
     uint32_t opcode;
     uint32_t opcode1;
     uint32_t flags;
-    const uint32_t mem_idx = 0; // no MMU in RH850
+    uint32_t mem_idx;
     uint32_t Z_flag;
     uint32_t S_flag;
     uint32_t OV_flag;
