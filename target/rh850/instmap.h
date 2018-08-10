@@ -73,11 +73,11 @@ enum {
 	OPC_RH850_SUBR 	= (0xC << 5),
 	OPC_RH850_SUB 	= (0xD << 5),
 	OPC_RH850_ADD 	= (0xE << 5),
-	OPC_RH850_CMP 	= (0xF << 5),
+	OPC_RH850_CMP_reg1_reg2 	= (0xF << 5),
 	OPC_RH850_16bit_16 = (0x10 << 5),	// group with opcode 0x10 (mov,callt)
 	OPC_RH850_16bit_17 = (0x11 << 5),	// group with opcode 0x11 (callt, satadd)
 	OPC_RH850_16bit_ADD= (0x12 << 5),   // group with opcode 0x12 (add)
-	OPC_RH850_16bit_CMP = (0x13 << 5),	// group with opcode 0x13 (cmp)
+	OPC_RH850_CMP_imm5_reg2 = (0x13 << 5),	// group with opcode 0x13 (cmp)
 	OPC_RH850_16bit_SHR = (0x14 << 5),	// group with opcode 0x14 (shr)
 	OPC_RH850_16bit_SAR = (0x15 << 5),	// group with opcode 0x15 (sar)
 	OPC_RH850_16bit_SHL = (0x16 << 5),	// group with opcode 0x16 (shl)

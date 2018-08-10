@@ -47,11 +47,11 @@ typedef struct DisasContext {
     uint32_t flags;
     uint32_t mem_idx;
 
-    uint32_t Z_flag;
-    uint32_t S_flag;
-    uint32_t OV_flag;
-    uint32_t CY_flag;
-    uint32_t SAT_flag;
+    int Z_flag;
+    int S_flag;
+    int OV_flag;
+    int CY_flag;
+    int SAT_flag;
 
 
 
@@ -1752,7 +1752,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_ADD:
 		gen_arithmetic(ctx, 0, rs1,rs2, 1);
 		break;
-	case OPC_RH850_CMP:
+	case OPC_RH850_CMP_reg1_reg2:
 		break;
 	case OPC_RH850_16bit_16:
 		if (rs2 == 0){
@@ -1777,7 +1777,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_ADD:
 		gen_arithmetic(ctx, 0, rs1,rs2, 6);	//add format II
 		break;
-	case OPC_RH850_16bit_CMP:
+	case OPC_RH850_CMP_imm5_reg2:
 		break;
 	case OPC_RH850_16bit_SHR:
 		decode_data_manipulation(ctx,0, rs1, rs2, 6);
