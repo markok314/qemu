@@ -45,27 +45,17 @@ enum{
 	COND_RH850_BZ = 0010,
 };
 
-#define MASK_OP_MAJOR(op)  (op & (0x3F << 5))	//most instructions for rh850 have opcodes at bits 5-10
+#define MASK_OP_MAJOR(op)  (op & (0x3F << 5)) // the major opcode in rh850 is at bits 10-5
 enum {
-
-	OPC_RH850_LDB 	  = (0x38 << 5),
-	OPC_RH850_LDH_LDW = (0x39 << 5),
-	OPC_RH850_STB 	  = (0x3A << 5),
-	OPC_RH850_STH_STW = (0x3B << 5), 	//the store halfword and store word instructions differ on LSB displacement bit 16 (0=ST.H, 1=ST.W) (format VII)
-
-	OPC_RH850_ST_LD_0 = (0x3C << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
-	OPC_RH850_ST_LD_1 = (0x3D << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
-	//OPC_RH850_LDHU  = (0x3F << 5),	//bits 11-15 are not all 0
-
 	/* FORMAT I */						// unique opcodes and grouped instructions
 	OPC_RH850_16bit_0 = (0x0 << 5),		// group with opcode 0x0 (nop, synci, synce, syncm, syncp, mov)
+	OPC_RH850_NOT 	= (0x1 << 5),
 	OPC_RH850_16bit_2 = (0x2 << 5),		// group with opcode 0x2 (rie, switch, divh, fetrap)
+	OPC_RH850_16bit_3 = (0x3 << 5), 	// group with opcode 0x3 (jmp,sld.bu,sld.hu)
 	OPC_RH850_16bit_4 = (0x4 << 5),		// group with opcode 0x4 (zyb, satsub)
 	OPC_RH850_16bit_5 = (0x5 << 5),		// group with opcode 0x5 (sxb, satsub)
 	OPC_RH850_16bit_6 = (0x6 << 5),		// group with opcode 0x6 (zyh, satadd)
 	OPC_RH850_16bit_7 = (0x7 << 5),		// group with opcode 0x7 (sxh, mulh)
-	OPC_RH850_NOT 	= (0x1 << 5),
-	OPC_RH850_16bit_3 	= (0x3 << 5), 	//group with opcode 0x3 (jmp,sld.bu,sld.hu)
 	OPC_RH850_OR 	= (0x8 << 5),
 	OPC_RH850_XOR 	= (0x9 << 5),
 	OPC_RH850_AND 	= (0xA << 5),
@@ -73,22 +63,20 @@ enum {
 	OPC_RH850_SUBR 	= (0xC << 5),
 	OPC_RH850_SUB 	= (0xD << 5),
 	OPC_RH850_ADD 	= (0xE << 5),
-	OPC_RH850_CMP_reg1_reg2 	= (0xF << 5),
+	OPC_RH850_CMP_reg1_reg2 = (0xF << 5),
+
+	/* FORMAT II */
 	OPC_RH850_16bit_16 = (0x10 << 5),	// group with opcode 0x10 (mov,callt)
 	OPC_RH850_16bit_17 = (0x11 << 5),	// group with opcode 0x11 (callt, satadd)
 	OPC_RH850_16bit_ADD= (0x12 << 5),   // group with opcode 0x12 (add)
 	OPC_RH850_CMP_imm5_reg2 = (0x13 << 5),	// group with opcode 0x13 (cmp)
-	OPC_RH850_16bit_SHR = (0x14 << 5),	// group with opcode 0x14 (shr)
-	OPC_RH850_16bit_SAR = (0x15 << 5),	// group with opcode 0x15 (sar)
-	OPC_RH850_16bit_SHL = (0x16 << 5),	// group with opcode 0x16 (shl)
-	OPC_RH850_16bit_MULH = (0x17 << 5),	// group with opcode 0x17 (mulh)
-
-	OPC_RH850_32bit_1 = (0x3F << 5),	//this is 111111
-
-
+	OPC_RH850_16bit_SHR = (0x14 << 5),
+	OPC_RH850_16bit_SAR = (0x15 << 5),
+	OPC_RH850_16bit_SHL = (0x16 << 5),
+	OPC_RH850_16bit_MULH = (0x17 << 5),
 
 	/*FORMAT III */
-	OPC_RH850_BCOND = (0xB << 7), //unique
+	OPC_RH850_BCOND = (0xB << 7), 	// different mask! (bits 10-7)
 
 	/* FORMAT IV */
 	OPC_RH850_16bit_SLDB = (0x6 << 5),
@@ -110,6 +98,18 @@ enum {
 	/* FORMAT VII */
 
 	OPC_RH850_LOOP	=	(0x37 << 5), 		//same as MULHI in format VI !!!!
+
+	OPC_RH850_LDB 	  = (0x38 << 5),
+	OPC_RH850_LDH_LDW = (0x39 << 5),
+	OPC_RH850_STB 	  = (0x3A << 5),
+	OPC_RH850_STH_STW = (0x3B << 5), 	//the store halfword and store word instructions differ on LSB displacement bit 16 (0=ST.H, 1=ST.W) (format VII)
+
+	OPC_RH850_ST_LD_0 = (0x3C << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
+	OPC_RH850_ST_LD_1 = (0x3D << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
+	//OPC_RH850_LDHU  = (0x3F << 5),	//bits 11-15 are not all 0
+
+	OPC_RH850_32bit_1 = (0x3F << 5),	// 111111
+
 
 	/* FORMAT VIII */
 
