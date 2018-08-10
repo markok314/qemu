@@ -296,7 +296,7 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 }
 
-static void decode_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
 {
 	TCGv r1 = tcg_temp_new();		//temp
 	TCGv r2 = tcg_temp_new();		//temp
@@ -1163,7 +1163,7 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 			break;
 	}
 	if(extract32(ctx->opcode, 5, 11) == 0x31){
-		decode_arithmetic(ctx, 0, 0, rs2, 18);				// this is MOV3 (48bit inst)
+		gen_arithmetic(ctx, 0, 0, rs2, 18);				// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
@@ -1229,31 +1229,31 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	break;
 	    case OPC_RH850_ADDI:
 	    	printf("ADDI");
-	    	decode_arithmetic(ctx, 0, rs1,rs2, 13);
+	    	gen_arithmetic(ctx, 0, rs1,rs2, 13);
 	    	break;
 	    case OPC_RH850_ANDI:
-	    	decode_arithmetic(ctx, 0, rs1, rs2, 15);
+	    	gen_arithmetic(ctx, 0, rs1, rs2, 15);
 	    	break;
 	    case OPC_RH850_MOVEA:
 	    	if ( extract32(ctx->opcode, 11, 5) == 0 ){
-	    		decode_arithmetic(ctx, 0, imm_32, rs1, 18);
+	    		gen_arithmetic(ctx, 0, imm_32, rs1, 18);
 	    		//this is MOV3
 	    	} else {
-	    		decode_arithmetic(ctx, 0, rs1, rs2, 17);
+	    		gen_arithmetic(ctx, 0, rs1, rs2, 17);
 	    		//MOVEA
 	    	}
 	    	break;
 	    case OPC_RH850_MOVHI:
-	    	decode_arithmetic(ctx, 0, rs1, rs2, 31);
+	    	gen_arithmetic(ctx, 0, rs1, rs2, 31);
 	    	break;
 	    case OPC_RH850_ORI:
-	    	decode_arithmetic(ctx, 0, rs1, rs2, 32);
+	    	gen_arithmetic(ctx, 0, rs1, rs2, 32);
 	    	break;
 	    case OPC_RH850_SATSUBI:
-	    	decode_arithmetic(ctx, 0, rs1, rs2, 29);
+	    	gen_arithmetic(ctx, 0, rs1, rs2, 29);
 	    	break;
 	    case OPC_RH850_XORI:
-	    	decode_arithmetic(ctx, 0, rs1, rs2, 33);
+	    	gen_arithmetic(ctx, 0, rs1, rs2, 33);
 	    	break;
 	    case OPC_RH850_LOOP:
 	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
@@ -1426,7 +1426,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							//SASF
 						} else {
 							if (extract32(ctx->opcode, 17, 1) == 1){
-								decode_arithmetic(ctx, 0, rs1, rs2, 22);// MULU in format XI
+								gen_arithmetic(ctx, 0, rs1, rs2, 22);// MULU in format XI
 							} else {
 								// MUL in format XI
 							}
@@ -1435,7 +1435,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						break;
 					} else if (extract32(ctx->opcode, 22, 1) == 1){
 						if (extract32(ctx->opcode, 17, 1) == 1){
-							decode_arithmetic(ctx, 0, rs1, rs2, 23);// MULU in format XII
+							gen_arithmetic(ctx, 0, rs1, rs2, 23);// MULU in format XII
 						} else {
 							// MUL in format XII
 						}
@@ -1527,7 +1527,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 						case OPC_RH850_ADF_SATADD3:
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
-								decode_arithmetic(ctx, 0, rs1, rs2, 26);
+								gen_arithmetic(ctx, 0, rs1, rs2, 26);
 								// SATADD3 (format XI)
 							} else {
 								// ADF
@@ -1536,7 +1536,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_SBF_SATSUB2:
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
 								// SATSUB2 (format XI)
-								decode_arithmetic(ctx, 0, rs1, rs2, 28);
+								gen_arithmetic(ctx, 0, rs1, rs2, 28);
 							} else {
 								// SBF
 							}
@@ -1586,7 +1586,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	switch(op){
 	case OPC_RH850_16bit_0:
 		if (rs2 != 0) {
-			decode_arithmetic(ctx, 0, rs1, rs2, 0);	// MOV Format 1
+			gen_arithmetic(ctx, 0, rs1, rs2, 0);	// MOV Format 1
 			break;
 		} else {
 			subOpCheck = MASK_OP_FORMAT_I_0(op);
@@ -1620,7 +1620,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 				break;
 			} else {
 				//DIVH
-				decode_arithmetic(ctx, 0, rs1, rs2, 12);
+				gen_arithmetic(ctx, 0, rs1, rs2, 12);
 				break;
 			}
 		}
@@ -1636,7 +1636,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//SATSUBR (calling SATSUB reg1, reg2 but with switched registers)
-			decode_arithmetic(ctx, 0, rs2, rs1, 27);
+			gen_arithmetic(ctx, 0, rs2, rs1, 27);
 			break;
 		}
 		break;
@@ -1647,7 +1647,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//SATSUB
-			decode_arithmetic(ctx, 0, rs1, rs2, 27);
+			gen_arithmetic(ctx, 0, rs1, rs2, 27);
 			break;
 		}
 		break;
@@ -1658,7 +1658,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//SATADD1 (format I)
-			decode_arithmetic(ctx, 0, rs1, rs2, 24);
+			gen_arithmetic(ctx, 0, rs1, rs2, 24);
 			break;
 		}
 		break;
@@ -1669,12 +1669,12 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//MULH
-			decode_arithmetic(ctx, 0, rs1,rs2, 8);
+			gen_arithmetic(ctx, 0, rs1,rs2, 8);
 			break;
 		}
 		break;
 	case OPC_RH850_NOT:
-		decode_arithmetic(ctx, 0, rs1, rs2, 11);
+		gen_arithmetic(ctx, 0, rs1, rs2, 11);
 		break;
 	case OPC_RH850_16bit_3:
 		if (rs2 == 0){
@@ -1691,25 +1691,25 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_OR:
-		decode_arithmetic(ctx, 0, rs1,rs2, 4);
+		gen_arithmetic(ctx, 0, rs1,rs2, 4);
 		break;
 	case OPC_RH850_XOR:
-		decode_arithmetic(ctx, 0, rs1,rs2, 5);
+		gen_arithmetic(ctx, 0, rs1,rs2, 5);
 		break;
 	case OPC_RH850_AND:
-		decode_arithmetic(ctx, 0, rs1,rs2, 7);
+		gen_arithmetic(ctx, 0, rs1,rs2, 7);
 		break;
 	case OPC_RH850_TST:
-		decode_arithmetic(ctx, 0, rs1,rs2, 30);
+		gen_arithmetic(ctx, 0, rs1,rs2, 30);
 		break;
 	case OPC_RH850_SUBR:
-		decode_arithmetic(ctx, 0, rs1,rs2, 3);
+		gen_arithmetic(ctx, 0, rs1,rs2, 3);
 		break;
 	case OPC_RH850_SUB:
-		decode_arithmetic(ctx, 0, rs1,rs2, 2);
+		gen_arithmetic(ctx, 0, rs1,rs2, 2);
 		break;
 	case OPC_RH850_ADD:
-		decode_arithmetic(ctx, 0, rs1,rs2, 1);
+		gen_arithmetic(ctx, 0, rs1,rs2, 1);
 		break;
 	case OPC_RH850_CMP:
 		break;
@@ -1718,7 +1718,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			//CALLT
 			break;
 		} else {
-			decode_arithmetic(ctx, 0, imm, rs2, 16);	//MOV format II
+			gen_arithmetic(ctx, 0, imm, rs2, 16);	//MOV format II
 			break;
 		}
 		break;
@@ -1729,12 +1729,12 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		} else {
 			//SATADD2 (format II)
 			printf("tu smo v satadd2 \n");
-			decode_arithmetic(ctx, 0, rs1, rs2, 25);
+			gen_arithmetic(ctx, 0, rs1, rs2, 25);
 			break;
 		}
 		break;
 	case OPC_RH850_16bit_ADD:
-		decode_arithmetic(ctx, 0, rs1,rs2, 6);	//add format II
+		gen_arithmetic(ctx, 0, rs1,rs2, 6);	//add format II
 		break;
 	case OPC_RH850_16bit_CMP:
 		break;
@@ -1748,7 +1748,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		decode_data_manipulation(ctx,0, rs1, rs2, 9);
 		break;
 	case OPC_RH850_16bit_MULH:
-		decode_arithmetic(ctx, 0, rs1,rs2, 9);
+		gen_arithmetic(ctx, 0, rs1,rs2, 9);
 		break;
 	}
 
