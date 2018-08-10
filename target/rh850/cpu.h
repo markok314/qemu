@@ -119,6 +119,7 @@ struct CPURH850State {
     target_ulong sysDatabuffRegs[1];
     target_ulong pc;
 
+    target_ulong psw;
 
     target_ulong icsr;		//interrupt control status register
     target_ulong intcfg;	//interrupt function setting

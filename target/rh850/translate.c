@@ -46,11 +46,15 @@ typedef struct DisasContext {
     uint32_t opcode1;
     uint32_t flags;
     uint32_t mem_idx;
+
     uint32_t Z_flag;
     uint32_t S_flag;
     uint32_t OV_flag;
     uint32_t CY_flag;
     uint32_t SAT_flag;
+
+
+
     int singlestep_enabled;
     int bstate;
     /* Remember the rounding mode encoded in the previous fp instruction,
@@ -80,6 +84,15 @@ static const int tcg_memop_lookup[8] = {
 	[6] = MO_TESL,
 };
 */
+
+enum {
+    PSW_Z_FLAG		= 0x1,
+	PSW_S_FLAG		= 0x2,
+	PSW_OV_FLAG		= 0x4,
+	PSW_CY_FLAG		= 0x8,
+	PSW_SAT_FLAG	= 0xa,
+};
+
 #define CASE_OP_32_64(X) case X
 
 static void generate_exception(DisasContext *ctx, int excp)
@@ -160,6 +173,26 @@ static inline void gen_set_gpr(int reg_num_dst, TCGv t)
     }
 }
 
+static inline void gen_set_psw(TCGv t)
+{
+
+	tcg_gen_mov_tl(cpu_sysRegs[4], t);
+}
+
+static inline void gen_get_psw(TCGv t)
+{
+	tcg_gen_mov_tl(t, cpu_sysRegs[4]);
+}
+
+
+static inline void gen_reset_flags(DisasContext *ctx)
+{
+	ctx->Z_flag = 0;
+	ctx->S_flag = 0;
+	ctx->OV_flag = 0;
+	ctx->CY_flag = 0;
+	ctx->SAT_flag = 0;
+}
 
 static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
 {
@@ -789,32 +822,40 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
+			TCGv PSW_local = tcg_temp_local_new();
+			//TCGv S_local = tcg_temp_local_new();
 			TCGv check = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
 			end = gen_new_label();
 			cont = gen_new_label();
 
+
 			tcg_gen_mov_i32(r1_local, r1);
 			tcg_gen_mov_i32(r2_local, r2);
+			tcg_gen_movi_i32(PSW_local, 0x0);
 
 			tcg_gen_and_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x0, cont);
-			ctx->Z_flag = 1;
+			tcg_gen_ori_i32(PSW_local, PSW_local, PSW_Z_FLAG);
+			//ctx->Z_flag = 1;
 			tcg_gen_br(end);
 
 			gen_set_label(cont);
 
 			tcg_gen_andi_i32(check, result, (0x1 << 31));
 			tcg_gen_brcondi_tl(TCG_COND_NE, check, (0x1 << 31), end);
-			ctx->S_flag = 1;
+			tcg_gen_ori_i32(PSW_local, PSW_local, PSW_S_FLAG);
+			//ctx->S_flag = 1;
 
 			gen_set_label(end);
 
+			gen_set_psw(PSW_local);
 			tcg_temp_free(result);
 			tcg_temp_free(check);
 			tcg_temp_free(r1_local);
 			tcg_temp_free(r2_local);
+			tcg_temp_free(PSW_local);
 
 		}	break;
 		case 31: //MOVHI
@@ -1790,6 +1831,8 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     next_page_start = (pc_start & TARGET_PAGE_MASK) + TARGET_PAGE_SIZE;
     ctx.pc = pc_start;
 
+    tcg_gen_movi_i32(cpu_sysRegs[4], 0x0);
+
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
     ///ctx.singlestep_enabled = cs->singlestep_enabled;
@@ -1814,6 +1857,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     while (ctx.bstate == BS_NONE) {
         tcg_gen_insn_start(ctx.pc);
         num_insns++;
+        gen_reset_flags(&ctx);		//function that resets flags in ctx
 
         if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))) {
             tcg_gen_movi_tl(cpu_pc, ctx.pc);
@@ -1831,51 +1875,39 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
             gen_io_start();
         }
 
-        //ctx.opcode = cpu_ldl_code(env, ctx.pc);
-
         ctx.opcode = cpu_lduw_code(env, ctx.pc);
 
         if ((extract32(ctx.opcode, 9, 2) != 0x3) && (extract32(ctx.opcode, 5, 11) != 0x17)){
-        	//if(ctx.opcode!=0){printf("This is a 16 bit instruction :");}
 			ctx.next_pc = ctx.pc + 2;		//16 bit instructions
 			decode_RH850_16(env, &ctx);		//be careful about JR and JARL (32-bit FORMAT VI)
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
-
         	if ( (extract32(ctx.opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
 			(extract32(ctx.opcode, 5, 11) == 0x31) ||	// MOVE3
 			(extract32(ctx.opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
 			(extract32(ctx.opcode, 5, 11) == 0x17) ) { //this is for 48bit JARL and JR (format VI)
 
         		ctx.opcode1 = cpu_lduw_code(env, ctx.pc+4);
-        		//if(ctx.opcode!=0){printf("This is a 48 bit instruction :");}
 				ctx.next_pc = ctx.pc + 6;
 				decode_RH850_48(env, &ctx);
         	} else {
-        		//if(ctx.opcode!=0){printf("This is a 32 bit instruction :");}
         		ctx.next_pc = ctx.pc + 4;
         		decode_RH850_32(env, &ctx);
         	}
 
 
         }
-        //ctx.pc += 2;
 
-
-
-        /*
-
-        if (ctx.opcode.size > 16) {
-          opcode1 = cpu_lduw_code(env, ctx.pc);
-          ctx.pc += 2
-          if (opcode.size > 32) {
-             opcode2 = cpu_lduw_code(env, ctx.pc);
-             ctx.pc += 2
-          }
-        }
-        */
-        //decode_opc(env, &ctx);
         ctx.pc = ctx.next_pc;
+
+        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.Z_flag << 0));
+
+        //cpu_sysRegs[4] = cpu_sysRegs[4] | (ctx.Z_flag << 0);
+        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.S_flag << 1));
+        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.OV_flag << 2));
+        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.CY_flag << 3));
+        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.SAT_flag << 4));
+
 
         if (cs->singlestep_enabled) {
             break;
