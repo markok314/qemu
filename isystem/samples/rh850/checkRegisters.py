@@ -1,10 +1,25 @@
+#	This script is used to format a readable output
+#	of QEMU log file.
+#	It prints out the PC, instruction, status register PSW
+#	and 32 general purpose registers.
+#	----------
+#	Usage: 'python checkRegisters.py logfile.log'.
+#	----------
+#	Automated building of a test file and running of
+#	QEMU will be implemented soon.
+#	Number of instructions to print is currently limited
+#	for easier testing of short test programs, the limitation
+#	will be removed when needed.
+
 import sys
 import os
 
-st=0
-stevec=0
+instNumber = 0
+counter = 0
 out = ['','']
 log_object = open(sys.argv[1], "r")
+NUM_OF_LINES_WITH_GPR_VALUES = 12
+NUM_OF_INTS_TO_PRINT = 25
 
 #if (len(sys.argv)<3):
 #	print('Arguments missing!')
@@ -17,12 +32,12 @@ log_object = open(sys.argv[1], "r")
 for line in log_object:
 
     if line.startswith("0x"):
-        st = st + 1
-        poberi=True
-        stevec=0
+        instNumber += 1
+        readLogLine = True
+        counter = 0
         raw_line = line.split()
         print("\n")
-        if raw_line.__len__()==4:
+        if len(raw_line) == 4:
             print(raw_line[0], raw_line[1], raw_line[2], raw_line[3])
         else:
             print(raw_line[0], raw_line[1])
@@ -30,18 +45,18 @@ for line in log_object:
 
     elif line.startswith(" "):
         raw_line = line.split()
-        if poberi:
+        if readLogLine:
             val = 0
             for i in raw_line:
-                if val%2==0:
-                    out[0] = i+":"
+                if val % 2 == 0:
+                    out[0] = i + ":"
                 else:
                     out[1] = i
-                    print('%5s' % out[0],out[1])
-                val=val+1
+                    print(f"{out[0]:>5} {out[1]}")
+                val += 1
 
-    stevec = stevec + 1
-    if stevec>12:
-        poberi=False
-    if st>23:
+    counter = counter + 1
+    if counter > NUM_OF_LINES_WITH_GPR_VALUES:
+        readLogLine = False
+    if instNumber > NUM_OF_INTS_TO_PRINT:
         break
