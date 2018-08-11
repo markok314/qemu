@@ -121,6 +121,14 @@ struct CPURH850State {
 
     target_ulong psw;
 
+    // flags contained in PSW register
+    uint32_t Z_flag;
+    uint32_t S_flag;
+    uint32_t OV_flag;
+    uint32_t CY_flag;
+    uint32_t SAT_flag;
+
+
     target_ulong icsr;		//interrupt control status register
     target_ulong intcfg;	//interrupt function setting
 

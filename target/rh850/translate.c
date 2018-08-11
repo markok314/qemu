@@ -35,6 +35,7 @@ static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[30], cpu_sysIntrRegs[5], cpu_sysMpu
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv load_res;
 static TCGv load_val;
+TCGv_i32 cpu_ZF, cpu_SF, cpu_OVF, cpu_CYF, cpu_SATF;
 
 #include "exec/gen-icount.h"
 
@@ -46,13 +47,6 @@ typedef struct DisasContext {
     uint32_t opcode1;
     uint32_t flags;
     uint32_t mem_idx;
-
-    int Z_flag;
-    int S_flag;
-    int OV_flag;
-    int CY_flag;
-    int SAT_flag;
-
 
 
     int singlestep_enabled;
@@ -84,14 +78,6 @@ static const int tcg_memop_lookup[8] = {
 	[6] = MO_TESL,
 };
 */
-
-enum {
-    PSW_Z_FLAG		= 0x1,
-	PSW_S_FLAG		= 0x2,
-	PSW_OV_FLAG		= 0x4,
-	PSW_CY_FLAG		= 0x8,
-	PSW_SAT_FLAG	= 0xa,
-};
 
 #define CASE_OP_32_64(X) case X
 
@@ -187,11 +173,12 @@ static inline void gen_get_psw(TCGv t)
 
 static inline void gen_reset_flags(DisasContext *ctx)
 {
-	ctx->Z_flag = 0;
-	ctx->S_flag = 0;
-	ctx->OV_flag = 0;
-	ctx->CY_flag = 0;
-	ctx->SAT_flag = 0;
+	tcg_gen_movi_i32(cpu_ZF, 0x0);
+	tcg_gen_movi_i32(cpu_SF, 0x0);
+	tcg_gen_movi_i32(cpu_OVF, 0x0);
+	tcg_gen_movi_i32(cpu_CYF, 0x0);
+	tcg_gen_movi_i32(cpu_SATF, 0x0);
+
 }
 
 static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
@@ -822,40 +809,32 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
-			TCGv PSW_local = tcg_temp_local_new();
-			//TCGv S_local = tcg_temp_local_new();
 			TCGv check = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
 			end = gen_new_label();
 			cont = gen_new_label();
 
-
 			tcg_gen_mov_i32(r1_local, r1);
 			tcg_gen_mov_i32(r2_local, r2);
-			tcg_gen_movi_i32(PSW_local, 0x0);
 
 			tcg_gen_and_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x0, cont);
-			tcg_gen_ori_i32(PSW_local, PSW_local, PSW_Z_FLAG);
-			//ctx->Z_flag = 1;
+			tcg_gen_movi_i32(cpu_ZF, 0x1);
 			tcg_gen_br(end);
 
 			gen_set_label(cont);
 
 			tcg_gen_andi_i32(check, result, (0x1 << 31));
 			tcg_gen_brcondi_tl(TCG_COND_NE, check, (0x1 << 31), end);
-			tcg_gen_ori_i32(PSW_local, PSW_local, PSW_S_FLAG);
-			//ctx->S_flag = 1;
+			tcg_gen_movi_i32(cpu_SF, 0x1);
 
 			gen_set_label(end);
 
-			gen_set_psw(PSW_local);
 			tcg_temp_free(result);
 			tcg_temp_free(check);
 			tcg_temp_free(r1_local);
 			tcg_temp_free(r2_local);
-			tcg_temp_free(PSW_local);
 
 		}	break;
 		case 31: //MOVHI
@@ -1900,13 +1879,13 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
         ctx.pc = ctx.next_pc;
 
-        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.Z_flag << 0));
+        //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.Z_flag << 0));
 
-        //cpu_sysRegs[4] = cpu_sysRegs[4] | (ctx.Z_flag << 0);
-        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.S_flag << 1));
-        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.OV_flag << 2));
-        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.CY_flag << 3));
-        tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.SAT_flag << 4));
+        tcg_gen_shli_i32(cpu_sysRegs[4], cpu_SF, 0x1);
+        tcg_gen_or_i32(cpu_sysRegs[4],cpu_sysRegs[4],cpu_ZF);
+        //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.OV_flag << 2));
+        //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.CY_flag << 3));
+        //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.SAT_flag << 4));
 
 
         if (cs->singlestep_enabled) {
@@ -2006,6 +1985,13 @@ void rh850_translate_init(void)
         cpu_sysDatabuffRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysDatabuffRegs[i]), rh850_sys_databuff_regnames[i]);
     }
+    cpu_ZF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, Z_flag), "ZF");
+    cpu_SF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, S_flag), "SF");
+	cpu_OVF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, OV_flag), "OVF");
+	cpu_CYF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, CY_flag), "CYF");
+	cpu_SATF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, SAT_flag), "SAT");
+
+
 
 
     cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, pc), "pc");
