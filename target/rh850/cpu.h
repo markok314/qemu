@@ -127,6 +127,15 @@ struct CPURH850State {
     uint32_t OV_flag;
     uint32_t CY_flag;
     uint32_t SAT_flag;
+    uint32_t ID_flag;
+    uint32_t EP_flag;
+    uint32_t NP_flag;
+    uint32_t EBV_flag;
+    uint32_t CU0_flag;
+    uint32_t CU1_flag;
+    uint32_t CU2_flag;
+    uint32_t UM_flag;
+
 
 
     target_ulong icsr;		//interrupt control status register
@@ -147,8 +156,6 @@ struct CPURH850State {
 
     //target_ulong user_ver;
     target_ulong priv_ver;
-
-    //target_ulong user_mode;  <=== if PSW.UM==1, otherwise we are in supervisor mode
 
     target_ulong misa;
 

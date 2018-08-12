@@ -31,11 +31,33 @@
 #include "instmap.h"
 
 /* global register indices */
-static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[30], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56], cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1];
+static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[30], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56],
+			cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1];
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv load_res;
 static TCGv load_val;
-TCGv_i32 cpu_ZF, cpu_SF, cpu_OVF, cpu_CYF, cpu_SATF;
+
+// PSW register flags
+TCGv_i32 cpu_ZF, cpu_SF, cpu_OVF, cpu_CYF, cpu_SATF, cpu_ID, cpu_EP, cpu_NP,
+		cpu_EBV, cpu_CU0, cpu_CU1, cpu_CU2, cpu_UM;
+
+
+// system registers indices
+enum{
+	EIPC_register 	= 0,
+	EIPSW_register 	= 1,
+	FEPC_register 	= 2,
+	FEPSW_register 	= 3,
+	PSW_register 	= 4,
+	FPSR_register	= 5,
+	FPEPC_register	= 6,
+	FPST_register 	= 7,
+	FPCC_register	= 8,
+	FPCFG_register	= 9,
+	FPEC_register	= 10,
+	EIIC_register	= 11,
+	FEIC_register 	= 12,
+};
 
 #include "exec/gen-icount.h"
 
@@ -162,12 +184,12 @@ static inline void gen_set_gpr(int reg_num_dst, TCGv t)
 static inline void gen_set_psw(TCGv t)
 {
 
-	tcg_gen_mov_tl(cpu_sysRegs[4], t);
+	tcg_gen_mov_tl(cpu_sysRegs[PSW_register], t);
 }
 
 static inline void gen_get_psw(TCGv t)
 {
-	tcg_gen_mov_tl(t, cpu_sysRegs[4]);
+	tcg_gen_mov_tl(t, cpu_sysRegs[PSW_register]);
 }
 
 
@@ -356,34 +378,24 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_sub_tl(r2, r1, r2);	//SUBR
 			gen_set_gpr(rs2, r2);
 			break;
-		case 4:
-			tcg_gen_or_tl(r2, r2, r1); //OR
-			gen_set_gpr(rs2, r2);
-			break;
-		case 5:
-			tcg_gen_xor_tl(r2, r2, r1);	//XOR
-			gen_set_gpr(rs2, r2);
-			break;
-		case 6:
+
+		case 6:	//ADD FORMAT 2
 			if((imm & 0x10) == 0x10){
 				imm = imm | (0x7 << 5);
 			}
 			tcg_gen_movi_i32(tcg_imm, imm);
 			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
-			tcg_gen_add_tl(r2, r2, tcg_imm); //ADD FORMAT 2
+			tcg_gen_add_tl(r2, r2, tcg_imm);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 7:
-			tcg_gen_and_tl(r2, r2, r1); //AND
-			gen_set_gpr(rs2, r2);
-			break;
-		case 8://MULH (format I)
+
+		case 8://MULH (format I)				//move to gen_multiply!
 			tcg_gen_andi_tl(r2, r2,0x0000FFFF);
 			tcg_gen_andi_tl(r1, r1,0x0000FFFF);
 			tcg_gen_mul_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 9://MULH (format II)
+		case 9://MULH (format II)				//move to gen_multiply!
 			if ((imm & 0x10) == 0x10){
 				imm = imm | (0x7 << 5);
 			}
@@ -397,12 +409,9 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 		case 10://SXH			//this is a duplicate, the correct SXH is in data_manipulation
 
 			break;
-		case 11://NOT
-			tcg_gen_not_i32(r2, r1);
-			gen_set_gpr(rs2, r2);
-			break;
-		case 12://DIVH
-			tcg_gen_andi_i32(r1, r1,0x0000ffff); //can not be tested due to MOV3 troubles
+
+		case 12://DIVH							//move to gen_divide!!
+			tcg_gen_andi_i32(r1, r1,0x0000ffff);
 			tcg_gen_ext16s_i32(r1, r1);
 			tcg_gen_div_i32(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
@@ -414,7 +423,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_add_tl(r2,r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 14: //ADF
+		case 14: //ADF								//move to gen_cond_arith!!
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			//int_cond = extract32(ctx->opcode, 17, 4);
 			gen_get_gpr(tcg_r3,int_rs3);
@@ -425,13 +434,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_add_tl(tcg_r3, r2, r1);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
-		case 15://ANDI
-			imm_32 = extract32(ctx->opcode, 16, 16);
-			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			tcg_gen_ext16u_tl(tcg_imm32, tcg_imm32);
-			tcg_gen_and_tl(r2, r1, tcg_imm32);
-			gen_set_gpr(rs2, r2);
-			break;
+
 		case 16:
 			if ((imm & 0x10) == 0x10){	//extending 5bit immediate to 8 bits
 				imm = imm | (0x7 << 5);
@@ -455,7 +458,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_movi_i32(r2, imm_32);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 19: //MUL FORMAT XI
+		case 19: //MUL FORMAT XI				//move to gen_multiply
 			int_rs3 = extract32(ctx->opcode, 26, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mul_tl(r2, r2, r1);
@@ -468,7 +471,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 20: //MUL FORMAT XII
+		case 20: //MUL FORMAT XII				//move to gen_multiply
 			int_rs3 = extract32(ctx->opcode, 26, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			imm_32 = extract32(ctx->opcode, 19, 4);
@@ -483,14 +486,14 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
 			break;
-		case 21: //MULHI
+		case 21: //MULHI						//move to gen_multiply
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
 			tcg_gen_andi_tl(tcg_temp, r1,0xFFFF); //GET LOWER 16 BITS OF R1
 			tcg_gen_mul_tl(r2, tcg_temp, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 22://MULU FORMAT XI
+		case 22://MULU FORMAT XI				//move to gen_multiply
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mulsu2_i32(r2, tcg_r3, r2, r1);
@@ -498,7 +501,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 23://MULU FORMAT XII
+		case 23://MULU FORMAT XII				//move to gen_multiply
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			imm_32 = extract32(ctx->opcode, 18, 4);
@@ -516,7 +519,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			gen_set_gpr(rs2, r2);
 			break;
 
-		case 24: {//SATADD1 FORMAT I: SATADD reg1, reg2
+		case 24: {//SATADD1 FORMAT I: SATADD reg1, reg2		//move to gen_sat_op!!
 
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
@@ -561,7 +564,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_temp_free(zero);
 
 		}	break;
-		case 25: {	//SATADD2 FORMAT II, SATADD imm5, reg2
+		case 25: {	//SATADD2 FORMAT II, SATADD imm5, reg2    //move to gen_sat_op!!
 
 
 			TCGv imm_local = tcg_temp_local_new();
@@ -613,7 +616,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_temp_free(zero);
 
 		}	break;
-		case 26: {//SATADD3 FORMAT XI: SATADD reg1, reg2, reg3
+		case 26: {//SATADD3 FORMAT XI: SATADD reg1, reg2, reg3    //move to gen_sat_op!!
 
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
@@ -660,7 +663,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 
 		}	break;
 
-		case 27: {//SATSUB reg1, reg2
+		case 27: {//SATSUB reg1, reg2    //move to gen_sat_op!!
 
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
@@ -707,7 +710,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_temp_free(zero);
 
 		}	break;
-		case 28: {///SATSUB reg1, reg2, reg3
+		case 28: {///SATSUB reg1, reg2, reg3      //move to gen_sat_op!!
 
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
@@ -756,7 +759,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 
 		}
 			break;
-		case 29: {//SATSUBI imm16, reg1, reg2
+		case 29: {//SATSUBI imm16, reg1, reg2     //move to gen_sat_op!!
 
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv imm_local = tcg_temp_local_new();
@@ -805,38 +808,6 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_temp_free(zero);
 
 		}	break;
-		case 30: {	//TST reg1, reg2
-
-			TCGv r1_local = tcg_temp_local_new();
-			TCGv r2_local = tcg_temp_local_new();
-			TCGv check = tcg_temp_local_new();
-			TCGv result = tcg_temp_local_new();
-			end = gen_new_label();
-			cont = gen_new_label();
-
-			tcg_gen_mov_i32(r1_local, r1);
-			tcg_gen_mov_i32(r2_local, r2);
-
-			tcg_gen_and_i32(result, r1_local, r2_local);
-
-			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x0, cont);
-			tcg_gen_movi_i32(cpu_ZF, 0x1);
-			tcg_gen_br(end);
-
-			gen_set_label(cont);
-
-			tcg_gen_andi_i32(check, result, (0x1 << 31));
-			tcg_gen_brcondi_tl(TCG_COND_NE, check, (0x1 << 31), end);
-			tcg_gen_movi_i32(cpu_SF, 0x1);
-
-			gen_set_label(end);
-
-			tcg_temp_free(result);
-			tcg_temp_free(check);
-			tcg_temp_free(r1_local);
-			tcg_temp_free(r2_local);
-
-		}	break;
 		case 31: //MOVHI
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_i32(tcg_imm, imm_32);
@@ -845,23 +816,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_add_i32(r2, tcg_imm, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 32: //ORI
-			imm_32 = extract32(ctx->opcode, 16, 16);
-			tcg_gen_movi_i32(tcg_imm, imm_32);
-			tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
 
-			tcg_gen_or_i32(r2, r1, tcg_imm);
-			gen_set_gpr(rs2, r2);
-			break;
-
-		case 33: //XORI
-			imm_32 = extract32(ctx->opcode, 16, 16);
-			tcg_gen_movi_i32(tcg_imm, imm_32);
-			tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
-
-			tcg_gen_xor_i32(r2, r1, tcg_imm);
-			gen_set_gpr(rs2, r2);
-			break;
 	}
 
 
@@ -884,6 +839,111 @@ TCG_COND_GEU // unsigned
 TCG_COND_LEU // unsigned
 TCG_COND_GTU // unsigned
 */
+
+static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
+{
+	TCGv r1 = tcg_temp_new();		//temp
+	TCGv r2 = tcg_temp_new();		//temp
+
+	gen_get_gpr(r1, rs1);			//loading rs1 to t0
+	gen_get_gpr(r2, rs2);			//loading rs2 to t1
+
+	//int imm = rs1;
+	int imm_32;
+	//int int_rs3;
+	//uint64_t opcode48;
+
+	TCGv tcg_imm = tcg_temp_new();
+	//TCGv tcg_imm32 = tcg_temp_new();
+	//TCGv tcg_r3 = tcg_temp_new();
+	//TCGv tcg_temp = tcg_temp_new();
+
+	TCGLabel *end;
+	TCGLabel *cont;
+	//TCGLabel *cont2;
+
+	switch(operation){
+	case OPC_RH850_AND:
+		tcg_gen_and_tl(r2, r2, r1);
+		gen_set_gpr(rs2, r2);
+		break;
+	case OPC_RH850_ANDI:
+		imm_32 = extract32(ctx->opcode, 16, 16);
+		tcg_gen_movi_tl(tcg_imm, imm_32);
+		tcg_gen_ext16u_tl(tcg_imm, tcg_imm);
+		tcg_gen_and_tl(r2, r1, tcg_imm);
+		gen_set_gpr(rs2, r2);
+		break;
+	case OPC_RH850_NOT:
+		tcg_gen_not_i32(r2, r1);
+		gen_set_gpr(rs2, r2);
+		break;
+	case OPC_RH850_OR:
+		tcg_gen_or_tl(r2, r2, r1);
+		gen_set_gpr(rs2, r2);
+		break;
+	case OPC_RH850_ORI:
+		imm_32 = extract32(ctx->opcode, 16, 16);
+		tcg_gen_movi_i32(tcg_imm, imm_32);
+		tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
+
+		tcg_gen_or_i32(r2, r1, tcg_imm);
+		gen_set_gpr(rs2, r2);
+		break;
+	case OPC_RH850_TST:	{
+		TCGv r1_local = tcg_temp_local_new();
+		TCGv r2_local = tcg_temp_local_new();
+		TCGv check = tcg_temp_local_new();
+		TCGv result = tcg_temp_local_new();
+		end = gen_new_label();
+		cont = gen_new_label();
+
+		tcg_gen_mov_i32(r1_local, r1);
+		tcg_gen_mov_i32(r2_local, r2);
+
+		tcg_gen_and_i32(result, r1_local, r2_local);
+
+		tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x0, cont);
+		tcg_gen_movi_i32(cpu_ZF, 0x1);
+		tcg_gen_br(end);
+
+		gen_set_label(cont);
+
+		tcg_gen_andi_i32(check, result, (0x1 << 31));
+		tcg_gen_brcondi_tl(TCG_COND_NE, check, (0x1 << 31), end);
+		tcg_gen_movi_i32(cpu_SF, 0x1);
+
+		gen_set_label(end);
+
+		tcg_temp_free(result);
+		tcg_temp_free(check);
+		tcg_temp_free(r1_local);
+		tcg_temp_free(r2_local);
+	}	break;
+	case OPC_RH850_XOR:
+		tcg_gen_xor_tl(r2, r2, r1);
+		gen_set_gpr(rs2, r2);
+		break;
+	case OPC_RH850_XORI:
+		imm_32 = extract32(ctx->opcode, 16, 16);
+		tcg_gen_movi_i32(tcg_imm, imm_32);
+		tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
+
+		tcg_gen_xor_i32(r2, r1, tcg_imm);
+		gen_set_gpr(rs2, r2);
+		break;
+	}
+
+	tcg_temp_free(r1);
+	tcg_temp_free(r2);
+	tcg_temp_free(tcg_imm);
+}
+
+//static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation){}
+//static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation){}
+//static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation){}
+//static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation){}
+
 
 static void decode_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
 {
@@ -1252,7 +1312,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	gen_arithmetic(ctx, 0, rs1,rs2, 13);
 	    	break;
 	    case OPC_RH850_ANDI:
-	    	gen_arithmetic(ctx, 0, rs1, rs2, 15);
+	    	gen_logical(ctx, rs1, rs1, OPC_RH850_ANDI);
 	    	break;
 	    case OPC_RH850_MOVEA:
 	    	if ( extract32(ctx->opcode, 11, 5) == 0 ){
@@ -1267,13 +1327,13 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	gen_arithmetic(ctx, 0, rs1, rs2, 31);
 	    	break;
 	    case OPC_RH850_ORI:
-	    	gen_arithmetic(ctx, 0, rs1, rs2, 32);
+	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ORI);
 	    	break;
 	    case OPC_RH850_SATSUBI:
 	    	gen_arithmetic(ctx, 0, rs1, rs2, 29);
 	    	break;
 	    case OPC_RH850_XORI:
-	    	gen_arithmetic(ctx, 0, rs1, rs2, 33);
+	    	gen_logical(ctx, rs1, rs2, OPC_RH850_XORI);
 	    	break;
 	    case OPC_RH850_LOOP:
 	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
@@ -1416,6 +1476,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_DI:
 							break;
 						case OPC_RH850_EI:
+
 							break;
 						case OPC_RH850_EIRET:
 							break;
@@ -1694,7 +1755,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_NOT:
-		gen_arithmetic(ctx, 0, rs1, rs2, 11);
+		gen_logical(ctx, rs1, rs2, OPC_RH850_NOT);
 		break;
 	case OPC_RH850_16bit_3:
 		if (rs2 == 0){
@@ -1711,16 +1772,16 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_OR:
-		gen_arithmetic(ctx, 0, rs1,rs2, 4);
+		gen_logical(ctx, rs1, rs2, OPC_RH850_OR);
 		break;
 	case OPC_RH850_XOR:
-		gen_arithmetic(ctx, 0, rs1,rs2, 5);
+		gen_logical(ctx, rs1, rs2, OPC_RH850_XOR);
 		break;
 	case OPC_RH850_AND:
-		gen_arithmetic(ctx, 0, rs1,rs2, 7);
+		gen_logical(ctx, rs1, rs2, OPC_RH850_AND);
 		break;
 	case OPC_RH850_TST:
-		gen_arithmetic(ctx, 0, rs1,rs2, 30);
+		gen_logical(ctx, rs1, rs2, OPC_RH850_TST);
 		break;
 	case OPC_RH850_SUBR:
 		gen_arithmetic(ctx, 0, rs1,rs2, 3);
@@ -1881,8 +1942,8 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.Z_flag << 0));
 
-        tcg_gen_shli_i32(cpu_sysRegs[4], cpu_SF, 0x1);
-        tcg_gen_or_i32(cpu_sysRegs[4],cpu_sysRegs[4],cpu_ZF);
+        tcg_gen_shli_i32(cpu_sysRegs[PSW_register], cpu_SF, 0x1);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.OV_flag << 2));
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.CY_flag << 3));
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.SAT_flag << 4));
@@ -1985,13 +2046,21 @@ void rh850_translate_init(void)
         cpu_sysDatabuffRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysDatabuffRegs[i]), rh850_sys_databuff_regnames[i]);
     }
+
+    // PSW register flags
     cpu_ZF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, Z_flag), "ZF");
     cpu_SF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, S_flag), "SF");
 	cpu_OVF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, OV_flag), "OVF");
 	cpu_CYF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, CY_flag), "CYF");
 	cpu_SATF = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, SAT_flag), "SAT");
-
-
+	cpu_ID = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, ID_flag), "ID");
+    cpu_EP = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, EP_flag), "EP");
+    cpu_NP = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, NP_flag), "NP");
+    cpu_EBV = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, EBV_flag), "EBV");
+    cpu_CU0 = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, CU0_flag), "CU0");
+    cpu_CU1 = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, CU1_flag), "CU1");
+    cpu_CU2 = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, CU2_flag), "CU2");
+    cpu_UM = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, UM_flag), "UM");
 
 
     cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, pc), "pc");
