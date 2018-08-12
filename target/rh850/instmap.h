@@ -124,6 +124,14 @@ enum {
 
 };
 
+enum{
+	OPC_RH850_SATADD_reg1_reg2 		= 1,
+	OPC_RH850_SATADD_imm5_reg2 		= 2,
+	OPC_RH850_SATADD_reg1_reg2_reg3	= 3,
+	OPC_RH850_SATSUB_reg1_reg2		 = 4,
+	OPC_RH850_SATSUB_reg1_reg2_reg3 = 5,
+};
+
 #define MASK_OP_FORMAT_I_0(op)	(MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0x1F << 0)))
 enum {
 	OPC_RH850_NOP 	= OPC_RH850_16bit_0 | (0x0 << 11) | (0x0 << 0),
@@ -220,7 +228,7 @@ enum {
 
 #define MASK_ADDIT_ARITH_OP(op) (op & (0x3 << 21))
 enum {
-	OPC_RH850_SBF_SATSUB2	= 0x0,
+	OPC_RH850_SBF_SATSUB	= 0x0,
 	OPC_RH850_ADF_SATADD3	= 0x1,
 	OPC_RH850_MAC			= 0x2,
 	OPC_RH850_MACU			= 0x3,
