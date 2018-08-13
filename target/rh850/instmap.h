@@ -60,20 +60,20 @@ enum {
 	OPC_RH850_XOR 	= (0x9 << 5),
 	OPC_RH850_AND 	= (0xA << 5),
 	OPC_RH850_TST 	= (0xB << 5),
-	OPC_RH850_SUBR 	= (0xC << 5),
-	OPC_RH850_SUB 	= (0xD << 5),
-	OPC_RH850_ADD 	= (0xE << 5),
+	OPC_RH850_SUBR_reg1_reg2 	= (0xC << 5),
+	OPC_RH850_SUB_reg1_reg2 	= (0xD << 5),
+	OPC_RH850_ADD_reg1_reg2 	= (0xE << 5),
 	OPC_RH850_CMP_reg1_reg2 = (0xF << 5),
 
 	/* FORMAT II */
 	OPC_RH850_16bit_16 = (0x10 << 5),	// group with opcode 0x10 (mov,callt)
 	OPC_RH850_16bit_17 = (0x11 << 5),	// group with opcode 0x11 (callt, satadd)
-	OPC_RH850_16bit_ADD= (0x12 << 5),   // group with opcode 0x12 (add)
+	OPC_RH850_ADD_imm5_reg2= (0x12 << 5),   // group with opcode 0x12 (add)
 	OPC_RH850_CMP_imm5_reg2 = (0x13 << 5),	// group with opcode 0x13 (cmp)
 	OPC_RH850_16bit_SHR = (0x14 << 5),
 	OPC_RH850_16bit_SAR = (0x15 << 5),
 	OPC_RH850_16bit_SHL = (0x16 << 5),
-	OPC_RH850_16bit_MULH = (0x17 << 5),
+	OPC_RH850_MULH_imm5_reg2 = (0x17 << 5),
 
 	/*FORMAT III */
 	OPC_RH850_BCOND = (0xB << 7), 	// different mask! (bits 10-7)
@@ -86,10 +86,10 @@ enum {
 	OPC_RH850_16bit_SSTH = (0x9 << 5),
 
 	/* FORMAT VI */
-	OPC_RH850_ADDI	=	(0x30 << 5),
+	OPC_RH850_ADDI_imm16_reg1_reg2	=	(0x30 << 5),
 	OPC_RH850_ANDI	=	(0x36 << 5),
 	OPC_RH850_MOVEA	=	(0x31 << 5),     	// this is also MOV 3, which is 48 bit
-	OPC_RH850_MOVHI	=	(0x32 << 5),
+	OPC_RH850_MOVHI_imm16_reg1_reg2	=	(0x32 << 5),
 	OPC_RH850_ORI	=	(0x34 << 5),
 	OPC_RH850_SATSUBI=	(0x33 << 5),
 	OPC_RH850_XORI	=	(0x35 << 5),
@@ -125,11 +125,33 @@ enum {
 };
 
 enum{
+	OPC_RH850_MOV_reg1_reg2		= 1,
+	OPC_RH850_MOV_imm5_reg2		= 2,
+	OPC_RH850_MOV_imm32_reg1	= 3,
+	OPC_RH850_MOVEA_imm16_reg1_reg2	= 4,
+};
+
+enum{
 	OPC_RH850_SATADD_reg1_reg2 		= 1,
 	OPC_RH850_SATADD_imm5_reg2 		= 2,
 	OPC_RH850_SATADD_reg1_reg2_reg3	= 3,
-	OPC_RH850_SATSUB_reg1_reg2		 = 4,
+	OPC_RH850_SATSUB_reg1_reg2		= 4,
 	OPC_RH850_SATSUB_reg1_reg2_reg3 = 5,
+};
+
+enum{
+	OPC_RH850_MUL_reg1_reg2_reg3	= 1,
+	OPC_RH850_MUL_imm9_reg2_reg3	= 2,
+	OPC_RH850_MULH_reg1_reg2		= 3,
+	//OPC_RH850_MULH_imm5_reg2		= 4,
+	OPC_RH850_MULHI_imm16_reg1_reg2	= 5,
+	OPC_RH850_MULU_reg1_reg2_reg3	= 8,
+	OPC_RH850_MULU_imm9_reg2_reg3	= 9,
+};
+
+enum{
+	OPC_RH850_ADF_cccc_reg1_reg2_reg3	= 10,
+	OPC_RH850_DIVH_reg1_reg2			= 12,
 };
 
 #define MASK_OP_FORMAT_I_0(op)	(MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0x1F << 0)))

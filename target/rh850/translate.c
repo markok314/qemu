@@ -338,16 +338,15 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 }
 
-static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 {
-	TCGv r1 = tcg_temp_new();		//temp
-	TCGv r2 = tcg_temp_new();		//temp
-	//TCGv comp = tcg_temp_new();
-	gen_get_gpr(r1, rs1);			//loading rs1 to t0
-	gen_get_gpr(r2, rs2);			//loading rs2 to t1
+	TCGv r1 = tcg_temp_new();
+	TCGv r2 = tcg_temp_new();
+	gen_get_gpr(r1, rs1);
+	gen_get_gpr(r2, rs2);
+
 	int imm = rs1;
 	int imm_32;
-	int int_rs3;
 	uint64_t opcode48;
 
 	TCGv tcg_imm = tcg_temp_new();
@@ -355,31 +354,14 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 	TCGv tcg_r3 = tcg_temp_new();
 	TCGv tcg_temp = tcg_temp_new();
 
-	//TCGLabel *l = gen_new_label();
-	//TCGLabel * l1;
-	//TCGLabel * l2;
-	//TCGLabel *end;
-	//TCGLabel *cont;
-	//TCGLabel *cont2;
 	switch(operation) {
-		case 0:
-			tcg_gen_mov_tl(r2, r1); // MOV (Format 1)
-			gen_set_gpr(rs2, r2);
-			break;
-		case 1:
-			tcg_gen_add_tl(r2, r2, r1); //ADD FORMAT 1
-			gen_set_gpr(rs2, r2);
-			break;
-		case 2:
-			tcg_gen_sub_tl(r2, r2, r1);	//SUB
-			gen_set_gpr(rs2, r2);
-			break;
-		case 3:
-			tcg_gen_sub_tl(r2, r1, r2);	//SUBR
+
+		case OPC_RH850_ADD_reg1_reg2:
+			tcg_gen_add_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
 
-		case 6:	//ADD FORMAT 2
+		case OPC_RH850_ADD_imm5_reg2:
 			if((imm & 0x10) == 0x10){
 				imm = imm | (0x7 << 5);
 			}
@@ -389,61 +371,40 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			gen_set_gpr(rs2, r2);
 			break;
 
-		case 8://MULH (format I)				//move to gen_multiply!
-			tcg_gen_andi_tl(r2, r2,0x0000FFFF);
-			tcg_gen_andi_tl(r1, r1,0x0000FFFF);
-			tcg_gen_mul_tl(r2, r2, r1);
-			gen_set_gpr(rs2, r2);
-			break;
-		case 9://MULH (format II)				//move to gen_multiply!
-			if ((imm & 0x10) == 0x10){
-				imm = imm | (0x7 << 5);
-			}
-			// signed multiplication!!!
-			tcg_gen_movi_tl(tcg_imm, imm);
-			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
-			tcg_gen_andi_tl(tcg_imm, tcg_imm,0x0000FFFF);
-			tcg_gen_mul_tl(r2, r2, tcg_imm);
-			gen_set_gpr(rs2, r2);
-			break;
-		case 10://SXH			//this is a duplicate, the correct SXH is in data_manipulation
-
-			break;
-
-		case 12://DIVH							//move to gen_divide!!
-			tcg_gen_andi_i32(r1, r1,0x0000ffff);
-			tcg_gen_ext16s_i32(r1, r1);
-			tcg_gen_div_i32(r2, r2, r1);
-			gen_set_gpr(rs2, r2);
-			break;
-		case 13: //ADDI
+		case OPC_RH850_ADDI_imm16_reg1_reg2:
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
 			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32);
 			tcg_gen_add_tl(r2,r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 14: //ADF								//move to gen_cond_arith!!
-			int_rs3 = extract32(ctx->opcode, 27, 5);
-			//int_cond = extract32(ctx->opcode, 17, 4);
-			gen_get_gpr(tcg_r3,int_rs3);
-			//if condition then
-			tcg_gen_addi_tl(r2, r2, 1);
-			tcg_gen_add_tl(tcg_r3, r2, r1);
-			//else
-			tcg_gen_add_tl(tcg_r3, r2, r1);
-			gen_set_gpr(int_rs3, tcg_r3);
+
+		case OPC_RH850_CMP_reg1_reg2:
 			break;
 
-		case 16:
-			if ((imm & 0x10) == 0x10){	//extending 5bit immediate to 8 bits
-				imm = imm | (0x7 << 5);
-			}
-			tcg_gen_movi_tl(r2, imm); // MOV Format 2
-			tcg_gen_ext8s_i32(r2, r2);	//extending to 32 bits
+		case OPC_RH850_MOV_reg1_reg2:
+			tcg_gen_mov_tl(r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 17://MOVEA
+
+		case OPC_RH850_MOV_imm5_reg2:
+			if ((imm & 0x10) == 0x10){
+				imm = imm | (0x7 << 5);
+			}
+			tcg_gen_movi_tl(r2, imm);
+			tcg_gen_ext8s_i32(r2, r2);
+			gen_set_gpr(rs2, r2);
+			break;
+
+		case OPC_RH850_MOV_imm32_reg1:	//MOV3 - 48bit instruction
+			opcode48 = (ctx->opcode1);
+			opcode48 = (ctx->opcode) | (opcode48  << 0x20);
+			imm_32 = extract64(opcode48, 16, 32) & 0xffffffff;
+			tcg_gen_movi_i32(r2, imm_32);
+			gen_set_gpr(rs2, r2);
+			break;
+
+		case OPC_RH850_MOVEA_imm16_reg1_reg2:
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_i32(tcg_imm, imm_32);
 			tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
@@ -451,14 +412,65 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_add_i32(r2, tcg_imm, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 18://MOV3   ---  48bit instruction
-			opcode48 = (ctx->opcode1);
-			opcode48 = (ctx->opcode) | (opcode48  << 0x20);
-			imm_32 = extract64(opcode48, 16, 32) & 0xffffffff;
-			tcg_gen_movi_i32(r2, imm_32);
+
+		case OPC_RH850_MOVHI_imm16_reg1_reg2:
+			imm_32 = extract32(ctx->opcode, 16, 16);
+			tcg_gen_movi_i32(tcg_imm, imm_32);
+			tcg_gen_shli_i32(tcg_imm, tcg_imm, 0x10);
+
+			tcg_gen_add_i32(r2, tcg_imm, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 19: //MUL FORMAT XI				//move to gen_multiply
+
+		case OPC_RH850_SUB_reg1_reg2:
+			tcg_gen_sub_tl(r2, r2, r1);
+			gen_set_gpr(rs2, r2);
+			break;
+
+		case OPC_RH850_SUBR_reg1_reg2:
+			tcg_gen_sub_tl(r2, r1, r2);
+			gen_set_gpr(rs2, r2);
+			break;
+	}
+
+	tcg_temp_free(r1);
+	tcg_temp_free(r2);
+	tcg_temp_free(tcg_r3);
+	tcg_temp_free(tcg_temp);
+}
+
+/*POSSIBLE TCG_COND
+
+TCG_COND_EQ
+TCG_COND_NE
+TCG_COND_LT // signed
+TCG_COND_GE // signed
+TCG_COND_LE // signed
+TCG_COND_GT // signed
+TCG_COND_LTU // unsigned
+TCG_COND_GEU // unsigned
+TCG_COND_LEU // unsigned
+TCG_COND_GTU // unsigned
+*/
+
+static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)
+{
+	TCGv r1 = tcg_temp_new();		//temp
+	TCGv r2 = tcg_temp_new();		//temp
+	//TCGv comp = tcg_temp_new();
+	gen_get_gpr(r1, rs1);			//loading rs1 to t0
+	gen_get_gpr(r2, rs2);			//loading rs2 to t1
+	int imm = rs1;
+	int imm_32;
+	int int_rs3;
+
+	TCGv tcg_imm = tcg_temp_new();
+	TCGv tcg_imm32 = tcg_temp_new();
+	TCGv tcg_r3 = tcg_temp_new();
+	TCGv tcg_temp = tcg_temp_new();
+
+	switch(operation){
+		case OPC_RH850_MUL_reg1_reg2_reg3: //MUL reg1, reg2, reg3
 			int_rs3 = extract32(ctx->opcode, 26, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mul_tl(r2, r2, r1);
@@ -471,7 +483,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 20: //MUL FORMAT XII				//move to gen_multiply
+		case OPC_RH850_MUL_imm9_reg2_reg3: //MUL imm9, reg2, reg3
 			int_rs3 = extract32(ctx->opcode, 26, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			imm_32 = extract32(ctx->opcode, 19, 4);
@@ -486,14 +498,33 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			tcg_gen_andi_tl(r2, r2,0xFFFFFFFF);
 			gen_set_gpr(int_rs3,tcg_r3);
 			break;
-		case 21: //MULHI						//move to gen_multiply
+
+		case OPC_RH850_MULH_reg1_reg2:
+			tcg_gen_andi_tl(r2, r2,0x0000FFFF);
+			tcg_gen_andi_tl(r1, r1,0x0000FFFF);
+			tcg_gen_mul_tl(r2, r2, r1);
+			gen_set_gpr(rs2, r2);
+			break;
+		case OPC_RH850_MULH_imm5_reg2:
+			if ((imm & 0x10) == 0x10){
+				imm = imm | (0x7 << 5);
+			}
+			// signed multiplication!!!
+			tcg_gen_movi_tl(tcg_imm, imm);
+			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
+			tcg_gen_andi_tl(tcg_imm, tcg_imm,0x0000FFFF);
+			tcg_gen_mul_tl(r2, r2, tcg_imm);
+			gen_set_gpr(rs2, r2);
+			break;
+
+		case OPC_RH850_MULHI_imm16_reg1_reg2: //MULHI imm16, reg1, reg2
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
 			tcg_gen_andi_tl(tcg_temp, r1,0xFFFF); //GET LOWER 16 BITS OF R1
 			tcg_gen_mul_tl(r2, tcg_temp, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 22://MULU FORMAT XI				//move to gen_multiply
+		case OPC_RH850_MULU_reg1_reg2_reg3:
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mulsu2_i32(r2, tcg_r3, r2, r1);
@@ -501,7 +532,7 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
-		case 23://MULU FORMAT XII				//move to gen_multiply
+		case OPC_RH850_MULU_imm9_reg2_reg3:
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			imm_32 = extract32(ctx->opcode, 18, 4);
@@ -519,38 +550,8 @@ static void gen_arithmetic(DisasContext *ctx, int memop, int rs1, int rs2, int o
 			gen_set_gpr(rs2, r2);
 			break;
 
-
-		case 31: //MOVHI
-			imm_32 = extract32(ctx->opcode, 16, 16);
-			tcg_gen_movi_i32(tcg_imm, imm_32);
-			tcg_gen_shli_i32(tcg_imm, tcg_imm, 0x10);
-
-			tcg_gen_add_i32(r2, tcg_imm, r1);
-			gen_set_gpr(rs2, r2);
-			break;
-
 	}
-
-
-
-	tcg_temp_free(r1);
-	tcg_temp_free(r2);
-	tcg_temp_free(tcg_r3);
-	tcg_temp_free(tcg_temp);
 }
-/*POSSIBLE TCG_COND
-
-TCG_COND_EQ
-TCG_COND_NE
-TCG_COND_LT // signed
-TCG_COND_GE // signed
-TCG_COND_LE // signed
-TCG_COND_GT // signed
-TCG_COND_LTU // unsigned
-TCG_COND_GEU // unsigned
-TCG_COND_LEU // unsigned
-TCG_COND_GTU // unsigned
-*/
 
 static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
 {
@@ -642,9 +643,65 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
 	tcg_temp_free(tcg_imm);
 }
 
-//static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation){}
-//static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation){}
-//static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation){}
+static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
+{
+	TCGv r1 = tcg_temp_new();		//temp
+	TCGv r2 = tcg_temp_new();		//temp
+	//TCGv comp = tcg_temp_new();
+	gen_get_gpr(r1, rs1);			//loading rs1 to t0
+	gen_get_gpr(r2, rs2);			//loading rs2 to t1
+	//int imm = rs1;
+	//int imm_32;
+	//int int_rs3;
+	//uint64_t opcode48;
+
+	//TCGv tcg_imm = tcg_temp_new();
+	//TCGv tcg_imm32 = tcg_temp_new();
+	//TCGv tcg_r3 = tcg_temp_new();
+
+	switch(operation){
+		case OPC_RH850_DIVH_reg1_reg2:
+			tcg_gen_andi_i32(r1, r1,0x0000ffff);
+			tcg_gen_ext16s_i32(r1, r1);
+			tcg_gen_div_i32(r2, r2, r1);
+			gen_set_gpr(rs2, r2);
+			break;
+	}
+
+}
+
+static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
+{
+	TCGv r1 = tcg_temp_new();		//temp
+	TCGv r2 = tcg_temp_new();		//temp
+	//TCGv comp = tcg_temp_new();
+	gen_get_gpr(r1, rs1);			//loading rs1 to t0
+	gen_get_gpr(r2, rs2);			//loading rs2 to t1
+	//int imm = rs1;
+	//int imm_32;
+	int int_rs3;
+	//uint64_t opcode48;
+
+	//TCGv tcg_imm = tcg_temp_new();
+	//TCGv tcg_imm32 = tcg_temp_new();
+	TCGv tcg_r3 = tcg_temp_new();
+	//TCGv tcg_temp = tcg_temp_new();
+
+	switch(operation){
+		case OPC_RH850_ADF_cccc_reg1_reg2_reg3:
+
+			int_rs3 = extract32(ctx->opcode, 27, 5);
+			//int_cond = extract32(ctx->opcode, 17, 4);
+			gen_get_gpr(tcg_r3,int_rs3);
+			//if condition then
+			tcg_gen_addi_tl(r2, r2, 1);
+			tcg_gen_add_tl(tcg_r3, r2, r1);
+			//else
+			tcg_gen_add_tl(tcg_r3, r2, r1);
+			gen_set_gpr(int_rs3, tcg_r3);
+			break;
+	}
+}
 
 static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 {
@@ -1252,7 +1309,7 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 			break;
 	}
 	if(extract32(ctx->opcode, 5, 11) == 0x31){
-		gen_arithmetic(ctx, 0, 0, rs2, 18);				// this is MOV3 (48bit inst)
+		gen_arithmetic(ctx, 0, rs2, 18);				// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
@@ -1316,24 +1373,21 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	gen_store(ctx, MO_TESW, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
 	    	//this is STORE HALFWORD
 	    	break;
-	    case OPC_RH850_ADDI:
-	    	printf("ADDI");
-	    	gen_arithmetic(ctx, 0, rs1,rs2, 13);
+	    case OPC_RH850_ADDI_imm16_reg1_reg2:
+	    	gen_arithmetic(ctx, rs1,rs2, OPC_RH850_ADDI_imm16_reg1_reg2);
 	    	break;
 	    case OPC_RH850_ANDI:
 	    	gen_logical(ctx, rs1, rs1, OPC_RH850_ANDI);
 	    	break;
 	    case OPC_RH850_MOVEA:
 	    	if ( extract32(ctx->opcode, 11, 5) == 0 ){
-	    		gen_arithmetic(ctx, 0, imm_32, rs1, 18);
-	    		//this is MOV3
+	    		gen_arithmetic(ctx, imm_32, rs1, OPC_RH850_MOV_imm32_reg1); //this is MOV3
 	    	} else {
-	    		gen_arithmetic(ctx, 0, rs1, rs2, 17);
-	    		//MOVEA
+	    		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVEA_imm16_reg1_reg2);
 	    	}
 	    	break;
-	    case OPC_RH850_MOVHI:
-	    	gen_arithmetic(ctx, 0, rs1, rs2, 31);
+	    case OPC_RH850_MOVHI_imm16_reg1_reg2:
+	    	gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVHI_imm16_reg1_reg2);
 	    	break;
 	    case OPC_RH850_ORI:
 	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ORI);
@@ -1348,7 +1402,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
 	    		//loop
 	    	} else {
-	    		//mulhi
+	    		gen_multiply(ctx, rs1, rs2, OPC_RH850_MULHI_imm16_reg1_reg2);
 	    	}
 
 	    	break;
@@ -1516,18 +1570,17 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							//SASF
 						} else {
 							if (extract32(ctx->opcode, 17, 1) == 1){
-								gen_arithmetic(ctx, 0, rs1, rs2, 22);// MULU in format XI
+								gen_multiply(ctx, rs1, rs2, OPC_RH850_MULU_reg1_reg2_reg3);
 							} else {
-								// MUL in format XI
+								gen_multiply(ctx, rs1, rs2, OPC_RH850_MUL_reg1_reg2_reg3);
 							}
-
 						}
 						break;
 					} else if (extract32(ctx->opcode, 22, 1) == 1){
 						if (extract32(ctx->opcode, 17, 1) == 1){
-							gen_arithmetic(ctx, 0, rs1, rs2, 23);// MULU in format XII
+							gen_multiply(ctx, rs1, rs2, OPC_RH850_MULU_imm9_reg2_reg3);
 						} else {
-							// MUL in format XII
+							gen_multiply(ctx, rs1, rs2, OPC_RH850_MUL_imm9_reg2_reg3);
 						}
 						break;
 					}
@@ -1537,7 +1590,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					formXop = extract32(ctx->opcode, 16, 7);
 					switch(formXop){
 						case OPC_RH850_DIVH:
-							//DIVH
+							//DIVH 2
 							break;
 						case OPC_RH850_DIVHU:
 							//DIVHU
@@ -1619,12 +1672,13 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
 								gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATADD_reg1_reg2_reg3);
 							} else {
+								gen_cond_arith(ctx, rs1, rs2, OPC_RH850_ADF_cccc_reg1_reg2_reg3);
 								// ADF
 							}
 							break;
 						case OPC_RH850_SBF_SATSUB:
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
-								gen_arithmetic(ctx, 0, rs1, rs2, 28);
+								gen_arithmetic(ctx, rs1, rs2, 28);
 								gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUB_reg1_reg2_reg3);
 							} else {
 								// SBF
@@ -1675,7 +1729,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	switch(op){
 	case OPC_RH850_16bit_0:
 		if (rs2 != 0) {
-			gen_arithmetic(ctx, 0, rs1, rs2, 0);	// MOV Format 1
+			gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOV_reg1_reg2);
 			break;
 		} else {
 			subOpCheck = MASK_OP_FORMAT_I_0(op);
@@ -1708,8 +1762,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 				//FETRAP
 				break;
 			} else {
-				//DIVH
-				gen_arithmetic(ctx, 0, rs1, rs2, 12);
+				gen_divide(ctx, rs1, rs2, OPC_RH850_DIVH_reg1_reg2);
 				break;
 			}
 		}
@@ -1756,7 +1809,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		} else {
 			//MULH
-			gen_arithmetic(ctx, 0, rs1,rs2, 8);
+			gen_multiply(ctx, rs1, rs2, OPC_RH850_MULH_reg1_reg2);
 			break;
 		}
 		break;
@@ -1789,23 +1842,24 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_TST:
 		gen_logical(ctx, rs1, rs2, OPC_RH850_TST);
 		break;
-	case OPC_RH850_SUBR:
-		gen_arithmetic(ctx, 0, rs1,rs2, 3);
+	case OPC_RH850_SUBR_reg1_reg2:
+		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_SUBR_reg1_reg2);
 		break;
-	case OPC_RH850_SUB:
-		gen_arithmetic(ctx, 0, rs1,rs2, 2);
+	case OPC_RH850_SUB_reg1_reg2:
+		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_SUB_reg1_reg2);
 		break;
-	case OPC_RH850_ADD:
-		gen_arithmetic(ctx, 0, rs1,rs2, 1);
+	case OPC_RH850_ADD_reg1_reg2:
+		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_ADD_reg1_reg2);
 		break;
 	case OPC_RH850_CMP_reg1_reg2:
+		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_CMP_reg1_reg2);
 		break;
 	case OPC_RH850_16bit_16:
 		if (rs2 == 0){
 			//CALLT
 			break;
 		} else {
-			gen_arithmetic(ctx, 0, imm, rs2, 16);	//MOV format II
+			gen_arithmetic(ctx, imm, rs2, OPC_RH850_MOV_imm5_reg2);	//MOV format II
 			break;
 		}
 		break;
@@ -1818,8 +1872,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		}
 		break;
-	case OPC_RH850_16bit_ADD:
-		gen_arithmetic(ctx, 0, rs1,rs2, 6);	//add format II
+	case OPC_RH850_ADD_imm5_reg2:
+		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_ADD_imm5_reg2);	//add format II
 		break;
 	case OPC_RH850_CMP_imm5_reg2:
 		break;
@@ -1832,8 +1886,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_SHL:
 		decode_data_manipulation(ctx,0, rs1, rs2, 9);
 		break;
-	case OPC_RH850_16bit_MULH:
-		gen_arithmetic(ctx, 0, rs1,rs2, 9);
+	case OPC_RH850_MULH_imm5_reg2:
+		gen_multiply(ctx, rs1, rs2, OPC_RH850_MULH_imm5_reg2);
 		break;
 	}
 
