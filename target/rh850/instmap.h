@@ -49,17 +49,17 @@ enum{
 enum {
 	/* FORMAT I */						// unique opcodes and grouped instructions
 	OPC_RH850_16bit_0 = (0x0 << 5),		// group with opcode 0x0 (nop, synci, synce, syncm, syncp, mov)
-	OPC_RH850_NOT 	= (0x1 << 5),
+	OPC_RH850_NOT_reg1_reg2 	= (0x1 << 5),
 	OPC_RH850_16bit_2 = (0x2 << 5),		// group with opcode 0x2 (rie, switch, divh, fetrap)
 	OPC_RH850_16bit_3 = (0x3 << 5), 	// group with opcode 0x3 (jmp,sld.bu,sld.hu)
 	OPC_RH850_16bit_4 = (0x4 << 5),		// group with opcode 0x4 (zyb, satsub)
 	OPC_RH850_16bit_5 = (0x5 << 5),		// group with opcode 0x5 (sxb, satsub)
 	OPC_RH850_16bit_6 = (0x6 << 5),		// group with opcode 0x6 (zyh, satadd)
 	OPC_RH850_16bit_7 = (0x7 << 5),		// group with opcode 0x7 (sxh, mulh)
-	OPC_RH850_OR 	= (0x8 << 5),
-	OPC_RH850_XOR 	= (0x9 << 5),
-	OPC_RH850_AND 	= (0xA << 5),
-	OPC_RH850_TST 	= (0xB << 5),
+	OPC_RH850_OR_reg1_reg2 	= (0x8 << 5),
+	OPC_RH850_XOR_reg1_reg2 	= (0x9 << 5),
+	OPC_RH850_AND_reg1_reg2 	= (0xA << 5),
+	OPC_RH850_TST_reg1_reg2 	= (0xB << 5),
 	OPC_RH850_SUBR_reg1_reg2 	= (0xC << 5),
 	OPC_RH850_SUB_reg1_reg2 	= (0xD << 5),
 	OPC_RH850_ADD_reg1_reg2 	= (0xE << 5),
@@ -87,12 +87,12 @@ enum {
 
 	/* FORMAT VI */
 	OPC_RH850_ADDI_imm16_reg1_reg2	=	(0x30 << 5),
-	OPC_RH850_ANDI	=	(0x36 << 5),
+	OPC_RH850_ANDI_imm16_reg1_reg2	=	(0x36 << 5),
 	OPC_RH850_MOVEA	=	(0x31 << 5),     	// this is also MOV 3, which is 48 bit
 	OPC_RH850_MOVHI_imm16_reg1_reg2	=	(0x32 << 5),
-	OPC_RH850_ORI	=	(0x34 << 5),
+	OPC_RH850_ORI_imm16_reg1_reg2	=	(0x34 << 5),
 	OPC_RH850_SATSUBI=	(0x33 << 5),
-	OPC_RH850_XORI	=	(0x35 << 5),
+	OPC_RH850_XORI_imm16_reg1_reg2	=	(0x35 << 5),
 
 
 	/* FORMAT VII */

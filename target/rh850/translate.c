@@ -549,8 +549,15 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)
 			gen_set_gpr(int_rs3,tcg_r3);
 			gen_set_gpr(rs2, r2);
 			break;
-
 	}
+
+	tcg_temp_free(r1);
+	tcg_temp_free(r2);
+	tcg_temp_free(tcg_r3);
+	tcg_temp_free(tcg_temp);
+	tcg_temp_free(tcg_imm);
+	tcg_temp_free(tcg_imm32);
+
 }
 
 static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
@@ -567,26 +574,26 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
 	TCGLabel *cont;
 
 	switch(operation){
-		case OPC_RH850_AND:
+		case OPC_RH850_AND_reg1_reg2:
 			tcg_gen_and_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case OPC_RH850_ANDI:
+		case OPC_RH850_ANDI_imm16_reg1_reg2:
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm, imm_32);
 			tcg_gen_ext16u_tl(tcg_imm, tcg_imm);
 			tcg_gen_and_tl(r2, r1, tcg_imm);
 			gen_set_gpr(rs2, r2);
 			break;
-		case OPC_RH850_NOT:
+		case OPC_RH850_NOT_reg1_reg2:
 			tcg_gen_not_i32(r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case OPC_RH850_OR:
+		case OPC_RH850_OR_reg1_reg2:
 			tcg_gen_or_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case OPC_RH850_ORI:
+		case OPC_RH850_ORI_imm16_reg1_reg2:
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_i32(tcg_imm, imm_32);
 			tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
@@ -594,7 +601,7 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_or_i32(r2, r1, tcg_imm);
 			gen_set_gpr(rs2, r2);
 			break;
-		case OPC_RH850_TST:	{
+		case OPC_RH850_TST_reg1_reg2:	{
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv check = tcg_temp_local_new();
@@ -624,11 +631,11 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_temp_free(r1_local);
 			tcg_temp_free(r2_local);
 		}	break;
-		case OPC_RH850_XOR:
+		case OPC_RH850_XOR_reg1_reg2:
 			tcg_gen_xor_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
 			break;
-		case OPC_RH850_XORI:
+		case OPC_RH850_XORI_imm16_reg1_reg2:
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_i32(tcg_imm, imm_32);
 			tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
@@ -1376,8 +1383,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    case OPC_RH850_ADDI_imm16_reg1_reg2:
 	    	gen_arithmetic(ctx, rs1,rs2, OPC_RH850_ADDI_imm16_reg1_reg2);
 	    	break;
-	    case OPC_RH850_ANDI:
-	    	gen_logical(ctx, rs1, rs1, OPC_RH850_ANDI);
+	    case OPC_RH850_ANDI_imm16_reg1_reg2:
+	    	gen_logical(ctx, rs1, rs1, OPC_RH850_ANDI_imm16_reg1_reg2);
 	    	break;
 	    case OPC_RH850_MOVEA:
 	    	if ( extract32(ctx->opcode, 11, 5) == 0 ){
@@ -1389,14 +1396,14 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    case OPC_RH850_MOVHI_imm16_reg1_reg2:
 	    	gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVHI_imm16_reg1_reg2);
 	    	break;
-	    case OPC_RH850_ORI:
-	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ORI);
+	    case OPC_RH850_ORI_imm16_reg1_reg2:
+	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ORI_imm16_reg1_reg2);
 	    	break;
 	    case OPC_RH850_SATSUBI:
 	    	gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBI);
 	    	break;
-	    case OPC_RH850_XORI:
-	    	gen_logical(ctx, rs1, rs2, OPC_RH850_XORI);
+	    case OPC_RH850_XORI_imm16_reg1_reg2:
+	    	gen_logical(ctx, rs1, rs2, OPC_RH850_XORI_imm16_reg1_reg2);
 	    	break;
 	    case OPC_RH850_LOOP:
 	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
@@ -1813,8 +1820,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		}
 		break;
-	case OPC_RH850_NOT:
-		gen_logical(ctx, rs1, rs2, OPC_RH850_NOT);
+	case OPC_RH850_NOT_reg1_reg2:
+		gen_logical(ctx, rs1, rs2, OPC_RH850_NOT_reg1_reg2);
 		break;
 	case OPC_RH850_16bit_3:
 		if (rs2 == 0){
@@ -1830,17 +1837,17 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			break;
 		}
 		break;
-	case OPC_RH850_OR:
-		gen_logical(ctx, rs1, rs2, OPC_RH850_OR);
+	case OPC_RH850_OR_reg1_reg2:
+		gen_logical(ctx, rs1, rs2, OPC_RH850_OR_reg1_reg2);
 		break;
-	case OPC_RH850_XOR:
-		gen_logical(ctx, rs1, rs2, OPC_RH850_XOR);
+	case OPC_RH850_XOR_reg1_reg2:
+		gen_logical(ctx, rs1, rs2, OPC_RH850_XOR_reg1_reg2);
 		break;
-	case OPC_RH850_AND:
-		gen_logical(ctx, rs1, rs2, OPC_RH850_AND);
+	case OPC_RH850_AND_reg1_reg2:
+		gen_logical(ctx, rs1, rs2, OPC_RH850_AND_reg1_reg2);
 		break;
-	case OPC_RH850_TST:
-		gen_logical(ctx, rs1, rs2, OPC_RH850_TST);
+	case OPC_RH850_TST_reg1_reg2:
+		gen_logical(ctx, rs1, rs2, OPC_RH850_TST_reg1_reg2);
 		break;
 	case OPC_RH850_SUBR_reg1_reg2:
 		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_SUBR_reg1_reg2);
