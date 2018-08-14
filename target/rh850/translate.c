@@ -1320,7 +1320,79 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 
 }
 
-//static void gen_bit_search(DisasContext *ctx, int rs1, int rs2, int operation){}
+static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
+{
+
+	TCGv tcg_r2 = tcg_temp_new();
+	TCGv tcg_r3 = tcg_temp_new();
+	int int_rs3;
+	int_rs3 = extract32(ctx->opcode, 27, 5);
+
+	gen_get_gpr(tcg_r2, rs2);
+	gen_get_gpr(tcg_r3, int_rs3);
+
+	TCGLabel *end;
+	TCGLabel *found;
+	TCGLabel *loop;
+
+	switch(operation){
+		case OPC_RH850_SCH0L_reg2_reg3: {
+
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv r3_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv count = tcg_temp_local_new();
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			tcg_gen_movi_i32(count, 0x0);
+
+			end = gen_new_label();
+			found = gen_new_label();
+			loop = gen_new_label();
+
+			gen_set_label(loop);//---------------------------------------------------
+
+			tcg_gen_shl_i32(check, r2_local, count);
+			tcg_gen_ori_i32(check, check, 0x7fffffff);	// check MSB bit
+			tcg_gen_brcondi_tl(TCG_COND_EQ, check, 0x7fffffff, found);
+
+			tcg_gen_addi_i32(count, count, 0x1);
+			tcg_gen_brcondi_tl(TCG_COND_NE, count, 0x20, loop);//--------------------
+
+			tcg_gen_movi_i32(result, 0x0);
+			tcg_gen_movi_i32(cpu_ZF, 0x1);
+			tcg_gen_br(end);
+
+			gen_set_label(found);
+			gen_set_gpr(6, check);
+			gen_set_gpr(5, count);
+			//tcg_gen_shli_i32(count, count, 0x4);
+			tcg_gen_addi_i32(result, count, 0x1);
+
+			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			tcg_gen_movi_i32(cpu_CYF, 0x1);
+
+			gen_set_label(end);
+			gen_set_gpr(int_rs3, result);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(count);
+			tcg_temp_free(result);
+		}	break;
+
+		case OPC_RH850_SCH0R_reg2_reg3: {
+
+		}	break;
+
+		case OPC_RH850_SCH1L_reg2_reg3: {
+
+		}	break;
+
+		case OPC_RH850_SCH1R_reg2_reg3: {
+
+		}	break;
+	}
+}
 
 static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 {
@@ -1821,22 +1893,26 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					case 3:	//these are SCHOL, SCHOR, SCH1L, SCH1R
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
-						case OPC_RH850_SCH0R:
+						case OPC_RH850_SCH0R_reg2_reg3:
+							gen_bit_search(ctx, rs2, OPC_RH850_SCH0R_reg2_reg3);
 							//SCH0R
 							break;
-						case OPC_RH850_SCH1R:
+						case OPC_RH850_SCH1R_reg2_reg3:
 							if (extract32(ctx->opcode, 19, 2) == 0x0){
+								gen_bit_search(ctx, rs2, OPC_RH850_SCH1R_reg2_reg3);
 								//SCH1R
 							} else if (extract32(ctx->opcode, 19, 2) == 0x3){
 								//STCW
 							}
 
 							break;
-						case OPC_RH850_SCH0L:
+						case OPC_RH850_SCH0L_reg2_reg3:
 							//SCH0L
+							gen_bit_search(ctx, rs2, OPC_RH850_SCH0L_reg2_reg3);
 							break;
-						case OPC_RH850_SCH1L:
+						case OPC_RH850_SCH1L_reg2_reg3:
 							//SCH1L
+							gen_bit_search(ctx, rs2, OPC_RH850_SCH1L_reg2_reg3);
 							break;
 						}
 
@@ -2170,20 +2246,21 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         		ctx.next_pc = ctx.pc + 4;
         		decode_RH850_32(env, &ctx);
         	}
-
-
         }
 
         ctx.pc = ctx.next_pc;
 
-        //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.Z_flag << 0));
+        TCGv temp = tcg_temp_new_i32();
 
         tcg_gen_shli_i32(cpu_sysRegs[PSW_register], cpu_SF, 0x1);
+        tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
+        tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
         tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
+
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.OV_flag << 2));
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.CY_flag << 3));
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.SAT_flag << 4));
-
 
         if (cs->singlestep_enabled) {
             break;

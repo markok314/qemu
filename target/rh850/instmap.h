@@ -262,10 +262,10 @@ enum {
 	OPC_RH850_HSW_reg2_reg3	= (0x2 << 0),
 	OPC_RH850_HSH_reg2_reg3	= (0x3 << 0),
 	// SCHOL, SCHOR, SCH1L, SCH1R
-	OPC_RH850_SCH0R	= (0x0 << 0),
-	OPC_RH850_SCH1R	= (0x1 << 0), //this is also STCW
-	OPC_RH850_SCH0L	= (0x2 << 0),
-	OPC_RH850_SCH1L	= (0x3 << 0),
+	OPC_RH850_SCH0R_reg2_reg3	= (0x0 << 0),
+	OPC_RH850_SCH1R_reg2_reg3	= (0x1 << 0), //this is also STCW
+	OPC_RH850_SCH0L_reg2_reg3	= (0x2 << 0),
+	OPC_RH850_SCH1L_reg2_reg3	= (0x3 << 0),
 
 
 };
