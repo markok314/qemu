@@ -6,12 +6,47 @@
 
 __iar_program_start:
 
+	;reseting all registers to 0
+	mov 0x0,r1
+	mov 0x0,r2
+	mov 0x0,r3
+	mov 0x0,r4
+	mov 0x0,r5
+	mov 0x0,r6
+	mov 0x0,r7
+	mov 0x0,r8
+	mov 0x0,r9
+	mov 0x0,r10
+	mov 0x0,r11
+	mov 0x0,r12
+	mov 0x0,r13
+	mov 0x0,r14
+	mov 0x0,r15
+	mov 0x0,r16
+	mov 0x0,r17
+	mov 0x0,r18
+	mov 0x0,r19
+	mov 0x0,r20
+	mov 0x0,r21
+	mov 0x0,r22
+	mov 0x0,r23
+	mov 0x0,r24
+	mov 0x0,r25
+	mov 0x0,r26
+	mov 0x0,r27
+	mov 0x0,r28
+	mov 0x0,r29
+	mov 0x0,r30
+	mov 0x0,r31
+
+	;testing starts here
+
 	;simple tests for satadd
 	mov 120,r1
 	mov -23,r2
 	satadd r1,r2
 	satadd 15,r2
-	;satadd r1,r2,r3
+	satadd r1,r2,r3
 	
 	;harder tests for satadd positive
 
@@ -19,14 +54,14 @@ __iar_program_start:
 	mov 0x5,r2
 	satadd r1,r2
 	satadd 0x5,r1
-	;satadd r3,r2,r1
+	satadd r3,r2,r1
 	;adding a little to max positive value
 	;result should be saturated to 7fffffff 
 	
 	mov -5,r2
 	satadd r1,r2
 	satadd -1,r2
-	;satadd r1,r2,r3
+	satadd r1,r2,r3
 	;add a negative number to max positive value
 	;result should be below 7fffffff
 
@@ -34,7 +69,7 @@ __iar_program_start:
 	mov 0xfffffffe,r2
 	satadd r1,r2
 	satadd -0x5,r1
-	;satadd r3,r2,r1
+	satadd r3,r2,r1
 	;add a little negative number to max negative value
 	
 	;harder tests for satadd negative
@@ -44,14 +79,14 @@ __iar_program_start:
 	satadd r1,r2
 	satadd r1,r3
 	satadd -5,r1
-	;satadd r1,r2,r4
-	;satadd r1,r3,r4
+	satadd r1,r2,r4
+	satadd r1,r3,r4
 	;add a max negative number to min negative number
 	
 	mov 0x7fffffff,r2
 	satadd r2,r1
 	satadd 4,r2
-	;satadd r2,r1,r3
+	satadd r2,r1,r3
 	;add a lot to a little positive value	
 
 	;simple tests for satsub
