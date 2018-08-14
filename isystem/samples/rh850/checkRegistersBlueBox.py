@@ -32,20 +32,22 @@ def removeFileForDownload(filePath):
     ideCtrl.removeDynamicOption('/IDE/Debug.DownloadFiles.File', idx)
 
 def printRegisters():
-  for x in range(32):
-    registerName = "r" + str(x)
-    value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
-    print(registerName, '=', f"{unsigned64(value.getLong()):#0{10}x}")
+    print("----------")
+    print("----------")
+    print("----------")
+    for x in range(32):
+        registerName = "r" + str(x)
+        value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
+        print(registerName, '=', f"{unsigned64(value.getLong()):#0{10}x}")
 
-downloadFile = sys.argv[1]+".elf"
+downloadFile = '../' + sys.argv[1] + '.elf'
 filetype = "ELF"
 addFileForDownload(downloadFile, filetype)
 
 debugCtrl.download()
 
-for x in range(31):
+for x in range(int(sys.argv[2])):
   printRegisters()
-  print("----------")
   debugCtrl.stepInst()
 printRegisters()
 

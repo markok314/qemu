@@ -19,7 +19,7 @@ counter = 0
 out = ['','']
 log_object = open(sys.argv[1], "r")
 NUM_OF_LINES_WITH_GPR_VALUES = 12
-NUM_OF_INTS_TO_PRINT = 25
+NUM_OF_INTS_TO_PRINT = int(sys.argv[2])
 
 #if (len(sys.argv)<3):
 #	print('Arguments missing!')
@@ -36,12 +36,9 @@ for line in log_object:
         readLogLine = True
         counter = 0
         raw_line = line.split()
-        print("\n")
+
         if len(raw_line) == 4:
             print(raw_line[0], raw_line[1], raw_line[2], raw_line[3])
-        else:
-            print(raw_line[0], raw_line[1])
-        print("-------------------------------------")
 
     elif line.startswith(" "):
         raw_line = line.split()
