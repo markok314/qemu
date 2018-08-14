@@ -1379,6 +1379,43 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 		case OPC_RH850_SCH0R_reg2_reg3: {
 
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv r3_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv count = tcg_temp_local_new();
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			tcg_gen_movi_i32(count, 0x0);
+
+			end = gen_new_label();
+			found = gen_new_label();
+			loop = gen_new_label();
+
+			gen_set_label(loop);//---------------------------------------------------
+
+			tcg_gen_shr_i32(check, r2_local, count);
+			tcg_gen_ori_i32(check, check, 0xfffffffe);	// check MSB bit
+			tcg_gen_brcondi_tl(TCG_COND_EQ, check, 0xfffffffe, found);
+
+			tcg_gen_addi_i32(count, count, 0x1);
+			tcg_gen_brcondi_tl(TCG_COND_NE, count, 0x20, loop);//--------------------
+
+			tcg_gen_movi_i32(result, 0x0);
+			tcg_gen_movi_i32(cpu_ZF, 0x1);
+			tcg_gen_br(end);
+
+			gen_set_label(found);
+			tcg_gen_addi_i32(result, count, 0x1);
+
+			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			tcg_gen_movi_i32(cpu_CYF, 0x1);
+
+			gen_set_label(end);
+			gen_set_gpr(int_rs3, result);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(count);
+			tcg_temp_free(result);
 		}	break;
 
 		case OPC_RH850_SCH1L_reg2_reg3: {
@@ -1424,6 +1461,43 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 		case OPC_RH850_SCH1R_reg2_reg3: {
 
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv r3_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv count = tcg_temp_local_new();
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			tcg_gen_movi_i32(count, 0x0);
+
+			end = gen_new_label();
+			found = gen_new_label();
+			loop = gen_new_label();
+
+			gen_set_label(loop);//---------------------------------------------------
+
+			tcg_gen_shr_i32(check, r2_local, count);
+			tcg_gen_andi_i32(check, check, 0x1);	// check MSB bit
+			tcg_gen_brcondi_tl(TCG_COND_EQ, check, 0x1, found);
+
+			tcg_gen_addi_i32(count, count, 0x1);
+			tcg_gen_brcondi_tl(TCG_COND_NE, count, 0x20, loop);//--------------------
+
+			tcg_gen_movi_i32(result, 0x0);
+			tcg_gen_movi_i32(cpu_ZF, 0x1);
+			tcg_gen_br(end);
+
+			gen_set_label(found);
+			tcg_gen_addi_i32(result, count, 0x1);
+
+			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			tcg_gen_movi_i32(cpu_CYF, 0x1);
+
+			gen_set_label(end);
+			gen_set_gpr(int_rs3, result);
+			tcg_temp_free(r2_local);
+			tcg_temp_free(count);
+			tcg_temp_free(result);
 		}	break;
 	}
 }
