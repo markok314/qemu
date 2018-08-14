@@ -247,12 +247,12 @@ enum {
 
 #define MASK_OP_FORMAT_XI(op) (op & (0x7F << 16))
 enum {
-	OPC_RH850_DIVH 	= (0x0 << 16),
-	OPC_RH850_DIVHU = (0x2 << 16),
-	OPC_RH850_DIV 	= (0x40 << 16),
-	OPC_RH850_DIVQ 	= (0x7C << 16),
-	OPC_RH850_DIVQU	= (0x7E << 16),
-	OPC_RH850_DIVU 	= (0x42 << 16)
+	OPC_RH850_DIVH_reg1_reg2_reg3 	= 0x0,
+	OPC_RH850_DIVHU_reg1_reg2_reg3 	= 0x2,
+	OPC_RH850_DIV_reg1_reg2_reg3 	= 0x40,
+	OPC_RH850_DIVQ 	= 0x7C,
+	OPC_RH850_DIVQU	= 0x7E,
+	OPC_RH850_DIVU_reg1_reg2_reg3	= 0x42
 };
 
 #define MASK_OP_FORMAT_XII(op) (op & (0x3 << 17))
