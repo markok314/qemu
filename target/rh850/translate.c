@@ -1365,9 +1365,6 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_br(end);
 
 			gen_set_label(found);
-			gen_set_gpr(6, check);
-			gen_set_gpr(5, count);
-			//tcg_gen_shli_i32(count, count, 0x4);
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
