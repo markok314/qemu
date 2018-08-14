@@ -474,7 +474,49 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)
 
 }
 
-//static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation){}
+static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation)
+{
+	TCGv r1 = tcg_temp_new();
+	TCGv r2 = tcg_temp_new();
+	TCGv addLo = tcg_temp_new();
+	TCGv addHi = tcg_temp_new();
+	TCGv resLo = tcg_temp_new();
+	TCGv resHi = tcg_temp_new();
+	TCGv destLo = tcg_temp_new();
+	TCGv destHi = tcg_temp_new();
+
+	gen_get_gpr(r1, rs1);
+	gen_get_gpr(r2, rs2);
+
+	int rs3;
+	int rs4;
+	rs3 = extract32(ctx->opcode, 28, 4);
+	rs4 = extract32(ctx->opcode, 17, 4);
+
+	gen_get_gpr(addLo, rs3);
+	gen_get_gpr(addHi, rs3+1);
+
+
+	switch(operation){
+		case OPC_RH850_MAC_reg1_reg2_reg3_reg4:
+
+			tcg_gen_muls2_i32(resLo, resHi, r1, r2);
+			tcg_gen_add2_i32(destLo, destHi, resLo, resHi, addLo, addHi);
+
+			gen_set_gpr(rs4, destLo);
+			gen_set_gpr(rs4+1, destHi);
+			break;
+
+		case OPC_RH850_MACU_reg1_reg2_reg3_reg4:
+			tcg_gen_muls2_i32(resLo, resHi, r1, r2);
+			tcg_gen_add2_i32(destLo, destHi, resLo, resHi, addLo, addHi);
+
+			gen_set_gpr(rs4, destLo);
+			gen_set_gpr((rs4+1), destHi);
+			break;
+	}
+
+}
 
 static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 {
@@ -2048,10 +2090,12 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							}
 							break;
 							break;
-						case OPC_RH850_MAC:
+						case OPC_RH850_MAC_reg1_reg2_reg3_reg4:
+							gen_mul_accumulate(ctx, rs1, rs2, OPC_RH850_MAC_reg1_reg2_reg3_reg4);
 							//MAC
 							break;
-						case OPC_RH850_MACU:
+						case OPC_RH850_MACU_reg1_reg2_reg3_reg4:
+							gen_mul_accumulate(ctx, rs1, rs2, OPC_RH850_MACU_reg1_reg2_reg3_reg4);
 							//MACU
 							break;
 					}

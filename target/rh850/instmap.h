@@ -274,8 +274,8 @@ enum {
 enum {
 	OPC_RH850_SBF_SATSUB	= 0x0,
 	OPC_RH850_ADF_SATADD3	= 0x1,
-	OPC_RH850_MAC			= 0x2,
-	OPC_RH850_MACU			= 0x3,
+	OPC_RH850_MAC_reg1_reg2_reg3_reg4	= 0x2,
+	OPC_RH850_MACU_reg1_reg2_reg3_reg4	= 0x3,
 
 
 
