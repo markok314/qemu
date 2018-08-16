@@ -32,18 +32,26 @@ print("----------")
 for line1, line2 in zip(f1, f2):
     if start>=35*31:
         if(index == 0):
-            print(line1)
-        elif(index > 2):
+            print("-----------------")
+            print(line1[:-1])
+        elif(index == 2):
+            #CHECKING JUST LAST 4 BITS OF PSW REG
+            if line1[-2:] != line2[-2:]:
+                print("ERROR" + line1[:-1] + line2[:-1])
+                okay = False
+        else:
             if line1.split(': ')[1] != line2.split('x')[1]:
-                print("ni enako" + line1)
+                print("ERROR" + line1[:-1] + line2[:-1])
                 okay = False
         index = index + 1
 
         if(index == 35):
             if okay:
                 print("OKAY")
+                print("-----------------")
             else:
                 print("NOT OKAY")
+                print("-----------------")
             index = 0
             okay = True
 

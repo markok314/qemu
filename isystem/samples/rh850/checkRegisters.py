@@ -37,6 +37,8 @@ for line in log_object:
         counter = 0
         raw_line = line.split()
 
+
+
         if len(raw_line) == 4:
             print(raw_line[0], raw_line[1], raw_line[2], raw_line[3])
 

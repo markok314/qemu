@@ -33,8 +33,12 @@ def removeFileForDownload(filePath):
 
 def printRegisters():
     print("----------")
-    print("----------")
-    print("----------")
+    registerName = "pc"
+    value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
+    print(registerName, '=', f"{unsigned64(value.getLong()):#0{10}x}")
+    registerName = "psw"
+    value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
+    print(registerName, '=', f"{unsigned64(value.getLong()):#0{10}x}")
     for x in range(32):
         registerName = "r" + str(x)
         value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
