@@ -245,8 +245,34 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
     tcg_temp_free(t0);
     tcg_temp_free(t1);
 }
+static void set_simple_flag(TCGv result)
+{
+	TCGLabel *end;
+	TCGLabel *cont;
 
-static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,    //make cases for opcodes
+	TCGv result_local = tcg_temp_local_new();
+	cont = gen_new_label();
+	end = gen_new_label();
+
+	tcg_gen_mov_i32(result_local, result);
+
+	tcg_gen_brcondi_tl(TCG_COND_NE, result_local, 0x0, cont);
+	tcg_gen_movi_i32(cpu_ZF, 0x1);
+	tcg_gen_br(end);
+
+	gen_set_label(cont);
+	tcg_gen_movi_i32(cpu_ZF, 0x0);
+	tcg_gen_movi_i32(cpu_SF, 0x0);
+
+	tcg_gen_brcondi_tl(TCG_COND_GE, result_local, 0x0, end);
+	tcg_gen_movi_i32(cpu_SF, 0x1);
+
+	gen_set_label(end);
+
+	tcg_temp_free_i32(result_local);
+}
+
+static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         target_long imm)
 {
     TCGv t0 = tcg_temp_new();		//temp
@@ -352,7 +378,7 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 }
 
-static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)
+static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	//completed
 {
 	TCGv r1 = tcg_temp_new();		//temp
 	TCGv r2 = tcg_temp_new();		//temp
@@ -474,7 +500,7 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)
 
 }
 
-static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation)
+static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation)	//issues with IAR
 {
 	TCGv r1 = tcg_temp_new();
 	TCGv r2 = tcg_temp_new();
@@ -518,7 +544,7 @@ static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operatio
 
 }
 
-static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
+static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	//TODO: CMP
 {
 	TCGv r1 = tcg_temp_new();
 	TCGv r2 = tcg_temp_new();
@@ -539,9 +565,17 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 
 	switch(operation) {
 
+	//OV = oba z enakim preznakom, rezultat obraten
+	//CY = rezultat je manjsi od operandov
+
 		case OPC_RH850_ADD_reg1_reg2:
+
 			tcg_gen_add_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
+			set_simple_flag(r2);
+
+			tcg_gen_add2_i32()
+
 			break;
 
 		case OPC_RH850_ADD_imm5_reg2:
@@ -552,6 +586,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
 			tcg_gen_add_tl(r2, r2, tcg_imm);
 			gen_set_gpr(rs2, r2);
+			set_simple_flag(r2);
 			break;
 
 		case OPC_RH850_ADDI_imm16_reg1_reg2:
@@ -560,6 +595,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32);
 			tcg_gen_add_tl(r2,r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
+			set_simple_flag(r2);
 			break;
 
 		case OPC_RH850_CMP_reg1_reg2:	{	//TODO: OV and CY flags!!
@@ -672,11 +708,13 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 		case OPC_RH850_SUB_reg1_reg2:
 			tcg_gen_sub_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
+			set_simple_flag(r2);
 			break;
 
 		case OPC_RH850_SUBR_reg1_reg2:
 			tcg_gen_sub_tl(r2, r1, r2);
 			gen_set_gpr(rs2, r2);
+			set_simple_flag(r2);
 			break;
 	}
 
@@ -719,7 +757,7 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 	}
 }
 
-static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
+static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//completed
 {
 	TCGv r1 = tcg_temp_new();
 	TCGv r2 = tcg_temp_new();
@@ -759,6 +797,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
 			tcg_gen_mov_i32(result, max);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
 
 			//---------------------------------------------------------------------------------
@@ -766,6 +805,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, min, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
 			tcg_gen_mov_i32(result, min);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 
 			gen_set_label(cont2);
 			gen_set_label(end);
@@ -809,6 +849,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, max, imm_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
 			tcg_gen_mov_i32(result, max);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
 
 			//---------------------------------------------------------------------------------
@@ -816,6 +857,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, min, imm_local);
 			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
 			tcg_gen_mov_i32(result, min);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 
 			gen_set_label(cont2);
 			gen_set_label(end);
@@ -854,6 +896,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);			//if (r2 > MAX-r1)
 			tcg_gen_mov_i32(result, max);										//return MAX;
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
 
 			//---------------------------------------------------------------------------------
@@ -861,6 +904,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, min, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);		//if (r2 < MIN-r1)
 			tcg_gen_mov_i32(result, min);										//return MIN;
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 
 			gen_set_label(cont2);
 			gen_set_label(end);
@@ -900,6 +944,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
 			tcg_gen_mov_i32(result, max);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
 
 			//---------------------------------------------------------------------------------
@@ -907,6 +952,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, min, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
 			tcg_gen_mov_i32(result, min);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 
 			gen_set_label(cont2);
 			gen_set_label(end);
@@ -946,6 +992,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
 			tcg_gen_mov_i32(result, max);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
 
 			//---------------------------------------------------------------------------------
@@ -953,6 +1000,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, min, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
 			tcg_gen_mov_i32(result, min);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 
 			gen_set_label(cont2);
 			gen_set_label(end);
@@ -994,6 +1042,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, imm_local, check, end);
 			tcg_gen_mov_i32(result, max);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
 
 			//---------------------------------------------------------------------------------
@@ -1001,6 +1050,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_i32(check, min, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_GE, imm_local, check, cont2);
 			tcg_gen_mov_i32(result, min);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
 
 			gen_set_label(cont2);
 			gen_set_label(end);
@@ -1019,7 +1069,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 	tcg_temp_free(r2);
 }
 
-static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
+static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		//completed
 {
 	TCGv r1 = tcg_temp_new();
 	TCGv r2 = tcg_temp_new();
@@ -1117,7 +1167,7 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
 	tcg_temp_free(tcg_imm);
 }
 
-static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2, int operation)	//TODO: BINS, SASF, SETF
 {
 	TCGv tcg_r1 = tcg_temp_new();
 	TCGv tcg_r2 = tcg_temp_new();
