@@ -574,8 +574,6 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			gen_set_gpr(rs2, r2);
 			set_simple_flag(r2);
 
-			tcg_gen_add2_i32()
-
 			break;
 
 		case OPC_RH850_ADD_imm5_reg2:
