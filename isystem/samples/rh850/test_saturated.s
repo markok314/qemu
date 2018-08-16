@@ -65,8 +65,8 @@ __iar_program_start:
 	;add a negative number to max positive value
 	;result should be below 7fffffff
 
-	mov 0x80000000,r1
-	mov 0xfffffffe,r2
+	mov -0x80000000,r1
+	mov +0xfffffffe,r2
 	satadd r1,r2
 	satadd -0x5,r1
 	satadd r3,r2,r1
@@ -74,8 +74,8 @@ __iar_program_start:
 	
 	;harder tests for satadd negative
 
-	mov 0xffffffff,r1
-	mov 0x80000000,r2
+	mov +0xffffffff,r1
+	mov -0x80000000,r2
 	satadd r1,r2
 	satadd r1,r3
 	satadd -5,r1
@@ -83,7 +83,7 @@ __iar_program_start:
 	satadd r1,r3,r4
 	;add a max negative number to min negative number
 	
-	mov 0x7fffffff,r2
+	mov +0x7fffffff,r2
 	satadd r2,r1
 	satadd 4,r2
 	satadd r2,r1,r3
@@ -96,20 +96,20 @@ __iar_program_start:
 	satsub r1,r2,r3
 
 	;harder tests for satadd negative
-	mov 0x7fffffff,r1
-	mov 0xffffffff,r2
+	mov +0x7fffffff,r1
+	mov +0xffffffff,r2
 	satsub r2,r1,r3 
 	satsub r2,r1
 	;sub a negative number from max positive
 	
-	mov 0x80000000,r1
-	mov 0xffffffff,r2
+	mov -0x80000000,r1
+	mov -0xffffffff,r2
 	satsub r2,r1,r3
 	satsub r2,r1
 	;sub a -1 from max negative number
 	
-	mov 0x80000000,r1
-	mov 0x00000005,r2
+	mov -0x80000000,r1
+	mov +0x00000005,r2
 	satsub r2,r1,r3
 	satsub r2,r1
 	;sub positive number from max negative value
@@ -122,19 +122,19 @@ __iar_program_start:
 
 	;harder test for satsubi
 
-	mov 0x7fffffff,r1
+	mov +0x7fffffff,r1
 	satsubi 0x5,r1,r2
 	;sub a little negative value from max positive value
 	
-	mov 0x7fffffff,r1
+	mov +0x7fffffff,r1
 	satsubi 0x1,r1,r2
 	;sub a little positive value from max positive value
 	
-	mov 0x80000000,r1
+	mov -0x80000000,r1
 	satsubi 0x1,r1,r2
 	;sub a little positive value from max negative value
 	
-	mov 0x80000000,r1
+	mov -0x80000000,r1
 	satsubi -4,r1,r2
 	;sub a little negative value from max negative value
 	
@@ -145,18 +145,18 @@ __iar_program_start:
 	satsubr r1,r2
 
 	;harder tests for satsubr negative
-	mov 0x7fffffff,r1
-	mov 0xffffffff,r2
+	mov +0x7fffffff,r1
+	mov +0xffffffff,r2
 	satsubr r1,r2
 	;sub a max positive from  negative number 
 	
-	mov 0x80000000,r1
-	mov 0xffffffff,r2
+	mov -0x80000000,r1
+	mov +0xffffffff,r2
 	satsubr r1,r2
 	;sub a max negative number from  -1 
 	
-	mov 0x80000000,r1
-	mov 0x00000005,r2
+	mov -0x80000000,r1
+	mov -0x00000005,r2
 	satsubr r1,r2
 	;sub max negative value from  positive number 
 	
