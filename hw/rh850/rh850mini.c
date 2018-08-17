@@ -113,6 +113,13 @@ static void load_rh_kernel(RH850CPU *cpu, const char *kernel_filename, int mem_s
 
         int image_size = load_elf_as(kernel_filename, NULL, NULL, &entry, &lowaddr,
         		                     NULL, IS_BIG_ENDIAN, EM_RH850, 1, 0, as);
+
+        if (image_size == ELF_LOAD_WRONG_ARCH) { // V850 is subset of RH850, so it is also allowed
+            error_report("Loading kernel as V850 code: '%s'", kernel_filename);
+        	image_size = load_elf_as(kernel_filename, NULL, NULL, &entry, &lowaddr,
+           		                     NULL, IS_BIG_ENDIAN, EM_V850, 1, 0, as);
+        }
+
         if (image_size < 0) {
             image_size = load_image_targphys_as(kernel_filename, 0,
                                                 mem_size, as);

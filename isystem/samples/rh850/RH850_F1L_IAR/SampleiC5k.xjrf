@@ -1873,10 +1873,10 @@
       </EditorHistoryFile.3>
      </Documents.0>
      <Progress>
-      <b>746</b>
+      <b>676</b>
       <l>791</l>
       <r>1295</r>
-      <t>382</t>
+      <t>312</t>
      </Progress>
      <Watches>
       <ActiveWatchPane>2</ActiveWatchPane>
@@ -2306,10 +2306,50 @@
       </DockRect.2>
       <DockRect.3>
        <AreHorz>1</AreHorz>
-       <Percent>0</Percent>
+       <Percent>5</Percent>
        <Type>6</Type>
        <TypeOfWnd>-1</TypeOfWnd>
       </DockRect.3>
+      <DockRect.4>
+       <AreHorz>1</AreHorz>
+       <Percent>461</Percent>
+       <strTypeOfWnd>Memory</strTypeOfWnd>
+       <Type>0</Type>
+       <TypeOfWnd>6</TypeOfWnd>
+       <Data>
+        <AA type="B">AAAAAAAAAAAAAAAA</AA>
+        <Address>0</Address>
+        <AddrMode>1</AddrMode>
+        <Area>0</Area>
+        <Bits>8</Bits>
+        <DisplayMode>0</DisplayMode>
+        <HA type="B">PPPPPPPPAAAAAAAA</HA>
+        <High>-1</High>
+        <LA type="B">AAAAAAAAAAAAAAAA</LA>
+        <LimitMAUsPerLine>0</LimitMAUsPerLine>
+        <Low>0</Low>
+        <RealTime>0</RealTime>
+        <strAddress>0x0</strAddress>
+        <SwapFloat>True</SwapFloat>
+        <SwapInt>True</SwapInt>
+        <Type>0</Type>
+        <API.0>
+         <AA type="B">AAAAAAAAAAAAAAAA</AA>
+         <Address>0</Address>
+         <AddressOffset>0</AddressOffset>
+         <AOA type="B">AAAAAAAAAAAAAAAA</AOA>
+         <DisplayMode>0</DisplayMode>
+         <FloatLowFirst>1</FloatLowFirst>
+         <IntLowFirst>1</IntLowFirst>
+        </API.0>
+       </Data>
+      </DockRect.4>
+      <DockRect.5>
+       <AreHorz>1</AreHorz>
+       <Percent>0</Percent>
+       <Type>6</Type>
+       <TypeOfWnd>-1</TypeOfWnd>
+      </DockRect.5>
      </Workspace.0>
     </Desktop>
     <Environment>
@@ -2355,7 +2395,7 @@
        </SourceDir.1>
       </Directories>
       <Download>
-       <DefaultFile>1</DefaultFile>
+       <DefaultFile>0</DefaultFile>
        <UseRealTimeWrite>0</UseRealTimeWrite>
        <File.0>
         <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
@@ -2368,7 +2408,7 @@
         <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
         <OptimizeTypeByName>0</OptimizeTypeByName>
         <OverrideMemoryArea>0</OverrideMemoryArea>
-        <Path>..\test_disas_1.elf</Path>
+        <Path>..\gcc\test-gcc.elf</Path>
         <ProjectOutputFile>0</ProjectOutputFile>
         <SOffset>0</SOffset>
         <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
@@ -2414,6 +2454,52 @@
         <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
         <OptimizeTypeByName>0</OptimizeTypeByName>
         <OverrideMemoryArea>0</OverrideMemoryArea>
+        <Path>..\test_disas_1.elf</Path>
+        <ProjectOutputFile>0</ProjectOutputFile>
+        <SOffset>0</SOffset>
+        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
+        <TargetRelative>False</TargetRelative>
+        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
+        <Type>28</Type>
+        <Options>
+         <CallStack>0</CallStack>
+         <DumpELFHeaders>0</DumpELFHeaders>
+         <GCC_ARM_double_Format>1</GCC_ARM_double_Format>
+         <IgnoreChecksum>0</IgnoreChecksum>
+         <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
+         <InsertInlinedFunctions>0</InsertInlinedFunctions>
+         <LoadCode>0</LoadCode>
+         <LoadDwarfSection>1</LoadDwarfSection>
+         <LoadSymbols>0</LoadSymbols>
+         <LoadWeakFunctions>1</LoadWeakFunctions>
+         <LoadZeros>0</LoadZeros>
+         <MergeTypes>0</MergeTypes>
+         <Override64bitVariableLocation>1</Override64bitVariableLocation>
+         <RemoveOptimizedLines>1</RemoveOptimizedLines>
+         <ReverseBitFields>0</ReverseBitFields>
+         <Cosmic>
+          <nowidden>0</nowidden>
+          <sprec>0</sprec>
+         </Cosmic>
+        </Options>
+        <PreProc>
+         <Analyze>0</Analyze>
+         <CommandLine></CommandLine>
+         <UseProjectDefines>0</UseProjectDefines>
+         <UseProjectIncludePaths>0</UseProjectIncludePaths>
+        </PreProc>
+       </File.1>
+       <File.2>
+        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
+        <Flags>3</Flags>
+        <Load>0</Load>
+        <LoadCode>1</LoadCode>
+        <LoadSymbols>1</LoadSymbols>
+        <MemoryArea>0</MemoryArea>
+        <Offset>0</Offset>
+        <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
+        <OptimizeTypeByName>0</OptimizeTypeByName>
+        <OverrideMemoryArea>0</OverrideMemoryArea>
         <Path>Debug\Sample.out</Path>
         <ProjectOutputFile>1</ProjectOutputFile>
         <SOffset>0</SOffset>
@@ -2448,8 +2534,8 @@
          <UseProjectDefines>1</UseProjectDefines>
          <UseProjectIncludePaths>1</UseProjectIncludePaths>
         </PreProc>
-       </File.1>
-       <File.2>
+       </File.2>
+       <File.3>
         <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
         <Flags>1</Flags>
         <Load>0</Load>
@@ -2476,8 +2562,8 @@
          <UseProjectDefines>0</UseProjectDefines>
          <UseProjectIncludePaths>0</UseProjectIncludePaths>
         </PreProc>
-       </File.2>
-       <File.3>
+       </File.3>
+       <File.4>
         <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
         <Flags>1</Flags>
         <Load>0</Load>
@@ -2504,7 +2590,7 @@
          <UseProjectDefines>0</UseProjectDefines>
          <UseProjectIncludePaths>0</UseProjectIncludePaths>
         </PreProc>
-       </File.3>
+       </File.4>
       </Download>
       <DownloadOptionsData>
        <AfterDL1>1</AfterDL1>
@@ -2908,7 +2994,7 @@
        </ShortcutScript.3>
       </Environment>
       <MemoryWindow>
-       <Default8bitMAUDisplayOptions>2</Default8bitMAUDisplayOptions>
+       <Default8bitMAUDisplayOptions>0</Default8bitMAUDisplayOptions>
       </MemoryWindow>
       <ProjectWindow>
        <Symbols_ModuleFolders>2</Symbols_ModuleFolders>
@@ -3047,21 +3133,7 @@
       </Memory>
       <ProjectWindow>
        <Reorder>0</Reorder>
-       <Selected>Z:\home\isystem\proj\qemu\isystem\samples\rh850\test_disas_1.s</Selected>
-       <SelectedItemPaths.0>
-        <Segments.0>
-         <Name></Name>
-        </Segments.0>
-        <Segments.1>
-         <Name>Files [Debug]</Name>
-        </Segments.1>
-        <Segments.2>
-         <Name>Source files</Name>
-        </Segments.2>
-        <Segments.3>
-         <Name>Z:\home\isystem\proj\qemu\isystem\samples\rh850\test_disas_1.s</Name>
-        </Segments.3>
-       </SelectedItemPaths.0>
+       <Selected></Selected>
        <StateItem>
         <Name></Name>
         <Options>0</Options>
