@@ -245,32 +245,6 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
     tcg_temp_free(t0);
     tcg_temp_free(t1);
 }
-static void set_simple_flag(TCGv result)
-{
-	TCGLabel *end;
-	TCGLabel *cont;
-
-	TCGv result_local = tcg_temp_local_new();
-	cont = gen_new_label();
-	end = gen_new_label();
-
-	tcg_gen_mov_i32(result_local, result);
-
-	tcg_gen_brcondi_tl(TCG_COND_NE, result_local, 0x0, cont);
-	tcg_gen_movi_i32(cpu_ZF, 0x1);
-	tcg_gen_br(end);
-
-	gen_set_label(cont);
-	tcg_gen_movi_i32(cpu_ZF, 0x0);
-	tcg_gen_movi_i32(cpu_SF, 0x0);
-
-	tcg_gen_brcondi_tl(TCG_COND_GE, result_local, 0x0, end);
-	tcg_gen_movi_i32(cpu_SF, 0x1);
-
-	gen_set_label(end);
-
-	tcg_temp_free_i32(result_local);
-}
 
 static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         target_long imm)
@@ -544,6 +518,104 @@ static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operatio
 
 }
 
+static TCGv get_MSB(TCGv reg1, int size)
+{	//second argument is the size or the position of the MSB bit
+	TCGv result_local = tcg_temp_new_i32();
+	tcg_gen_shri_i32(result_local, reg1, (size-1));
+
+	return result_local;
+}
+
+static TCGv get_LSB(TCGv reg1)
+{
+	TCGv result_local = tcg_temp_new_i32();
+	tcg_gen_andi_i32(result_local, reg1, 0x1);
+	return result_local;
+}
+
+
+static void set_Z_S_flags(TCGv result, int Z, int S)
+{
+
+	TCGLabel *end;
+	TCGLabel *cont;
+	TCGv result_local = tcg_temp_local_new();
+	cont = gen_new_label();
+	end = gen_new_label();
+
+	tcg_gen_mov_i32(result_local, result);
+
+	if(Z){
+	tcg_gen_brcondi_tl(TCG_COND_NE, result_local, 0x0, cont);
+
+	tcg_gen_movi_i32(cpu_ZF, 0x1);
+
+	tcg_gen_br(end);
+
+	gen_set_label(cont);
+	tcg_gen_movi_i32(cpu_ZF, 0x0);
+	}
+	if(S){
+		tcg_gen_movi_i32(cpu_SF, 0x0);
+
+		tcg_gen_brcondi_tl(TCG_COND_GE, result_local, 0x0, end);
+
+		tcg_gen_movi_i32(cpu_SF, 0x1);
+	}
+	gen_set_label(end);
+
+	tcg_temp_free_i32(result_local);
+}
+
+
+
+static void set_OV_flag(TCGv r1, TCGv r2, TCGv res){
+
+	TCGv regsAreSame = tcg_temp_new_i32();
+	TCGv reg1_resAreSame = tcg_temp_new_i32();
+	TCGv reg2_resAreSame = tcg_temp_new_i32();
+	TCGv nor = tcg_temp_new_i32();
+	TCGv and = tcg_temp_new_i32();
+	TCGv flag = tcg_temp_new_i32();
+
+	tcg_gen_mov_i32(r1, get_MSB(r1, 32));
+	tcg_gen_mov_i32(r2, get_MSB(r2, 32));
+	tcg_gen_mov_i32(res, get_MSB(res, 32));
+
+	tcg_gen_and_i32(and, r1, r2);
+	tcg_gen_nor_i32(nor, r1, r2);
+
+	tcg_gen_or_i32(regsAreSame, and, nor);	//this should be 1 when r1 = r2
+
+	tcg_gen_mov_i32(regsAreSame, get_LSB(regsAreSame));
+	gen_set_gpr(15, regsAreSame);
+
+
+	tcg_gen_and_i32(and, r1, res);
+	tcg_gen_nor_i32(nor, r1, res);
+	tcg_gen_or_i32(reg1_resAreSame, and, nor); //this should be 1 when r1 = res
+
+	tcg_gen_mov_i32(reg1_resAreSame, get_LSB(reg1_resAreSame));
+	gen_set_gpr(16, reg1_resAreSame);
+
+
+	tcg_gen_and_i32(and, r2, res);
+	tcg_gen_nor_i32(nor, r2, res);
+	tcg_gen_or_i32(reg2_resAreSame, and, nor); //this should be 1 when r2 = res
+
+	tcg_gen_mov_i32(reg2_resAreSame, get_LSB(reg2_resAreSame));
+	gen_set_gpr(17, reg2_resAreSame);
+
+
+	tcg_gen_nor_i32(flag, reg1_resAreSame, reg2_resAreSame);
+	tcg_gen_and_i32(flag, flag, regsAreSame);
+
+
+	tcg_gen_andi_i32(flag, flag, 0x1);
+
+	tcg_gen_mov_i32(cpu_OVF, flag);
+}
+
 static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	//TODO: CMP
 {
 	TCGv r1 = tcg_temp_new();
@@ -558,23 +630,25 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 	TCGv tcg_imm = tcg_temp_new();
 	TCGv tcg_imm32 = tcg_temp_new();
 	TCGv tcg_r3 = tcg_temp_new();
-	TCGv tcg_temp = tcg_temp_new();
+	TCGv tcg_result = tcg_temp_new();
 
 	TCGLabel *end;
 	TCGLabel *cont;
 
 	switch(operation) {
 
-	//OV = oba z enakim preznakom, rezultat obraten
-	//CY = rezultat je manjsi od operandov
+		case OPC_RH850_ADD_reg1_reg2: {
 
-		case OPC_RH850_ADD_reg1_reg2:
+			tcg_gen_add_tl(tcg_result, r2, r1);
+			gen_set_gpr(rs2, tcg_result);
 
-			tcg_gen_add_tl(r2, r2, r1);
-			gen_set_gpr(rs2, r2);
-			set_simple_flag(r2);
+			set_Z_S_flags(tcg_result, 1, 1);
 
-			break;
+
+			set_OV_flag(r1, r2, tcg_result);
+
+
+		}	break;
 
 		case OPC_RH850_ADD_imm5_reg2:
 			if((imm & 0x10) == 0x10){
@@ -584,7 +658,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
 			tcg_gen_add_tl(r2, r2, tcg_imm);
 			gen_set_gpr(rs2, r2);
-			set_simple_flag(r2);
+			//set_Z_S_flags(r2, 1, 1, 1, 1);
 			break;
 
 		case OPC_RH850_ADDI_imm16_reg1_reg2:
@@ -593,7 +667,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32);
 			tcg_gen_add_tl(r2,r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
-			set_simple_flag(r2);
+			//set_Z_S_flags(r2);
 			break;
 
 		case OPC_RH850_CMP_reg1_reg2:	{	//TODO: OV and CY flags!!
@@ -706,20 +780,20 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 		case OPC_RH850_SUB_reg1_reg2:
 			tcg_gen_sub_tl(r2, r2, r1);
 			gen_set_gpr(rs2, r2);
-			set_simple_flag(r2);
+			//set_Z_S_flags(r2);
 			break;
 
 		case OPC_RH850_SUBR_reg1_reg2:
 			tcg_gen_sub_tl(r2, r1, r2);
 			gen_set_gpr(rs2, r2);
-			set_simple_flag(r2);
+			//set_Z_S_flags(r2);
 			break;
 	}
 
 	tcg_temp_free(r1);
 	tcg_temp_free(r2);
 	tcg_temp_free(tcg_r3);
-	tcg_temp_free(tcg_temp);
+	tcg_temp_free(tcg_result);
 }
 
 static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
@@ -2452,11 +2526,16 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
         TCGv temp = tcg_temp_new_i32();
 
-        tcg_gen_shli_i32(cpu_sysRegs[PSW_register], cpu_SF, 0x1);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
+
+        tcg_gen_shli_i32(temp, cpu_SF, 0x1);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
         tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
         tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
         tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
 
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.OV_flag << 2));
         //tcg_gen_ori_i32(cpu_sysRegs[4],cpu_sysRegs[4], (ctx.CY_flag << 3));
