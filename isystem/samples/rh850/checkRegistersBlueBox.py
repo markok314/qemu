@@ -1,5 +1,8 @@
-from __future__ import print_function
+# This script is part of files used for testing implementation of microcontroller rh850
+# in qemu. It loads file, executes some instructions and then write PC,PSW and GPR values
+# to file.
 
+from __future__ import print_function
 import isystem.connect as ic
 import time
 import sys
@@ -10,16 +13,6 @@ def unsigned64(x):
   This function performs a kind of cast from signed 64-bint int to unsigned one.
   """
   return x & 0xffffffffffffffff
-
-
-# First we obtain connection and controller objects
-cmgr = ic.ConnectionMgr()
-cmgr.connectMRU('')
-
-debugCtrl = ic.CDebugFacade(cmgr)
-dataCtrl = ic.CDataController2(cmgr)
-loadCtrl = ic.CLoaderController(cmgr)
-ideCtrl = ic.CIDEController(cmgr)
 
 def addFileForDownload(filePath, fileType):
     idx = ideCtrl.addDynamicOption('/IDE/Debug.DownloadFiles.File')
@@ -44,16 +37,24 @@ def printRegisters():
         value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
         print(registerName, '=', f"{unsigned64(value.getLong()):#0{10}x}")
 
-downloadFile = '../' + sys.argv[1] + '.elf'
-filetype = "ELF"
-addFileForDownload(downloadFile, filetype)
+def check_registers_blue_box(file, num_of_inst_to_print):
+    sys.stdout = open('log_blubox.log', 'w')
+    cmgr = ic.ConnectionMgr()
+    cmgr.connectMRU('')
+    debugCtrl = ic.CDebugFacade(cmgr)
+    dataCtrl = ic.CDataController2(cmgr)
+    loadCtrl = ic.CLoaderController(cmgr)
+    ideCtrl = ic.CIDEController(cmgr)
+    downloadFile = '../' + file + '.elf'
+    filetype = "ELF"
+    addFileForDownload(downloadFile, filetype)
 
-debugCtrl.download()
+    debugCtrl.download()
 
-for x in range(int(sys.argv[2])):
-  printRegisters()
-  debugCtrl.stepInst()
-printRegisters()
+    for x in range(num_of_inst_to_print):
+      printRegisters()
+      debugCtrl.stepInst()
+    printRegisters()
 
-removeFileForDownload(downloadFile)
+    removeFileForDownload(downloadFile)
 
