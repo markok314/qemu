@@ -567,7 +567,7 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 
 }
 
-static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	//completed
+static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// completed
 {
 	TCGv r1 = tcg_temp_new();		//temp
 	TCGv r2 = tcg_temp_new();		//temp
@@ -689,7 +689,7 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	//c
 
 }
 
-static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation)	//issues with IAR
+static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation)	// IAR issue
 {
 	TCGv r1 = tcg_temp_new();
 	TCGv r2 = tcg_temp_new();
@@ -1374,7 +1374,7 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 	tcg_temp_free(tcg_imm);
 }
 
-static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int operation)
 //TODO: BINS
 {
 	TCGv tcg_r1 = tcg_temp_new();
@@ -1661,7 +1661,7 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 
 }
 
-static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
+static void gen_bit_search(DisasContext *ctx, int rs2, int operation)			// completed
 {
 
 	TCGv tcg_r2 = tcg_temp_new();
@@ -1713,6 +1713,9 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 			gen_set_label(end);
 			gen_set_gpr(int_rs3, result);
+
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+			tcg_gen_movi_i32(cpu_SF, 0x0);
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
@@ -1754,6 +1757,8 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 			gen_set_label(end);
 			gen_set_gpr(int_rs3, result);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+			tcg_gen_movi_i32(cpu_SF, 0x0);
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
@@ -1795,6 +1800,8 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 			gen_set_label(end);
 			gen_set_gpr(int_rs3, result);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+			tcg_gen_movi_i32(cpu_SF, 0x0);
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
@@ -1836,6 +1843,8 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 			gen_set_label(end);
 			gen_set_gpr(int_rs3, result);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+			tcg_gen_movi_i32(cpu_SF, 0x0);
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
@@ -2120,7 +2129,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							//RIE
 						} else {
 							//SETF
-							gen_data_manipulation(ctx, 0, rs1, rs2, OPC_RH850_SETF_cccc_reg2);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SETF_cccc_reg2);
 						}
 						break;
 					case 1:
@@ -2142,10 +2151,10 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							else{
 								if (extract32(ctx->opcode, 17, 1) == 0){
 									//SHR format IX
-									gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SHR_imm5_reg2);
+									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_imm5_reg2);
 								}else{
 									//SHR format XI
-									gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SHR_reg1_reg2_reg3);
+									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2_reg3);
 								}
 							}
 							break;
@@ -2157,10 +2166,10 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							else{
 								if (extract32(ctx->opcode, 17, 1) == 0){
 									//SAR format IX
-									gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SAR_reg1_reg2);
+									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2);
 								}else{
 									//SAR format XI
-									gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SAR_reg1_reg2_reg3);
+									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2_reg3);
 								}
 							}
 						break;
@@ -2172,19 +2181,17 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							else{
 								if (extract32(ctx->opcode, 17, 1) == 0){
 									if (extract32(ctx->opcode, 18, 1) == 1){
-										gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_ROTL_imm5_reg2_reg3);
+										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ROTL_imm5_reg2_reg3);
 									}
 									else{
-										//SHL format IX
-										gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SHL_reg1_reg2);
+										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHL_reg1_reg2);
 									}
 								}else{
 									if (extract32(ctx->opcode, 18, 1) == 1){
-										gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_ROTL_reg1_reg2_reg3);
+										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ROTL_reg1_reg2_reg3);
 									}
 									else{
-										//SHL format XI
-										gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SHL_reg1_reg2_reg3);
+										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHL_reg1_reg2_reg3);
 									}
 								}
 							}
@@ -2256,8 +2263,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 				case OPC_RH850_MUL_INSTS:		//MUL instructions
 					if (extract32(ctx->opcode, 22, 1) == 0){
 						if (extract32(ctx->opcode, 21, 1) == 0){
-							//SASF
-							gen_data_manipulation(ctx, 0, rs1, rs2, OPC_RH850_SASF_cccc_reg2);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SASF_cccc_reg2);
 						} else {
 							if (extract32(ctx->opcode, 17, 1) == 1){
 								gen_multiply(ctx, rs1, rs2, OPC_RH850_MULU_reg1_reg2_reg3);
@@ -2312,30 +2318,28 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 					switch(checkXII){
 					case 0:
-						//CMOV in format XII
-						gen_data_manipulation(ctx, 0, rs1, rs2, OPC_RH850_CMOV_cccc_imm5_reg2_reg3);
+						gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_CMOV_cccc_imm5_reg2_reg3);
 						break;
 					case 1:
-						//CMOV in format XI
-						gen_data_manipulation(ctx, 0, rs1, rs2, OPC_RH850_CMOV_cccc_reg1_reg2_reg3);
+						gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_CMOV_cccc_reg1_reg2_reg3);
 						break;
 					case 2:
 						formXop = extract32(ctx->opcode, 17, 2);
 
 						switch(formXop){
 						case OPC_RH850_BSW_reg2_reg3:
-							gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_BSW_reg2_reg3);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BSW_reg2_reg3);
 							break;
 						case OPC_RH850_BSH_reg1_reg2:
-							gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_BSH_reg1_reg2);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BSH_reg1_reg2);
 							break;
 						case OPC_RH850_HSW_reg2_reg3:
 							//HSW
-							gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_HSW_reg2_reg3);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_HSW_reg2_reg3);
 							break;
 						case OPC_RH850_HSH_reg2_reg3:
 							//HSH
-							gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_HSH_reg2_reg3);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_HSH_reg2_reg3);
 							break;
 						}
 						break;
@@ -2480,8 +2484,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 
 	case OPC_RH850_16bit_4:
 		if (rs2 == 0){
-			//ZXB
-			gen_data_manipulation(ctx, 0, rs1, rs2, OPC_RH850_ZXB_reg1);
+			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ZXB_reg1);
 			break;
 		} else {
 			//SATSUBR (calling SATSUB reg1, reg2 but with switched registers)
@@ -2492,7 +2495,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_5:
 		if (rs2 == 0){
 			//SXB
-			gen_data_manipulation(ctx, 0, rs1, rs2, OPC_RH850_SXB_reg1);
+			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SXB_reg1);
 			break;
 		} else {
 			gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUB_reg1_reg2);
@@ -2501,7 +2504,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_6:
 		if (rs2 == 0){
-			gen_data_manipulation(ctx,0,rs1,rs2,OPC_RH850_ZXH_reg1);
+			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ZXH_reg1);
 			break;
 		} else {
 			gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATADD_reg1_reg2);
@@ -2510,7 +2513,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_7:
 		if (rs2 == 0){
-			gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SXH_reg1);
+			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SXH_reg1);
 			break;
 		} else {
 			//MULH
@@ -2584,13 +2587,13 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_CMP_imm5_reg2);
 		break;
 	case OPC_RH850_SHR_reg1_reg2:
-		gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SHR_reg1_reg2);
+		gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2);
 		break;
 	case OPC_RH850_SAR_imm5_reg2:
-		gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SAR_imm5_reg2);
+		gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_imm5_reg2);
 		break;
 	case OPC_RH850_SHL_imm5_reg2:
-		gen_data_manipulation(ctx,0, rs1, rs2, OPC_RH850_SHL_imm5_reg2);
+		gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHL_imm5_reg2);
 		break;
 	case OPC_RH850_MULH_imm5_reg2:
 		gen_multiply(ctx, rs1, rs2, OPC_RH850_MULH_imm5_reg2);
