@@ -136,6 +136,8 @@ struct CPURH850State {
     uint32_t CU2_flag;
     uint32_t UM_flag;
 
+    uint32_t condSatisfied;
+
 
 
     target_ulong icsr;		//interrupt control status register
