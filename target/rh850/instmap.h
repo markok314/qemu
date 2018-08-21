@@ -151,6 +151,7 @@ enum{
 
 enum{
 	OPC_RH850_ADF_cccc_reg1_reg2_reg3	= 10,
+	OPC_RH850_SBF_cccc_reg1_reg2_reg3	= 11,
 	OPC_RH850_DIVH_reg1_reg2			= 12,
 };
 

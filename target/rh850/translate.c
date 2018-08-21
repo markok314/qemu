@@ -865,63 +865,95 @@ static TCGv condition_satisfied(int cond)
 
 static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 {
-	TCGv r1 = tcg_temp_new();		//temp
-	TCGv r2 = tcg_temp_new();		//temp
+	TCGv r1 = tcg_temp_new();
+	TCGv r2 = tcg_temp_new();
 
-	TCGLabel *end;
 	TCGLabel *cont;
 
+	gen_get_gpr(r1, rs1);
+	gen_get_gpr(r2, rs2);
 
-
-	//TCGv comp = tcg_temp_new();
-	gen_get_gpr(r1, rs1);			//loading rs1 to t0
-	gen_get_gpr(r2, rs2);			//loading rs2 to t1
-	//int imm = rs1;
-	//int imm_32;
 	int int_rs3;
 	int int_cond;
 
-	TCGv tcg_r3 = tcg_temp_new();
-	TCGv tcg_temp = tcg_temp_new();
+	TCGv condResult = tcg_temp_new();
 
 	switch(operation){
+
 		case OPC_RH850_ADF_cccc_reg1_reg2_reg3:{
+
 			TCGv r1_local = tcg_temp_local_new_i32();
 			TCGv r2_local = tcg_temp_local_new_i32();
 			TCGv r3_local = tcg_temp_local_new_i32();
 
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			int_cond = extract32(ctx->opcode, 17, 4);
-			gen_get_gpr(tcg_r3,int_rs3);
+			if(int_cond == 0xd){
+				//throw exception/warning for inappropriate condition (SA)
+				break;
+			}
 
 			tcg_gen_mov_i32(r1_local, r1);
 			tcg_gen_mov_i32(r2_local, r2);
-			tcg_gen_mov_i32(r3_local, tcg_r3);
+			gen_get_gpr(r3_local,int_rs3);
 
-			tcg_temp = condition_satisfied(int_cond);
-			gen_set_gpr(10, tcg_temp);
-			end = gen_new_label();
+			condResult = condition_satisfied(int_cond);
 			cont = gen_new_label();
 
-			tcg_gen_brcondi_i32(TCG_COND_NE, tcg_temp, 0x1, cont);
+			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
+			tcg_gen_addi_tl(r2_local, r2_local, 0x1);
 
-			//if condition then
-			tcg_gen_addi_tl(r2_local, r2_local, 1);
-			tcg_gen_add_tl(r3_local, r2_local, r1_local);
-			tcg_gen_movi_i32(r3_local, 0xff);/// REMOVE THIS AFTER TESTING
-			tcg_gen_br(end);
 
-			//else
 			gen_set_label(cont);
 			tcg_gen_add_tl(r3_local, r2_local, r1_local);
-			tcg_gen_movi_i32(r3_local, 0xaa);/// REMOVE THIS AFTER TESTING
-
-
-			gen_set_label(end);
+			gen_add_CC(r1_local, r2_local);
 			gen_set_gpr(int_rs3, r3_local);
+
+			tcg_temp_free_i32(r1_local);
+			tcg_temp_free_i32(r2_local);
+			tcg_temp_free_i32(r3_local);
+		}
+			break;
+
+		case OPC_RH850_SBF_cccc_reg1_reg2_reg3:{
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv r3_local = tcg_temp_local_new_i32();
+
+			int_rs3 = extract32(ctx->opcode, 27, 5);
+			int_cond = extract32(ctx->opcode, 17, 4);
+			if(int_cond == 0xd){
+				//throw exception/warning for inappropriate condition (SA)
+				break;
+			}
+
+			tcg_gen_mov_i32(r1_local, r1);
+			tcg_gen_mov_i32(r2_local, r2);
+			gen_get_gpr(r3_local,int_rs3);
+
+			condResult = condition_satisfied(int_cond);
+			gen_set_gpr(15, condResult);
+			cont = gen_new_label();
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
+			tcg_gen_addi_tl(r1_local, r1_local, 0x1);
+
+			gen_set_label(cont);
+			tcg_gen_sub_tl(r3_local, r2_local, r1_local);
+			gen_sub_CC(r2_local, r1_local);
+			gen_set_gpr(int_rs3, r3_local);
+
+			tcg_temp_free_i32(r1_local);
+			tcg_temp_free_i32(r2_local);
+			tcg_temp_free_i32(r3_local);
 		}
 			break;
 	}
+
+	tcg_temp_free_i32(r1);
+	tcg_temp_free_i32(r2);
+	//tcg_temp_free_i32(condResult);
 }
 
 static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//completed
@@ -2330,6 +2362,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 								gen_arithmetic(ctx, rs1, rs2, 28);
 								gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUB_reg1_reg2_reg3);
 							} else {
+								gen_cond_arith(ctx, rs1, rs2, OPC_RH850_SBF_cccc_reg1_reg2_reg3);
 								// SBF
 							}
 							break;
