@@ -956,7 +956,6 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)	/
 
 	tcg_temp_free_i32(r1);
 	tcg_temp_free_i32(r2);
-	//tcg_temp_free_i32(condResult);
 }
 
 static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// completed
@@ -1375,7 +1374,8 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 	tcg_temp_free(tcg_imm);
 }
 
-static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2, int operation)	//TODO: BINS, SASF, SETF
+static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
+//TODO: BINS
 {
 	TCGv tcg_r1 = tcg_temp_new();
 	TCGv tcg_r2 = tcg_temp_new();
@@ -1387,7 +1387,7 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 
 	TCGLabel *cont;
 
-	int int_imm = rs1; //imm is usually in r1(5-0)
+	int int_imm = rs1;
 	int int_rs3;
 	int int_cond;
 
@@ -1497,14 +1497,12 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 		}
 			break;
 
-		case OPC_RH850_HSH_reg2_reg3: //HSH
-			printf("HSH \n");
+		case OPC_RH850_HSH_reg2_reg3:
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_set_gpr(int_rs3, tcg_r1);
 			break;
 
-		case OPC_RH850_HSW_reg2_reg3: //HSW
-			printf("HSW \n");
+		case OPC_RH850_HSW_reg2_reg3:
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 
@@ -1534,13 +1532,11 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 			break;
 
 		case OPC_RH850_SAR_reg1_reg2:
-			printf("SAR Format IX \n");
 			tcg_gen_sar_tl(tcg_r2, tcg_r2, tcg_r1);
 			gen_set_gpr(rs2, tcg_r2);
 			break;
 
 		case OPC_RH850_SAR_imm5_reg2:
-			printf("SAR Format II \n");
 			tcg_gen_movi_tl(tcg_imm, int_imm);
 			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
 			tcg_gen_sar_tl(tcg_r2, tcg_r2, tcg_imm);
@@ -1548,45 +1544,57 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 			break;
 
 		case OPC_RH850_SAR_reg1_reg2_reg3:
-			printf("SAR Format XI \n");
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_sar_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
 
-		case OPC_RH850_SASF_cccc_reg2:
-			printf("SASF \n");
-			//int_cond = extract32(ctx->opcode,0,4);
-			//TODO if cond is true then
-			tcg_gen_shli_tl(tcg_r2, tcg_r2, 0x1);
-			tcg_gen_ori_tl(tcg_r2, tcg_r2, 0x00000001);
-			//else
-			tcg_gen_shli_tl(tcg_r2, tcg_r2, 0x1);
-			tcg_gen_ori_tl(tcg_r2, tcg_r2, 0x00000000);
+		case OPC_RH850_SASF_cccc_reg2: {
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv operand_local = tcg_temp_local_new_i32();
 
-			gen_set_gpr(rs2, tcg_r2);
+			int_cond = extract32(ctx->opcode,0,4);
+			condResult = condition_satisfied(int_cond);
+			cont = gen_new_label();
+
+
+			tcg_gen_shli_tl(r2_local, tcg_r2, 0x1);
+
+			tcg_gen_movi_i32(operand_local, 0x00000000);
+			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
+			tcg_gen_movi_i32(operand_local, 0x00000001);
+
+			gen_set_label(cont);
+			tcg_gen_or_tl(r2_local, r2_local, operand_local);
+
+			gen_set_gpr(rs2, r2_local);
+		}
 			break;
 
-		case OPC_RH850_SETF_cccc_reg2:
-			printf("SETF \n");
-			//int_cond = extract32(ctx->opcode,0,4);
-			//TODO if cond is true then
-			tcg_gen_movi_tl(tcg_r2, 0x1);
-			//else
-			tcg_gen_movi_tl(tcg_r2, 0x0);
+		case OPC_RH850_SETF_cccc_reg2:{
 
-			gen_set_gpr(rs2, tcg_r2);
+			TCGv operand_local = tcg_temp_local_new_i32();
+			int_cond = extract32(ctx->opcode,0,4);
+			condResult = condition_satisfied(int_cond);
+			cont = gen_new_label();
+
+			tcg_gen_movi_i32(operand_local, 0x00000000);
+			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
+			tcg_gen_movi_i32(operand_local, 0x00000001);
+
+			gen_set_label(cont);
+
+			gen_set_gpr(rs2, operand_local);
+		}
 			break;
 
 		case OPC_RH850_SHL_reg1_reg2:
-			printf("SHL Format IX\n");
 			tcg_gen_shl_tl(tcg_r2, tcg_r2, tcg_r1);
 			gen_set_gpr(rs2, tcg_r2);
 			break;
 
 		case OPC_RH850_SHL_imm5_reg2:
-			printf("SHL Format II \n");
 			tcg_gen_movi_tl(tcg_imm, int_imm);
 			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
 			tcg_gen_shl_tl(tcg_r2, tcg_r2, tcg_imm);
@@ -1594,63 +1602,54 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 			break;
 
 		case OPC_RH850_SHL_reg1_reg2_reg3:
-			printf("SHL Format XI \n");
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_shl_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
 
-		case OPC_RH850_SHR_reg1_reg2: //SHR Format II
-
+		case OPC_RH850_SHR_reg1_reg2:
 			tcg_gen_movi_tl(tcg_imm, int_imm);
 			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
 			tcg_gen_shr_tl(tcg_r2, tcg_r2, tcg_imm);
 			gen_set_gpr(rs2, tcg_r2);
 			break;
 
-		case OPC_RH850_SHR_imm5_reg2: //SHR Format IX
-			printf("SHR Format IX\n");
+		case OPC_RH850_SHR_imm5_reg2:
 			tcg_gen_shr_tl(tcg_r2, tcg_r2, tcg_r1);
 			gen_set_gpr(rs2, tcg_r2);
 			break;
 
-		case OPC_RH850_SHR_reg1_reg2_reg3: //SHR Format XI
-			printf("SHR Format XI\n");
+		case OPC_RH850_SHR_reg1_reg2_reg3:
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_shr_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
 
-		case OPC_RH850_SXB_reg1://SXB
+		case OPC_RH850_SXB_reg1:
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFF);
-			printf("SXB  \n");
 			tcg_gen_ext8s_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
 
-		case OPC_RH850_SXH_reg1://SXH
-			printf("SXH \n");
+		case OPC_RH850_SXH_reg1:
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFFFF);
 			tcg_gen_ext16s_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
 
-		case OPC_RH850_ZXH_reg1: //ZXH
-			printf("ZXH \n");
+		case OPC_RH850_ZXH_reg1:
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFFFF);
 			tcg_gen_ext16u_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
 
-		case OPC_RH850_ZXB_reg1: //ZXB
-			printf("ZXB \n");
+		case OPC_RH850_ZXB_reg1:
 			tcg_gen_andi_tl(tcg_r1, tcg_r1,0xFF);
 			tcg_gen_ext8u_tl(tcg_r1, tcg_r1);
 			gen_set_gpr(rs1, tcg_r1);
 			break;
-
 	}
 
 	tcg_temp_free(tcg_r1);
@@ -1658,6 +1657,7 @@ static void gen_data_manipulation(DisasContext *ctx, int memop, int rs1, int rs2
 	tcg_temp_free(tcg_r3);
 	tcg_temp_free(tcg_imm);
 	tcg_temp_free(tcg_temp);
+	tcg_temp_free(tcg_temp2);
 
 }
 
