@@ -548,6 +548,36 @@ static void gen_add_CC(TCGv_i32 t0, TCGv_i32 t1)
 	gen_set_label(end);
 }
 
+static void gen_satadd_CC(TCGv_i32 t0, TCGv_i32 t1, TCGv_i32 result)
+{
+	TCGLabel *cont;
+	TCGLabel *end;
+
+    TCGv_i32 tmp = tcg_temp_new_i32();
+    tcg_gen_movi_i32(tmp, 0);
+    tcg_gen_add2_i32(cpu_SF, cpu_CYF, t0, tmp, t1, tmp);
+    tcg_gen_mov_i32(cpu_ZF, cpu_SF);
+    tcg_gen_xor_i32(cpu_OVF, cpu_SF, t0);
+    tcg_gen_xor_i32(tmp, t0, t1);
+    tcg_gen_andc_i32(cpu_OVF, cpu_OVF, tmp);
+
+    tcg_gen_shri_i32(cpu_SF, result, 0x1f);
+    tcg_gen_shri_i32(cpu_OVF, cpu_OVF, 0x1f);
+    tcg_temp_free_i32(tmp);
+
+    cont = gen_new_label();
+	end = gen_new_label();
+
+	tcg_gen_brcondi_i32(TCG_COND_NE, cpu_ZF, 0x0, cont);
+	tcg_gen_movi_i32(cpu_ZF, 0x1);
+	tcg_gen_br(end);
+
+	gen_set_label(cont);
+	tcg_gen_movi_i32(cpu_ZF, 0x0);
+
+	gen_set_label(end);
+}
+
 static void gen_sub_CC(TCGv_i32 t0, TCGv_i32 t1)
 {
 	TCGLabel *cont;
@@ -843,6 +873,9 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//co
 			gen_set_label(cont2);
 			gen_set_label(end);
 			gen_set_gpr(rs2, result);
+
+			gen_satadd_CC(r1_local, r2_local, result);
+
 			tcg_temp_free(result);
 			tcg_temp_free(check);
 			tcg_temp_free(min);
@@ -850,8 +883,6 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//co
 			tcg_temp_free(r1_local);
 			tcg_temp_free(r2_local);
 			tcg_temp_free(zero);
-
-			gen_add_CC(r1_local, r2_local);
 
 		}	break;
 
@@ -899,6 +930,9 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//co
 			gen_set_label(cont2);
 			gen_set_label(end);
 			gen_set_gpr(rs2, result);
+
+			gen_satadd_CC(r2_local, imm_local, result);
+
 			tcg_temp_free(result);
 			tcg_temp_free(check);
 			tcg_temp_free(min);
@@ -906,8 +940,6 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//co
 			tcg_temp_free(imm_local);
 			tcg_temp_free(r2_local);
 			tcg_temp_free(zero);
-
-			gen_add_CC(imm_local, r2_local);
 
 		}	break;
 
@@ -951,6 +983,8 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//co
 			gen_set_label(end);
 			gen_set_gpr(int_rs3, result);
 
+			gen_satadd_CC(r1_local, r2_local, result);
+
 			tcg_temp_free(result);
 			tcg_temp_free(check);
 			tcg_temp_free(min);
@@ -958,8 +992,6 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		//co
 			tcg_temp_free(r1_local);
 			tcg_temp_free(r2_local);
 			tcg_temp_free(zero);
-
-			gen_add_CC(r1_local, r2_local);
 
 		}	break;
 
