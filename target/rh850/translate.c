@@ -1384,21 +1384,45 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 	TCGv tcg_temp = tcg_temp_new();
 	TCGv tcg_temp2 = tcg_temp_new();
 	TCGv condResult = tcg_temp_new();
+	TCGv insert = tcg_temp_new();
 
 	TCGLabel *cont;
 
 	int int_imm = rs1;
 	int int_rs3;
 	int int_cond;
+	int pos;
+	int width;
+	int mask;
 
 	gen_get_gpr(tcg_r1, rs1);
 	gen_get_gpr(tcg_r2, rs2);
 
 	switch(operation) {
 
-		case 123456://BINS
-			printf("BINS \n");
-			//TODO
+		case 123456: //BINS
+
+			mask = 0;
+			pos = extract32(ctx->opcode, 17, 3) | (extract32(ctx->opcode, 27, 1) << 3);
+
+			width = extract32(ctx->opcode, 28, 4) - pos + 1;
+
+			for(int i = 0; i < width; i++){
+				mask = mask | (0x1 << i);
+			}
+
+			tcg_gen_andi_i32(insert, tcg_r1, mask);		//insert has the bits from reg1
+
+			tcg_gen_movi_i32(tcg_temp, mask);
+			tcg_gen_shli_i32(tcg_temp, tcg_temp, pos);	//inverting and shifting the mask
+			tcg_gen_not_i32(tcg_temp, tcg_temp);		//for deletion of bits in reg2
+
+			tcg_gen_and_i32(tcg_r2, tcg_r2, tcg_temp);	//deleting bits that will be replaced
+			tcg_gen_shli_i32(insert, insert, pos);		//shifting bits to right position
+			tcg_gen_or_i32(tcg_r2, tcg_r2, insert);		//placing bits into reg2
+
+			gen_set_gpr(rs2, tcg_r2);
+
 			break;
 
 		case OPC_RH850_BSH_reg1_reg2: //BSH
@@ -2146,7 +2170,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_BINS_0:
 							if (extract32(ctx->opcode, 20, 1) == 1){
 								//BINS0
-								printf("BINS0\n");
+								gen_data_manipulation(ctx, rs1, rs2, 123456);
+								//printf("BINS0\n");
 							}
 							else{
 								if (extract32(ctx->opcode, 17, 1) == 0){
@@ -2161,6 +2186,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_BINS_1:
 							if (extract32(ctx->opcode, 20, 1) == 1){
 								//BINS1
+								gen_data_manipulation(ctx, rs1, rs2, 123456);
 								printf("BINS1\n");
 							}
 							else{
@@ -2176,6 +2202,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_BINS_2:
 							if (extract32(ctx->opcode, 20, 1) == 1){
 								//BINS2
+								gen_data_manipulation(ctx, rs1, rs2, 123456);
 								printf("BINS2\n");
 							}
 							else{
