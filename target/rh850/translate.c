@@ -57,6 +57,8 @@ enum{
 	FPEC_register	= 10,
 	EIIC_register	= 11,
 	FEIC_register 	= 12,
+	CTPC_register	= 13,
+	CTPSW_register	= 14,
 };
 
 #include "exec/gen-icount.h"
@@ -2214,8 +2216,39 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 //static void gen_loop(DisasContext *ctx, int rs1, int rs2, int operation){}
 
 //static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){}
+// NEED LOAD TO WORK
 
-//static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){}
+static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
+
+	TCGv temp = tcg_temp_new_i32();
+
+	switch(operation){
+	case OPC_RH850_CTRET:    		// how to affect the ctx->pc?
+
+		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[CTPC_register]);
+		tcg_gen_andi_i32(temp, cpu_sysRegs[CTPSW_register], 0x1f);
+		gen_set_gpr(25, temp);
+		tcg_gen_andi_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], 0xffffffe0);
+		tcg_gen_or_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], temp);
+		break;
+
+	case OPC_RH850_DI:
+		tcg_gen_movi_i32(cpu_ID, 0x1);
+		break;
+	case OPC_RH850_EI:
+		tcg_gen_movi_i32(cpu_ID, 0x0);
+		break;
+	case OPC_RH850_EIRET:			// how to affect the ctx->pc?
+		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[EIPC_register]);
+		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[EIPSW_register]);
+		break;
+	case OPC_RH850_FERET:			// how to affect the ctx->pc?
+		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
+		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
+		break;
+	}
+}
+//
 
 static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
@@ -2473,6 +2506,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							}
 							break;
 						case OPC_RH850_CTRET:
+							gen_special(ctx, rs1, rs2, OPC_RH850_CTRET);
 							break;
 						case OPC_RH850_DI:
 							break;
@@ -2628,11 +2662,9 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 						case OPC_RH850_SBF_SATSUB:
 							if (extract32(ctx->opcode, 16, 5) == 0x1A){
-								gen_arithmetic(ctx, rs1, rs2, 28);
 								gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUB_reg1_reg2_reg3);
 							} else {
 								gen_cond_arith(ctx, rs1, rs2, OPC_RH850_SBF_cccc_reg1_reg2_reg3);
-								// SBF
 							}
 							break;
 							break;
