@@ -1375,7 +1375,7 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 }
 
 static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int operation)
-//TODO: BINS
+//TODO: check BINS
 {
 	TCGv tcg_r1 = tcg_temp_new();
 	TCGv tcg_r2 = tcg_temp_new();
@@ -1422,6 +1422,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_or_i32(tcg_r2, tcg_r2, insert);		//placing bits into reg2
 
 			gen_set_gpr(rs2, tcg_r2);
+
 
 			break;
 
@@ -1876,8 +1877,9 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)			// compl
 	}
 }
 
-static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
+static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)	// completed
 {
+
 	TCGv tcg_r1 = tcg_temp_new();
 	TCGv tcg_r2 = tcg_temp_new();
 
@@ -1890,61 +1892,274 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 
 	switch(operation){
 
-		case OPC_RH850_DIV_reg1_reg2_reg3:
-			printf("this is DIV \n");
+		case OPC_RH850_DIV_reg1_reg2_reg3:{
+
+			// 0x80000000/0xffffffff=0x80000000; cpu_OVF=1
+			// reg2/0x0000=undefined; cpu_OVF=1
+			// if reg2==reg3; reg2=remainder
+
+			TCGLabel *cont;
+			TCGLabel *end;
+			TCGLabel *fin;
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv r3_local = tcg_temp_local_new();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3, int_rs3);
-			tcg_gen_rem_i32(tcg_r3, tcg_r2, tcg_r1);
-			tcg_gen_div_i32(tcg_r2, tcg_r2, tcg_r1);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			TCGv overflowed = tcg_temp_local_new();
+			TCGv overflowed2 = tcg_temp_local_new();
 
-			gen_set_gpr(rs2, tcg_r2);
-			gen_set_gpr(int_rs3, tcg_r3);
+			cont = gen_new_label();
+			end = gen_new_label();
+			fin = gen_new_label();
 
-		case OPC_RH850_DIVH_reg1_reg2:
-			printf("this is DIVH \n");
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to end
+			tcg_gen_br(fin);
+
+			gen_set_label(cont);
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, overflowed, r2_local, 0x80000000);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, overflowed2, r1_local, 0xffffffff);
+			tcg_gen_and_i32(overflowed, overflowed, overflowed2);		//if both
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, overflowed, 0x1);	//are 1
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, end);
+			tcg_gen_movi_i32(r2_local, 0x80000000);						//DO THIS
+			tcg_gen_movi_i32(cpu_OVF, 0x1);
+			gen_set_gpr(rs2, r2_local);
+			tcg_gen_br(fin);
+
+			gen_set_label(end);
+
+			tcg_gen_rem_i32(r3_local, r2_local, r1_local);
+			tcg_gen_div_i32(r2_local, r2_local, r1_local);
+
+			if(rs2==int_rs3){
+				gen_set_gpr(rs2, r3_local);
+			} else {
+				gen_set_gpr(rs2, r2_local);
+				gen_set_gpr(int_rs3, r3_local);
+			}
+
+			gen_set_label(fin);
+
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+		}	break;
+
+		case OPC_RH850_DIVH_reg1_reg2:{	//prva in druga
+
+			TCGLabel *cont;
+			TCGLabel *end;
+			TCGLabel *fin;
+
 			tcg_gen_andi_i32(tcg_r1, tcg_r1, 0x0000FFFF);
 			tcg_gen_ext16s_i32(tcg_r1, tcg_r1);
-			tcg_gen_div_i32(tcg_r2, tcg_r2, tcg_r1);
-			gen_set_gpr(rs2, tcg_r2);
-			break;
 
-		case OPC_RH850_DIVH_reg1_reg2_reg3:
-			printf("this is DIVH2 \n");
-			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(tcg_r3, int_rs3);
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv overflowed = tcg_temp_local_new();
+			TCGv overflowed2 = tcg_temp_local_new();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+			cont = gen_new_label();
+			end = gen_new_label();
+			fin = gen_new_label();
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to end
+			tcg_gen_br(fin);
+
+			gen_set_label(cont);
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, overflowed, r2_local, 0x80000000);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, overflowed2, r1_local, 0xffffffff);
+			tcg_gen_and_i32(overflowed, overflowed, overflowed2);		//if both
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, overflowed, 0x1);	//are 1
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, end);
+			tcg_gen_movi_i32(r2_local, 0x80000000);						//DO THIS
+			tcg_gen_movi_i32(cpu_OVF, 0x1);
+			gen_set_gpr(rs2, r2_local);
+			tcg_gen_br(fin);
+
+			gen_set_label(end);
+
+			tcg_gen_div_i32(r2_local, r2_local, r1_local);
+			gen_set_gpr(rs2, r2_local);
+
+			gen_set_label(fin);
+
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+		}	break;
+
+		case OPC_RH850_DIVH_reg1_reg2_reg3: {
+			// 0x80000000/0xffffffff=0x80000000; cpu_OVF=1
+			// reg2/0x0000=undefined; cpu_OVF=1
+			// if reg2==reg3; reg2=remainder
+
+			TCGLabel *cont;
+			TCGLabel *end;
+			TCGLabel *fin;
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv r3_local = tcg_temp_local_new();
+
 			tcg_gen_andi_i32(tcg_r1, tcg_r1, 0x0000FFFF);
 			tcg_gen_ext16s_i32(tcg_r1, tcg_r1);
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
 
-			tcg_gen_rem_i32(tcg_r3, tcg_r2, tcg_r1);
-			tcg_gen_div_i32(tcg_r2, tcg_r2, tcg_r1);
-			gen_set_gpr(rs2, tcg_r2);
-			gen_set_gpr(int_rs3, tcg_r3);
-			break;
-
-		case OPC_RH850_DIVHU_reg1_reg2_reg3:
-			printf("this is DIVHU \n");
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3, int_rs3);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			TCGv overflowed = tcg_temp_local_new();
+			TCGv overflowed2 = tcg_temp_local_new();
+
+			cont = gen_new_label();
+			end = gen_new_label();
+			fin = gen_new_label();
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
+			tcg_gen_br(fin);
+
+			gen_set_label(cont);	/////
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, overflowed, r2_local, 0x80000000);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, overflowed2, r1_local, 0xffffffff);
+			tcg_gen_and_i32(overflowed, overflowed, overflowed2);	// if result is 1, cpu_OVF = 1
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, overflowed, 0x1);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, end);
+			tcg_gen_movi_i32(r2_local, 0x80000000);
+			tcg_gen_movi_i32(cpu_OVF, 0x1);
+			gen_set_gpr(rs2, r2_local);
+			tcg_gen_br(fin);
+
+			gen_set_label(end);		/////
+
+			tcg_gen_rem_i32(r3_local, r2_local, r1_local);
+			tcg_gen_div_i32(r2_local, r2_local, r1_local);
+
+			if(rs2==int_rs3){
+				gen_set_gpr(rs2, r3_local);
+			} else {
+				gen_set_gpr(rs2, r2_local);
+				gen_set_gpr(int_rs3, r3_local);
+			}
+
+			gen_set_label(fin);		/////
+
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+		}	break;
+
+		case OPC_RH850_DIVHU_reg1_reg2_reg3:{
+			printf("this is in DIVHU \n");
+			// reg2/0x0000=undefined; cpu_OVF=1
+			// if reg2==reg3; reg2=remainder
+
+			TCGLabel *cont;
+			TCGLabel *fin;
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv r3_local = tcg_temp_local_new();
 
 			tcg_gen_andi_i32(tcg_r1, tcg_r1, 0x0000FFFF);
 			tcg_gen_ext16u_i32(tcg_r1, tcg_r1);
+			tcg_gen_mov_i32(r1_local, tcg_r1);
 
-			tcg_gen_remu_i32(tcg_r3, tcg_r2, tcg_r1);
-			tcg_gen_divu_i32(tcg_r2, tcg_r2, tcg_r1);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
 
-			gen_set_gpr(rs2, tcg_r2);
-			gen_set_gpr(int_rs3, tcg_r3);
-			break;
-
-		case OPC_RH850_DIVU_reg1_reg2_reg3:
-			printf("this is DIVU \n");
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3, int_rs3);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+
+			cont = gen_new_label();
+			fin = gen_new_label();
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
+			tcg_gen_br(fin);
+
+			gen_set_label(cont);	/////
+			tcg_gen_remu_i32(r3_local, r2_local, r1_local);
+			tcg_gen_divu_i32(r2_local, r2_local, r1_local);
+
+
+			if(rs2==int_rs3){
+				gen_set_gpr(rs2, r3_local);
+			} else {
+				gen_set_gpr(rs2, r2_local);
+				gen_set_gpr(int_rs3, r3_local);
+			}
+
+			gen_set_label(fin);		/////
+
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+		}
+			break;
+
+		case OPC_RH850_DIVU_reg1_reg2_reg3:{	// druga
+
+			// reg2/0x0000=undefined; cpu_OVF=1
+			// if reg2==reg3; reg2=remainder
+
+			TCGLabel *cont;
+			TCGLabel *fin;
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv r3_local = tcg_temp_local_new();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+			int_rs3 = extract32(ctx->opcode, 27, 5);
+			gen_get_gpr(tcg_r3, int_rs3);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+
+			cont = gen_new_label();
+			fin = gen_new_label();
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
+			tcg_gen_br(fin);
+
+			gen_set_label(cont);	/////
+
 			tcg_gen_remu_i32(tcg_r3, tcg_r2, tcg_r1);
 			tcg_gen_divu_i32(tcg_r2, tcg_r2, tcg_r1);
 
-			gen_set_gpr(rs2, tcg_r2);
-			gen_set_gpr(int_rs3, tcg_r3);
+			if(rs2==int_rs3){
+				gen_set_gpr(rs2, r3_local);
+			} else {
+				gen_set_gpr(rs2, r2_local);
+				gen_set_gpr(int_rs3, r3_local);
+			}
+
+			gen_set_label(fin);		/////
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+		}
 			break;
 	}
 
