@@ -436,7 +436,109 @@ static void gen_logic_CC(TCGv_i32 result){
 
 	gen_set_label(end);
 }
+/*
+ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
+{
+    TCGv t0 = tcg_temp_new();
+    TCGv t1 = tcg_temp_new();
+    TCGv tcg_imm = tcg_temp_new();
 
+    switch(memop){
+    	case MO_UB:
+    		printf("Load 8 bit \n");
+		 	gen_get_gpr(t0, rs1);
+		    tcg_gen_movi_i32(tcg_imm, imm);
+		    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+		    tcg_gen_add_tl(t0, t0, tcg_imm);
+
+		    tcg_gen_qemu_ld8u(t1, t0, 0);
+		    tcg_gen_ext8s_i32(t1, t1);
+		    gen_set_gpr(rd, t1);
+		break;
+    	case MO_TESW:
+    		printf("Load 16 bit \n");
+    		gen_get_gpr(t0, rs1);
+			tcg_gen_movi_i32(tcg_imm, imm);
+			tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+			tcg_gen_add_tl(t0, t0, tcg_imm);
+
+			tcg_gen_qemu_ld16u(t1, t0, 0);
+			tcg_gen_ext16s_i32(t1, t1);
+			gen_set_gpr(rd, t1);
+    	break;
+    	case MO_TESL:
+    		printf("Load 32 bit \n");
+    		gen_get_gpr(t0, rs1);
+			tcg_gen_movi_i32(tcg_imm, imm);
+			tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+			tcg_gen_add_tl(t0, t0, tcg_imm);
+
+			tcg_gen_qemu_ld32u(t1, t0, 0);
+			gen_set_gpr(rd, t1);
+    	break;
+    }
+
+    tcg_temp_free(t0);
+    tcg_temp_free(t1);
+}
+
+static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
+        target_long imm)
+{
+    TCGv t0 = tcg_temp_new();		//temp
+    TCGv dat = tcg_temp_new();		//temp
+    TCGv tcg_imm = tcg_temp_new();
+
+    switch(memop){
+    	case 4:
+    		 printf("Store 8 bit \n");
+    		 gen_get_gpr(t0, rs1);
+    		 tcg_gen_movi_i32(tcg_imm, imm);
+    		 tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+
+    		 tcg_gen_add_tl(t0, t0, tcg_imm);
+    		 gen_get_gpr(dat, rs2);
+    		 tcg_gen_qemu_st8(dat, t0, 0);
+    	break;
+    	case 5:
+    		 printf("Store 16 bit \n");
+    		 gen_get_gpr(t0, rs1);
+			 tcg_gen_movi_i32(tcg_imm, imm);
+			 tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+
+			 tcg_gen_add_tl(t0, t0, tcg_imm);
+			 gen_get_gpr(dat, rs2);
+			 tcg_gen_qemu_st16(dat, t0, 0);
+    	break;
+    	case 6:
+    		printf("Store 32 bit \n");
+    		 gen_get_gpr(t0, rs1);
+			 tcg_gen_movi_i32(tcg_imm, imm);
+			 tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+
+			 tcg_gen_add_tl(t0, t0, tcg_imm);
+			 gen_get_gpr(dat, rs2);
+			 tcg_gen_qemu_st32(dat, t0, 0);
+    	break;
+    	case MO_64:
+    		printf("Store 64 bit \n");
+    		 gen_get_gpr(t0, rs1);
+			 tcg_gen_movi_i32(tcg_imm, imm);
+			 tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+
+			 tcg_gen_add_tl(t0, t0, tcg_imm);
+			 gen_get_gpr(dat, rs2);
+			 //TODO:SHOULD BE FIXED: DATA = REG OR (REG + 1)
+			 //tcg_gen_qemu_st64(dat, t0, 0);
+    	break;
+    }
+
+
+    tcg_temp_free(t0);
+    tcg_temp_free(dat);
+    tcg_temp_free(tcg_imm);
+}
+ */
 static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
 {
     TCGv t0 = tcg_temp_new();
@@ -453,8 +555,8 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
         return;
     }
 
-    tcg_gen_qemu_ld_tl(t1, t0, 0, MO_8);
-    tcg_gen_ext8s_i32(t0, t0);
+    tcg_gen_qemu_ld16s(t1, t0, 0);
+    tcg_gen_ext16s_i32(t1, t1);
     gen_set_gpr(rd, t1);
 
     printf("\n");
@@ -485,7 +587,8 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         return;
     }
 
-    tcg_gen_qemu_st_tl(dat, t0, 0, MO_8);
+
+    tcg_gen_qemu_st16(dat, t0, 0);
 
     printf("\n");
     printf("To je dat = vsebina:r%x \n", rs2);
