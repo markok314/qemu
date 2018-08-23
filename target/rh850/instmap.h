@@ -70,7 +70,7 @@ enum {
 	OPC_RH850_16bit_17 = (0x11 << 5),	// group with opcode 0x11 (callt, satadd)
 	OPC_RH850_ADD_imm5_reg2= (0x12 << 5),   // group with opcode 0x12 (add)
 	OPC_RH850_CMP_imm5_reg2 = (0x13 << 5),	// group with opcode 0x13 (cmp)
-	OPC_RH850_SHR_reg1_reg2 = (0x14 << 5),
+	OPC_RH850_SHR_imm5_reg2 = (0x14 << 5),
 	OPC_RH850_SAR_imm5_reg2 = (0x15 << 5),
 	OPC_RH850_SHL_imm5_reg2 = (0x16 << 5),
 	OPC_RH850_MULH_imm5_reg2 = (0x17 << 5),
@@ -156,7 +156,7 @@ enum{
 };
 
 enum{		//enum for gen_data_manipulation cases
-	OPC_RH850_SHR_imm5_reg2 		= 111,
+	OPC_RH850_SHR_reg1_reg2 		= 111,
 	OPC_RH850_SHR_reg1_reg2_reg3	= 222,
 	OPC_RH850_CMOV_cccc_reg1_reg2_reg3	= 333,
 	OPC_RH850_CMOV_cccc_imm5_reg2_reg3	= 444,
@@ -259,7 +259,7 @@ enum {
 #define MASK_OP_FORMAT_XII(op) (op & (0x3 << 17))
 enum {
 	OPC_RH850_BSW_reg2_reg3	= (0x0 << 0),
-	OPC_RH850_BSH_reg1_reg2 = (0x1 << 0),
+	OPC_RH850_BSH_reg2_reg3 = (0x1 << 0),
 	OPC_RH850_HSW_reg2_reg3	= (0x2 << 0),
 	OPC_RH850_HSH_reg2_reg3	= (0x3 << 0),
 	// SCHOL, SCHOR, SCH1L, SCH1R

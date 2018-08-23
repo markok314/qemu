@@ -308,6 +308,9 @@ static void gen_add_CC(TCGv_i32 t0, TCGv_i32 t1)
     cont = gen_new_label();
 	end = gen_new_label();
 
+	//tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, cpu_ZF, 0x0);
+	// uncomment this and test it!
+
 	tcg_gen_brcondi_i32(TCG_COND_NE, cpu_ZF, 0x0, cont);
 	tcg_gen_movi_i32(cpu_ZF, 0x1);
 	tcg_gen_br(end);
@@ -1376,6 +1379,7 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 	tcg_temp_free(tcg_imm);
 }
 
+
 static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int operation)
 //TODO: check BINS
 {
@@ -1389,6 +1393,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 	TCGv insert = tcg_temp_new();
 
 	TCGLabel *cont;
+	TCGLabel *end;
+	TCGLabel *set;
 
 	int int_imm = rs1;
 	int int_rs3;
@@ -1425,11 +1431,21 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 			gen_set_gpr(rs2, tcg_r2);
 
+			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
+			tcg_gen_shli_i32(cpu_SF, tcg_r2, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+
 
 			break;
 
-		case OPC_RH850_BSH_reg1_reg2: //BSH
-			printf("BSH \n");
+		case OPC_RH850_BSH_reg2_reg3: {
+
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv count_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mov_tl(tcg_temp2, tcg_r2);
@@ -1451,13 +1467,78 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0x0000ff00);
 
 			gen_set_gpr(int_rs3, tcg_r3);
-			break;
 
-		case OPC_RH850_BSW_reg2_reg3:
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+
+			cont = gen_new_label();
+			end = gen_new_label();
+			set = gen_new_label();
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
+
+			tcg_gen_movi_i32(count_local, 0x1);
+
+			gen_set_label(cont);////
+
+			tcg_gen_andi_i32(temp_local, r3_local, 0x000000ff);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, temp_local, 0x0, set);////
+			tcg_gen_addi_i32(count_local, count_local, 0x1);
+			tcg_gen_shri_i32(r3_local, r3_local, 0x1);
+			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x9, cont);////
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			tcg_gen_br(end);
+
+			gen_set_label(set);////
+			tcg_gen_movi_i32(cpu_CYF, 0x1);
+
+			gen_set_label(end);////
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+
+		}	break;
+
+		case OPC_RH850_BSW_reg2_reg3: {
+
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv count_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+			cont = gen_new_label();
+			end = gen_new_label();
+			set = gen_new_label();
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_bswap32_tl(tcg_r3, tcg_r2);
+			tcg_gen_bswap32_i32(tcg_r3, tcg_r2);
 			gen_set_gpr(int_rs3, tcg_r3);
+
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
+
+			tcg_gen_movi_i32(count_local, 0x1);
+
+			gen_set_label(cont);////
+
+			tcg_gen_andi_i32(temp_local, r3_local, 0x000000ff);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, temp_local, 0x0, set);////
+			tcg_gen_addi_i32(count_local, count_local, 0x1);
+			tcg_gen_shri_i32(r3_local, r3_local, 0x1);
+			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x1a, cont);////
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			tcg_gen_br(end);
+
+			gen_set_label(set);////
+			tcg_gen_movi_i32(cpu_CYF, 0x1);
+
+			gen_set_label(end);////
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+
+		}
 			break;
 
 		case OPC_RH850_CMOV_cccc_reg1_reg2_reg3: {
@@ -1525,21 +1606,64 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			break;
 
 		case OPC_RH850_HSH_reg2_reg3:
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_set_gpr(int_rs3, tcg_r1);
+
+			tcg_gen_shri_i32(cpu_SF, tcg_r1, 0x1f);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r1, 0x0);
+			tcg_gen_andi_i32(tcg_temp, tcg_r1, 0x0000ffff);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, tcg_temp, 0x0);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+
 			break;
 
-		case OPC_RH850_HSW_reg2_reg3:
+		case OPC_RH850_HSW_reg2_reg3: {
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+			TCGv temp2_local = tcg_temp_local_new_i32();
+			TCGv temp3_local = tcg_temp_local_new_i32();
+			TCGv count_local = tcg_temp_local_new_i32();
+
+			cont = gen_new_label();
+			end = gen_new_label();
+			set = gen_new_label();
+
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(tcg_r3,int_rs3);
+			gen_get_gpr(r3_local,int_rs3);
 
-			tcg_gen_andi_tl(tcg_temp, tcg_r2, 0xffff);
-			tcg_gen_shli_tl(tcg_temp, tcg_temp, 0x10);
-			tcg_gen_andi_tl(tcg_temp2, tcg_r2, 0xffff0000);
-			tcg_gen_shri_tl(tcg_temp2, tcg_temp2, 0x10);
+			tcg_gen_andi_tl(temp_local, r2_local, 0xffff);
+			tcg_gen_shli_tl(temp_local, temp_local, 0x10);
+			tcg_gen_andi_tl(temp2_local, r2_local, 0xffff0000);
+			tcg_gen_shri_tl(temp2_local, temp2_local, 0x10);
 
-			tcg_gen_or_tl(tcg_r3, tcg_temp2, tcg_temp);
-			gen_set_gpr(int_rs3, tcg_r3);
+			tcg_gen_or_tl(r3_local, temp2_local, temp_local);
+			gen_set_gpr(int_rs3, r3_local);
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
+
+			tcg_gen_movi_i32(count_local, 0x1);
+
+			gen_set_label(cont);////
+
+			tcg_gen_andi_i32(temp3_local, r3_local, 0x0000ffff);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, temp3_local, 0x0, set);////
+			tcg_gen_addi_i32(count_local, count_local, 0x1);
+			tcg_gen_shri_i32(r3_local, r3_local, 0x1);
+			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x11, cont);////
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			tcg_gen_br(end);
+
+			gen_set_label(set);////
+			tcg_gen_movi_i32(cpu_CYF, 0x1);
+
+			gen_set_label(end);////
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
 		case OPC_RH850_ROTL_imm5_reg2_reg3:
@@ -1549,6 +1673,12 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_rotl_tl(tcg_r3, tcg_r2, tcg_imm);
 			gen_set_gpr(int_rs3, tcg_r3);
+
+			tcg_gen_andi_i32(cpu_CYF, tcg_r3, 0x1);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r3, 0x0);
+			tcg_gen_shri_i32(cpu_SF, tcg_r3, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+
 			break;
 
 		case OPC_RH850_ROTL_reg1_reg2_reg3:
@@ -1556,25 +1686,94 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_rotl_tl(tcg_r3, tcg_r2, tcg_r1);
 			gen_set_gpr(int_rs3, tcg_r3);
+
+			tcg_gen_andi_i32(cpu_CYF, tcg_r3, 0x1);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r3, 0x0);
+			tcg_gen_shri_i32(cpu_SF, tcg_r3, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+
 			break;
 
-		case OPC_RH850_SAR_reg1_reg2:
-			tcg_gen_sar_tl(tcg_r2, tcg_r2, tcg_r1);
-			gen_set_gpr(rs2, tcg_r2);
+		case OPC_RH850_SAR_reg1_reg2: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);	//shift by only lower 5 bits of reg1
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
+
+			gen_set_gpr(rs2, r2_local);
+
+			cont = gen_new_label();
+			//cpu_CYF is MSB after shift
+			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(cont);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
-		case OPC_RH850_SAR_imm5_reg2:
-			tcg_gen_movi_tl(tcg_imm, int_imm);
-			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
-			tcg_gen_sar_tl(tcg_r2, tcg_r2, tcg_imm);
-			gen_set_gpr(rs2, tcg_r2);
+		case OPC_RH850_SAR_imm5_reg2: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+
+			tcg_gen_movi_tl(r1_local, int_imm);
+			tcg_gen_ext8u_i32(r1_local, r1_local);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
+			gen_set_gpr(rs2, r2_local);
+
+			cont = gen_new_label();
+
+			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(cont);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
-		case OPC_RH850_SAR_reg1_reg2_reg3:
+		case OPC_RH850_SAR_reg1_reg2_reg3: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv r3_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);	//shift by only lower 5 bits of reg1
+			tcg_gen_mov_i32(r2_local, tcg_r2);
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_sar_tl(tcg_r3, tcg_r2, tcg_r1);
-			gen_set_gpr(int_rs3, tcg_r3);
+			gen_get_gpr(r3_local, int_rs3);
+
+			tcg_gen_sar_i32(r3_local, r2_local, r1_local);
+			gen_set_gpr(int_rs3, r3_local);
+
+			cont = gen_new_label();
+
+			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(cont);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
 		case OPC_RH850_SASF_cccc_reg2: {
@@ -1584,7 +1783,6 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			int_cond = extract32(ctx->opcode,0,4);
 			condResult = condition_satisfied(int_cond);
 			cont = gen_new_label();
-
 
 			tcg_gen_shli_tl(r2_local, tcg_r2, 0x1);
 
@@ -1616,42 +1814,217 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 		}
 			break;
 
-		case OPC_RH850_SHL_reg1_reg2:
-			tcg_gen_shl_tl(tcg_r2, tcg_r2, tcg_r1);
-			gen_set_gpr(rs2, tcg_r2);
+		case OPC_RH850_SHL_reg1_reg2: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+			cont = gen_new_label();
+			end = gen_new_label();
+
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f); 	//get only lower 5 bits
+
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont);
+
+			tcg_gen_subi_i32(temp_local, r1_local, 0x1); 	// shifting for [r1]-1
+			tcg_gen_shl_tl(r2_local, r2_local, temp_local);
+
+			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);	// checking the last bit to shift
+			tcg_gen_shli_i32(r2_local, r2_local, 0x1);		// shifting for that remaining 1
+
+			gen_set_gpr(rs2, r2_local);
+			tcg_gen_br(end);
+
+			gen_set_label(cont);////
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(end);////
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
-		case OPC_RH850_SHL_imm5_reg2:
-			tcg_gen_movi_tl(tcg_imm, int_imm);
-			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
-			tcg_gen_shl_tl(tcg_r2, tcg_r2, tcg_imm);
-			gen_set_gpr(rs2, tcg_r2);
+		case OPC_RH850_SHL_imm5_reg2: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+			tcg_gen_movi_tl(r1_local, int_imm);
+			tcg_gen_ext8u_tl(r1_local, r1_local);
+
+			cont = gen_new_label();
+			end = gen_new_label();
+
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont);
+
+			tcg_gen_subi_i32(temp_local, r1_local, 0x1);
+			tcg_gen_shl_tl(r2_local, r2_local, temp_local);
+			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
+			tcg_gen_shli_tl(r2_local, r2_local, 0x1);
+			tcg_gen_br(end);
+
+			gen_set_label(cont);////
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(end);////
+			gen_set_gpr(rs2, r2_local);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
-		case OPC_RH850_SHL_reg1_reg2_reg3:
+		case OPC_RH850_SHL_reg1_reg2_reg3: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_shl_tl(tcg_r3, tcg_r2, tcg_r1);
-			gen_set_gpr(int_rs3, tcg_r3);
+			gen_get_gpr(r3_local,int_rs3);
+
+			cont = gen_new_label();
+			end = gen_new_label();
+
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont); 	// when reg1 = 0, do not shift
+
+			tcg_gen_subi_i32(temp_local, r1_local, 0x1);
+			tcg_gen_shl_tl(r3_local, r2_local, temp_local);
+
+			tcg_gen_shri_i32(cpu_CYF, r3_local, 0x1f);
+			tcg_gen_shli_tl(r3_local, r3_local, 0x1);
+			tcg_gen_br(end);
+
+			gen_set_label(cont);////
+			tcg_gen_mov_i32(r3_local, r2_local);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(end);////
+			gen_set_gpr(int_rs3, r3_local);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
-		case OPC_RH850_SHR_reg1_reg2:
-			tcg_gen_movi_tl(tcg_imm, int_imm);
-			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
-			tcg_gen_shr_tl(tcg_r2, tcg_r2, tcg_imm);
-			gen_set_gpr(rs2, tcg_r2);
+		case OPC_RH850_SHR_reg1_reg2: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+			gen_set_gpr(18, r1_local);
+			cont = gen_new_label();
+			end = gen_new_label();
+
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont); //checking for non-shift
+
+			tcg_gen_subi_i32(temp_local, r1_local, 0x1); 	// shifting for [r1]-1
+			tcg_gen_shr_tl(r2_local, r2_local, temp_local);
+
+
+			tcg_gen_andi_i32(cpu_CYF, r2_local, 0x1);	// checking the last bit to shift (LSB)
+			tcg_gen_shri_i32(r2_local, r2_local, 0x1);
+
+			tcg_gen_br(end);
+
+			gen_set_label(cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(end);
+			gen_set_gpr(rs2, r2_local);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
-		case OPC_RH850_SHR_imm5_reg2:
-			tcg_gen_shr_tl(tcg_r2, tcg_r2, tcg_r1);
-			gen_set_gpr(rs2, tcg_r2);
+		case OPC_RH850_SHR_imm5_reg2: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+
+			tcg_gen_movi_tl(r1_local, int_imm);
+			tcg_gen_ext8u_tl(r1_local, r1_local);
+
+			cont = gen_new_label();
+			end = gen_new_label();
+
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont); //checking for non-shift
+
+			tcg_gen_subi_i32(temp_local, r1_local, 0x1); 	// shifting for [r1]-1
+			tcg_gen_shr_tl(r2_local, r2_local, temp_local);
+
+			tcg_gen_andi_i32(cpu_CYF, r2_local, 0x1);	// checking the last bit to shift (LSB)
+			tcg_gen_shri_i32(r2_local, r2_local, 0x1);
+
+			tcg_gen_br(end);
+
+			gen_set_label(cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(end);
+			gen_set_gpr(rs2, r2_local);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
-		case OPC_RH850_SHR_reg1_reg2_reg3:
+		case OPC_RH850_SHR_reg1_reg2_reg3: {
+
+			TCGv r1_local = tcg_temp_local_new_i32();
+			TCGv r2_local = tcg_temp_local_new_i32();
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv temp_local = tcg_temp_local_new_i32();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(tcg_r3,int_rs3);
-			tcg_gen_shr_tl(tcg_r3, tcg_r2, tcg_r1);
-			gen_set_gpr(int_rs3, tcg_r3);
+			gen_get_gpr(r3_local, int_rs3);
+
+			cont = gen_new_label();
+			end = gen_new_label();
+
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont); //checking for non-shift
+
+			tcg_gen_subi_i32(temp_local, r1_local, 0x1); 	// shifting for [r1]-1
+			tcg_gen_shr_tl(r3_local, r2_local, temp_local);
+
+			tcg_gen_andi_i32(cpu_CYF, r3_local, 0x1);	// checking the last bit to shift (LSB)
+			tcg_gen_shri_i32(r3_local, r3_local, 0x1);
+
+			tcg_gen_br(end);
+
+			gen_set_label(cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+
+			gen_set_label(end);
+			gen_set_gpr(int_rs3, r3_local);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
+			tcg_gen_movi_i32(cpu_OVF, 0x0);
+		}
 			break;
 
 		case OPC_RH850_SXB_reg1:
@@ -2423,10 +2796,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							}
 							else{
 								if (extract32(ctx->opcode, 17, 1) == 0){
-									//SHR format IX
-									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_imm5_reg2);
+									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2);
 								}else{
-									//SHR format XI
 									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2_reg3);
 								}
 							}
@@ -2606,8 +2977,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_BSW_reg2_reg3:
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BSW_reg2_reg3);
 							break;
-						case OPC_RH850_BSH_reg1_reg2:
-							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BSH_reg1_reg2);
+						case OPC_RH850_BSH_reg2_reg3:
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BSH_reg2_reg3);
 							break;
 						case OPC_RH850_HSW_reg2_reg3:
 							//HSW
@@ -2860,8 +3231,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_CMP_imm5_reg2:
 		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_CMP_imm5_reg2);
 		break;
-	case OPC_RH850_SHR_reg1_reg2:
-		gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2);
+	case OPC_RH850_SHR_imm5_reg2:
+		gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_imm5_reg2);
 		break;
 	case OPC_RH850_SAR_imm5_reg2:
 		gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_imm5_reg2);
