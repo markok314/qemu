@@ -247,6 +247,98 @@ __iar_program_start:
 	
 	;test for movhi imm16,reg1,reg2
 
+	mov 0x10,r1
+	movhi 0x5,r1,r10
+	movhi -0x5,r10,r12
+	movhi 0xff,r12,r11
+
+	;harder test for movhi
+	mov -0x80000000,r1
+	movhi 0x1,r1,r2
+	movhi -0x1,r1,r8
+	
+	mov 0x7fffffff,r2
+	movhi 0x8,r2,r9
+	movhi -0xf,r9,r12
+
+	;test for sub
+	;simple tests for sub
+	mov 0x1,r12
+	mov 0x5,r14
+	sub r12,r14
+		
+	mov 0x6,r29
+	mov 0x6,r30
+	sub r29,r30
+	sub r30,r29
+	;harder testf for sub
+	mov 0xfff,r16
+	mov 0x333,r11
+	sub r16,r11
+
+	mov 0x80000000,r8
+	mov 0xfff,r6
+	sub r8,r6
+	
+	mov 0x80000000,r8
+	mov 0xfff,r6
+	sub r6,r8
+	sub r8,r6
+
+	mov 0x7fffffff,r12
+	mov 0xffffffff,r13
+	sub r13,r12
+	
+	mov 0x7fffffff,r16
+	mov 0x80000001,r17
+	sub r17,r16
+	
+	mov 0x1,r1
+	mov 0x80000000,r2
+	sub r2,r1
+
+	;test for subr
+	;simple tests
+	
+	mov 0x5,r5
+	mov 0x4,r6
+	subr r5,r6
+	subr r6,r5
+
+	mov 0x5,r2
+	mov 0x5,r3
+	subr r2,r3
+	
+	mov 0xfff,r16
+	mov 0x333,r11
+	subr r11,r16
+
+	mov 0x80000000,r8
+	mov 0xfff,r6
+	subr r6,r8
+	
+	mov 0x80000000,r8
+	mov 0xfff,r6
+	subr r8,r6
+	subr r6,r8
+
+	mov 0x7fffffff,r12
+	mov 0xffffffff,r13
+	subr r12,r13
+	
+	mov 0x7fffffff,r16
+	mov 0x80000001,r17
+	subr r16,r17
+	
+	mov 0x1,r1
+	mov 0x80000000,r2
+	subr r1,r2
+
+	
+	
+	
+	
+	
 	
 
 	
