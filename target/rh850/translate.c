@@ -695,9 +695,10 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 			gen_get_gpr(tcg_r3,int_rs3);
 
 			tcg_gen_muls2_i32(r2, tcg_r3, r1, r2);
-
+			if(rs2!=int_rs3){
+				gen_set_gpr(rs2, r2);
+			}
 			gen_set_gpr(int_rs3,tcg_r3);
-			gen_set_gpr(rs2, r2);
 			break;
 
 		case OPC_RH850_MUL_imm9_reg2_reg3: //MUL imm9, reg2, reg3
@@ -715,7 +716,9 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 
 			tcg_gen_muls2_i32(r2, tcg_r3, tcg_imm32, r2);
 
-			gen_set_gpr(rs2, r2);
+			if(rs2!=int_rs3){
+				gen_set_gpr(rs2, r2);
+			}
 			gen_set_gpr(int_rs3, tcg_r3);
 			break;
 
@@ -754,6 +757,7 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 			tcg_gen_ext16s_i32(r1, r1);
 
 			tcg_gen_mul_tl(r2, r1, tcg_imm32);
+
 			gen_set_gpr(rs2, r2);
 			break;
 
@@ -764,8 +768,10 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 
 			tcg_gen_mulu2_i32(r2, tcg_r3, r2, r1);
 
+			if(rs2!=int_rs3){
+				gen_set_gpr(rs2, r2);
+			}
 			gen_set_gpr(int_rs3,tcg_r3);
-			gen_set_gpr(rs2, r2);
 			break;
 
 		case OPC_RH850_MULU_imm9_reg2_reg3:
@@ -781,8 +787,10 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 
 			tcg_gen_mulu2_i32(r2, tcg_r3, tcg_imm32, r2);
 
+			if(rs2!=int_rs3){
+				gen_set_gpr(rs2, r2);
+			}
 			gen_set_gpr(int_rs3,tcg_r3);
-			gen_set_gpr(rs2, r2);
 			break;
 	}
 

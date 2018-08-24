@@ -84,6 +84,9 @@ __iar_program_start:
 	subr r3, r4
 	subr r2, r3
 	subr r7, r8
+	mov 0x6, r1
+	mov 0x1245, r2
+	subr r1, r2
 
 ;------------------------------------------
 
