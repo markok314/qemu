@@ -125,7 +125,7 @@ enum {
 };
 
 #define CASE_OP_32_64(X) case X
-
+/*
 static void generate_exception(DisasContext *ctx, int excp)
 {
     tcg_gen_movi_tl(cpu_pc, ctx->pc);
@@ -134,7 +134,7 @@ static void generate_exception(DisasContext *ctx, int excp)
     tcg_temp_free_i32(helper_tmp);
     ctx->bstate = BS_BRANCH;
 }
-
+*/
 
 
 static void gen_exception_debug(void)
@@ -143,13 +143,13 @@ static void gen_exception_debug(void)
     gen_helper_raise_exception(cpu_env, helper_tmp);
     tcg_temp_free_i32(helper_tmp);
 }
-
+/*
 static void gen_exception_illegal(DisasContext *ctx)
 {
     generate_exception(ctx, RH850_EXCP_ILLEGAL_INST);
 }
 
-
+*/
 static inline bool use_goto_tb(DisasContext *ctx, target_ulong dest)
 {
     if (unlikely(ctx->singlestep_enabled)) {
@@ -539,62 +539,61 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
  */
 static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
 {
-    TCGv t0 = tcg_temp_new();
-    TCGv t1 = tcg_temp_new();
-    TCGv tcg_imm = tcg_temp_new();
+	imm = 0x1024;
+    TCGv t0 = tcg_temp_local_new();
+    TCGv t1 = tcg_temp_local_new();
+    TCGv tcg_imm = tcg_temp_local_new();
 
     gen_get_gpr(t0, rs1);
     tcg_gen_movi_i32(tcg_imm, imm);
     tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
-    tcg_gen_add_tl(t0, t0, tcg_imm);
+    //tcg_gen_add_tl(t0, t0, tcg_imm);
 
-    if (memop < 0) {
-        gen_exception_illegal(ctx);
-        return;
-    }
+    gen_set_gpr(10, tcg_imm);
+    tcg_gen_qemu_ld32u(t1,tcg_imm,0);
 
-    tcg_gen_qemu_ld16s(t1, t0, 0);
-    tcg_gen_ext16s_i32(t1, t1);
+    //tcg_gen_qemu_ld_tl(t1, tcg_imm, 0, MO_TESW);
+    //tcg_gen_qemu_ld32u(t1, tcg_imm, 0);
+    //tcg_gen_ext16s_i32(t1, t1);
     gen_set_gpr(rd, t1);
-
-    printf("\n");
-	printf("To je reg = vsebina:r%x \n", rd);
-	printf("To je naslov = vsebina:r%x + %x \n", rs1, imm);
+    gen_set_gpr(9, t1);
+    printf("LOAD \n");
+	printf("Ciljni register %x \n", rd);
+	printf("Naslov:r%x + %x \n", rs1, imm);
 	printf("\n");
 
     tcg_temp_free(t0);
     tcg_temp_free(t1);
+    tcg_temp_free(tcg_imm);
 }
 
 static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         target_long imm)
 {
-    TCGv t0 = tcg_temp_new();		//temp
-    TCGv dat = tcg_temp_new();		//temp
-    TCGv tcg_imm = tcg_temp_new();
+	imm = 0x1024;
+    TCGv t0 = tcg_temp_local_new();		//temp
+    TCGv dat = tcg_temp_local_new();		//temp
+    TCGv tcg_imm = tcg_temp_local_new();
 
     gen_get_gpr(t0, rs1);			//loading rs1 to t0
     tcg_gen_movi_i32(tcg_imm, imm);
     tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
 
-    tcg_gen_add_tl(t0, t0, tcg_imm);	//adding displacement to t0
+    //tcg_gen_add_tl(t0, t0, tcg_imm);	//adding displacement to t0
     gen_get_gpr(dat, rs2);			//getting data from rs2
+    gen_set_gpr(11, tcg_imm);
+    gen_set_gpr(12, dat);
+    tcg_gen_qemu_st32(dat,tcg_imm,0);
+    tcg_gen_qemu_st_tl(dat, tcg_imm, 0, MO_TESW);
 
-    if (memop < 0) {
-        gen_exception_illegal(ctx);
-        return;
-    }
-
-
-    tcg_gen_qemu_st16(dat, t0, 0);
-
-    printf("\n");
-    printf("To je dat = vsebina:r%x \n", rs2);
-    printf("To je t0 = vsebina:r%x + %x \n", rs1, imm);
+    printf("STORE \n");
+    printf("Register :r%x \n", rs2);
+    printf("Naslov:r%x + %x \n", rs1, imm);
     printf("\n");
 
     tcg_temp_free(t0);
     tcg_temp_free(dat);
+    tcg_temp_free(tcg_imm);
 }
 
 static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
@@ -608,6 +607,9 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 	rs1 = GET_RS1(ctx->opcode);
 	rs3 = GET_RS3(ctx->opcode);
 	disp = GET_DISP(ctx->opcode);
+
+	//TODO:There is someting wrong with a displacement
+	//GET_DISP is on wrong bits, in function gen_load, gen_load imm is manualy fixed
 
 	switch(op) {
 		case OPC_RH850_LDB2:
