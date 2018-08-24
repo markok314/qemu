@@ -358,7 +358,6 @@ static void gen_sub_CC(TCGv_i32 t0, TCGv_i32 t1)
 
     TCGv_i32 tmp;
     tcg_gen_sub_tl(cpu_SF, t0, t1);
-    gen_set_gpr(11, cpu_SF);
     tcg_gen_mov_i32(cpu_ZF, cpu_SF);
     tcg_gen_setcond_i32(TCG_COND_GEU, cpu_CYF, t1, t0);
     tcg_gen_xor_i32(cpu_OVF, cpu_SF, t0);
@@ -399,7 +398,6 @@ static void gen_satsub_CC(TCGv_i32 t0, TCGv_i32 t1, TCGv_i32 result)
     tcg_gen_and_i32(cpu_OVF, cpu_OVF, tmp);
 
     tcg_gen_shri_i32(cpu_SF, result, 0x1f);
-    gen_set_gpr(11, cpu_SF);
 	tcg_gen_shri_i32(cpu_OVF, cpu_OVF, 0x1f);
     tcg_temp_free_i32(tmp);
 
@@ -893,7 +891,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			break;
 
 		case OPC_RH850_CMP_reg1_reg2:	{
-			gen_sub_CC(r1, r2);
+			gen_sub_CC(r2, r1);
 		}	break;
 
 		case OPC_RH850_CMP_imm5_reg2:	{
@@ -904,6 +902,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 				imm = imm | (0x7 << 5);
 			}
 			tcg_gen_movi_tl(tcg_imm, imm);
+			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
 
 			gen_sub_CC(r2, tcg_imm);
 
@@ -954,17 +953,13 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 
 			tcg_gen_sub_tl(tcg_result, r2, r1);
 			gen_set_gpr(rs2, tcg_result);
-
 			gen_sub_CC(r2, r1);
-
 			break;
 
 		case OPC_RH850_SUBR_reg1_reg2:
-			tcg_gen_sub_tl(r2, r1, r2);
-			gen_set_gpr(rs2, r2);
-
+			tcg_gen_sub_tl(tcg_result, r1, r2);
+			gen_set_gpr(rs2, tcg_result);
 			gen_sub_CC(r1, r2);
-
 			break;
 	}
 
@@ -1482,8 +1477,7 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 	tcg_temp_free(tcg_imm);
 }
 
-
-static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int operation)
+static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int operation)	// completed
 //TODO: check BINS
 {
 	TCGv tcg_r1 = tcg_temp_new();
