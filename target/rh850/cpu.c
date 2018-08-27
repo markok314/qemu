@@ -403,7 +403,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     cpu_fprintf(f, "\n");
 
     for (i = 0; i < 31; i++) {
-    	if (i!=4){
+    	if (i!=psw_idx){
         cpu_fprintf(f, " %s " TARGET_FMT_lx,
             rh850_sys_basic_regnames[i], env->sysBasicRegs[i]);
     	}

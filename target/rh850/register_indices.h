@@ -10,7 +10,7 @@
 
 
 	// sysBasicRegs indices
-#define psw_idx	 	4	//program status word
+#define psw_idx	 	5	//program status word
 #define eiic_idx	11	//EI level exception cause
 #define feic_idx	12	//FI level exception cause
 #define mcfg0_idx	19	//machine configuration

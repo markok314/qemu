@@ -48,17 +48,22 @@ enum{
 	EIPSW_register 	= 1,
 	FEPC_register 	= 2,
 	FEPSW_register 	= 3,
-	PSW_register 	= 4,
-	FPSR_register	= 5,
-	FPEPC_register	= 6,
-	FPST_register 	= 7,
-	FPCC_register	= 8,
-	FPCFG_register	= 9,
-	FPEC_register	= 10,
-	EIIC_register	= 11,
-	FEIC_register 	= 12,
-	CTPC_register	= 13,
-	CTPSW_register	= 14,
+	PSW_register 	= 5,
+	FPSR_register	= 6,
+	FPEPC_register	= 7,
+	FPST_register 	= 8,
+	FPCC_register	= 9,
+	FPCFG_register	= 10,
+	FPEC_register	= 11,
+	EIIC_register	= 13,
+	FEIC_register 	= 14,
+	CTPC_register	= 16,
+	CTPSW_register	= 17,
+	CTBP_register	= 20,
+	EIWR_register	= 28,
+	FEWR_register	= 29,
+	BSEL_register	= 31,
+
 };
 
 #include "exec/gen-icount.h"
@@ -3418,7 +3423,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     next_page_start = (pc_start & TARGET_PAGE_MASK) + TARGET_PAGE_SIZE;
     ctx.pc = pc_start;
 
-    tcg_gen_movi_i32(cpu_sysRegs[4], 0x0);
+    //tcg_gen_movi_i32(cpu_sysRegs[4], 0x0);
 
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
