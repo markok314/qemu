@@ -1288,7 +1288,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			cont2 = gen_new_label();
 
 			tcg_gen_neg_i32(r1_local, r1_local);
-			gen_set_gpr(15, r1_local);
+			gen_set_gpr(20, r1_local);					//if r1=0x80000000, switch operands?
 			tcg_gen_add_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
@@ -1330,6 +1330,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			TCGv min = tcg_temp_local_new();
 			TCGv max = tcg_temp_local_new();
 			TCGv zero = tcg_temp_local_new();
+			TCGv neg_correction = tcg_temp_local_new();
 			tcg_gen_movi_i32(min, 0x80000000);
 			tcg_gen_movi_i32(max, 0x7fffffff);
 			tcg_gen_mov_i32(r1_local, r1);
@@ -1339,8 +1340,18 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			cont = gen_new_label();
 			cont2 = gen_new_label();
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			tcg_gen_neg_i32(r1_local, r1_local);
 
+			/*
+			 * Negating second operand and using satadd. When negating 0x80000000, result
+			 * overflows positive numbers.
+			 */
+			tcg_gen_setcondi_i32(TCG_COND_EQ, neg_correction, r1_local, 0x80000000);
+			tcg_gen_add_i32(r1_local, neg_correction, r1_local);
+			tcg_gen_add_i32(r2_local, neg_correction, r2_local);
+
+
+			tcg_gen_neg_i32(r1_local, r1_local);
+			gen_set_gpr(20, r1_local);
 			tcg_gen_add_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
@@ -2724,7 +2735,8 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	TCGv temp = tcg_temp_new_i32();
-	int regID = rs2;
+	TCGv r2 = tcg_temp_new();
+	int regID;
 
 	switch(operation){
 	case OPC_RH850_CTRET:    		// how to affect the ctx->pc?
@@ -2751,13 +2763,18 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
 		break;
 	case OPC_RH850_LDSR_reg2_regID_selID:
-		gen_reset_flags(ctx);
-		printf("ldsr instruction with ID: %x", regID);
-		TCGv r2 = tcg_temp_new();
+		regID=rs2;
+		if(regID==PSW_register){
+			gen_reset_flags(ctx);
+		}
 		gen_get_gpr(r2, rs1);
 		gen_set_sysreg(regID, r2);
 		break;
-
+	case OPC_RH850_STSR_regID_reg2_selID:
+		regID=rs1;
+		gen_get_sysreg(r2, regID);
+		gen_set_gpr(rs2, r2);
+		break;
 
 	}
 
@@ -2908,7 +2925,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 			formXop = MASK_OP_32BIT_SUB(ctx->opcode);		//sub groups based on bits b23-b26
 			switch(formXop){
 				case OPC_RH850_LDSR_RIE_SETF_STSR:
-					printf("checking LDSR decode path \n");
 					check32bitZERO = extract32(ctx->opcode, 21, 2);
 					switch(check32bitZERO){
 					case 0:
@@ -2922,8 +2938,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					case OPC_RH850_LDSR_reg2_regID_selID:
 						gen_special(ctx, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
 						break;
-					case 2:
-						//STSR
+					case OPC_RH850_STSR_regID_reg2_selID:
+						gen_special(ctx, rs1, rs2, OPC_RH850_STSR_regID_reg2_selID);
 						break;
 					}
 					break;

@@ -179,6 +179,7 @@ enum{		//enum for gen_data_manipulation cases
 
 enum{
 	OPC_RH850_LDSR_reg2_regID_selID	= 1,
+	OPC_RH850_STSR_regID_reg2_selID = 2,
 };
 
 #define MASK_OP_FORMAT_I_0(op)	(MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0x1F << 0)))
