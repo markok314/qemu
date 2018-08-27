@@ -560,6 +560,18 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     tcg_temp_free(tcg_imm);
 }
  */
+
+
+/*
+	MO_UB  => 8 unsigned
+	MO_SB  => 8 signed
+	MO_TEUW => 16 unsigned
+	MO_TESW => 16 signed
+	MO_TEUL => 32 unsigned
+	MO_TESL => 32 signed
+	MO_TEQ => 64
+
+ */
 static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
 {
 	printf("Klice se ukaz : r%x \n",memop);
@@ -621,7 +633,7 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     tcg_temp_free(dat);
     tcg_temp_free(tcg_imm);
 }
-
+/*
 static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 {
 	printf("this oneasd");
@@ -705,6 +717,7 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 	}
 
 }
+*/
 
 static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// completed
 {
@@ -2791,31 +2804,27 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 }
 static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
-	uint32_t op;
-	int sub_opcode;
+	//uint32_t op;
+	//int sub_opcode;
 	int rs2;
 	uint64_t opcode48;
 
-	op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
-	sub_opcode = GET_RS2(ctx->opcode);
+	//op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
+	//sub_opcode = GET_RS2(ctx->opcode);
 	rs2 = GET_RS1(ctx->opcode);
 
 	opcode48 = (ctx->opcode1);
 	opcode48 = (ctx->opcode) | (opcode48  << 0x20);
+	uint32_t opcode20 = extract32(opcode48,0,20) & 0xfffe0;
 
-	switch(op){
-
-		case OPC_RH850_ST_LD_0:
-			if (sub_opcode != 0) {
-				decode_load_store_0(env, ctx);		//enter the  decode_load_store_1  function, check opcodes with mask  MASK_OP_ST_LD1
-			}//else false instruction
+	switch(opcode20){
+		case OPC_RH850_LDDW:
+			printf("ld.dw \n");
 			break;
+		case OPC_RH850_STDW:
+			printf("st.dw \n");
+		break;
 
-		case OPC_RH850_ST_LD_1:
-			if (sub_opcode != 0) {
-				decode_load_store_1(env, ctx);		//enter the  decode_load_store_2  function, check opcodes with mask  MASK_OP_ST_LD2
-			}//else false instruction
-			break;
 	}
 	if(extract32(ctx->opcode, 5, 11) == 0x31){
 		gen_arithmetic(ctx, 0, rs2, OPC_RH850_MOV_imm32_reg1);				// this is MOV3 (48bit inst)
