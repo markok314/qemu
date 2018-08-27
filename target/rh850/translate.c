@@ -562,22 +562,25 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
  */
 static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
 {
-	imm = 0x1024;
+	printf("Klice se ukaz : r%x \n",memop);
     TCGv t0 = tcg_temp_local_new();
     TCGv t1 = tcg_temp_local_new();
     TCGv tcg_imm = tcg_temp_local_new();
 
     gen_get_gpr(t0, rs1);
     tcg_gen_movi_i32(tcg_imm, imm);
-    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+    //tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
     //tcg_gen_add_tl(t0, t0, tcg_imm);
 
-    gen_set_gpr(10, tcg_imm);
+    gen_set_gpr(10, t0);
     tcg_gen_qemu_ld32u(t1,tcg_imm,0);
+
+    printf("Mem_idx :r%x \n", ctx->mem_idx);
 
     //tcg_gen_qemu_ld_tl(t1, tcg_imm, 0, MO_TESW);
     //tcg_gen_qemu_ld32u(t1, tcg_imm, 0);
     //tcg_gen_ext16s_i32(t1, t1);
+
     gen_set_gpr(rd, t1);
     gen_set_gpr(9, t1);
     printf("LOAD \n");
@@ -593,22 +596,22 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
 static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         target_long imm)
 {
-	imm = 0x1024;
+	printf("Klice se ukaz : r%x \n",memop);
     TCGv t0 = tcg_temp_local_new();		//temp
     TCGv dat = tcg_temp_local_new();		//temp
     TCGv tcg_imm = tcg_temp_local_new();
 
     gen_get_gpr(t0, rs1);			//loading rs1 to t0
     tcg_gen_movi_i32(tcg_imm, imm);
-    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
-
+    //tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
     //tcg_gen_add_tl(t0, t0, tcg_imm);	//adding displacement to t0
+
     gen_get_gpr(dat, rs2);			//getting data from rs2
     gen_set_gpr(11, tcg_imm);
     gen_set_gpr(12, dat);
     tcg_gen_qemu_st32(dat,tcg_imm,0);
-    tcg_gen_qemu_st_tl(dat, tcg_imm, 0, MO_TESW);
-
+    //tcg_gen_st32_tl(dat, ctx->mem_idx, 0);
+    printf("Mem_idx :r%x \n", ctx->mem_idx);
     printf("STORE \n");
     printf("Register :r%x \n", rs2);
     printf("Naslov:r%x + %x \n", rs1, imm);
@@ -621,6 +624,7 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
 
 static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 {
+	printf("this oneasd");
 	int rs1;
 	int rs3;
 	target_long disp;
@@ -640,11 +644,13 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 			break;
 
 		case OPC_RH850_LDH2:
+
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H (Format XIV)
 				gen_load(ctx, MO_TESW, rs1, rs3, disp);
 			break;
 
 		case OPC_RH850_LDW2:
+
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
 				gen_load(ctx, MO_TESL, rs1, rs3, disp);
 			break;
@@ -661,6 +667,7 @@ static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
 
 static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 {
+	printf("this one asdasd");
 	int rs1;
 	int rs3;
 	target_long disp;
@@ -683,6 +690,7 @@ static void decode_load_store_1(CPURH850State *env, DisasContext *ctx)
 			break;
 
 		case OPC_RH850_LDDW:
+
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.W (Format XIV)
 				gen_load(ctx, MO_64, rs1, rs3, disp);
 			break;
@@ -1288,7 +1296,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			cont2 = gen_new_label();
 
 			tcg_gen_neg_i32(r1_local, r1_local);
-			gen_set_gpr(15, r1_local);
+			gen_set_gpr(20, r1_local);					//if r1=0x80000000, switch operands?
 			tcg_gen_add_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
@@ -1330,6 +1338,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			TCGv min = tcg_temp_local_new();
 			TCGv max = tcg_temp_local_new();
 			TCGv zero = tcg_temp_local_new();
+			TCGv neg_correction = tcg_temp_local_new();
 			tcg_gen_movi_i32(min, 0x80000000);
 			tcg_gen_movi_i32(max, 0x7fffffff);
 			tcg_gen_mov_i32(r1_local, r1);
@@ -1339,8 +1348,18 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			cont = gen_new_label();
 			cont2 = gen_new_label();
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			tcg_gen_neg_i32(r1_local, r1_local);
 
+			/*
+			 * Negating second operand and using satadd. When negating 0x80000000, result
+			 * overflows positive numbers.
+			 */
+			tcg_gen_setcondi_i32(TCG_COND_EQ, neg_correction, r1_local, 0x80000000);
+			tcg_gen_add_i32(r1_local, neg_correction, r1_local);
+			tcg_gen_add_i32(r2_local, neg_correction, r2_local);
+
+
+			tcg_gen_neg_i32(r1_local, r1_local);
+			gen_set_gpr(20, r1_local);
 			tcg_gen_add_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
@@ -2724,7 +2743,8 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	TCGv temp = tcg_temp_new_i32();
-	int regID = rs2;
+	TCGv r2 = tcg_temp_new();
+	int regID;
 
 	switch(operation){
 	case OPC_RH850_CTRET:    		// how to affect the ctx->pc?
@@ -2751,13 +2771,18 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
 		break;
 	case OPC_RH850_LDSR_reg2_regID_selID:
-		gen_reset_flags(ctx);
-		printf("ldsr instruction with ID: %x", regID);
-		TCGv r2 = tcg_temp_new();
+		regID=rs2;
+		if(regID==PSW_register){
+			gen_reset_flags(ctx);
+		}
 		gen_get_gpr(r2, rs1);
 		gen_set_sysreg(regID, r2);
 		break;
-
+	case OPC_RH850_STSR_regID_reg2_selID:
+		regID=rs1;
+		gen_get_sysreg(r2, regID);
+		gen_set_gpr(rs2, r2);
+		break;
 
 	}
 
@@ -2807,56 +2832,68 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 
 static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 {
+
 	int rs1;
 	int rs2;
-	int rd;
+	//int rd;
 	uint32_t op;
 	uint32_t formXop;
 	uint32_t checkXII;
 	uint32_t check32bitZERO;
-	target_long imm;
+	//target_long imm;
 	target_long imm_32;
 	target_long ld_imm;
 
 	op = MASK_OP_MAJOR(ctx->opcode);
 	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
 	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
-	rd = GET_RD(ctx->opcode);
-	imm = GET_IMM(ctx->opcode);
+	//rd = GET_RD(ctx->opcode);
+	//imm = GET_IMM(ctx->opcode);
 	TCGv r1 = tcg_temp_local_new();		//temp
 	TCGv r2 = tcg_temp_local_new();		//temp
 	imm_32 = GET_IMM_32(ctx->opcode);
-	ld_imm = extract32(ctx->opcode, 16, 16);
+	ld_imm = extract32(ctx->opcode, 17, 15);
+	ld_imm = ld_imm << 1;
 
 	gen_get_gpr(r1, rs1);		//loading rs1 to r1
 	gen_get_gpr(r2, rs2);		//loading rs2 to r2
 
+
 	switch(op){
 
 		case OPC_RH850_LDB:			// LD.B
+			printf("ldb 32 \n");
 	        gen_load(ctx, MO_SB, rs2, rs1, ld_imm);
 	    	break;
 
 	    case OPC_RH850_LDH_LDW:		//
-	    	if ( extract32(ctx->opcode, 16, 1) == 0 )	// LD.H
-	    		gen_load(ctx, MO_TESW, rs2, rs1, imm);
-	    	else
-	    		gen_load(ctx, MO_TESL, rs2, rs1, imm);		// LD.W
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 ){	// LD.H
+	    		printf("ldh 32 \n");
+	    		gen_load(ctx, MO_TESW, rs2, rs1, ld_imm);
+	    	}
+	    	else{
+	    		printf("ldw 32 \n");
+	    		gen_load(ctx, MO_TESL, rs2, rs1, ld_imm);		// LD.W
+	    	}
 	    	break;
 
 	    case OPC_RH850_STB:			//this opcode is unique
+	    	printf("stb 32\n");
 	    	gen_store(ctx, MO_SB, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
 	    	break;
 
 	    case OPC_RH850_STH_STW:		//only two instructions share this opcode
 	    	if ( extract32(ctx->opcode, 16, 1)==1 ) {
-	    		gen_store(ctx, MO_TESL, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+	    		printf("stw 32\n");
+	    		gen_store(ctx, MO_TESL, rs1, rs2, ((extract32(ctx->opcode, 17, 15)))<<1);
 	    		//this is STORE WORD
 	    		break;
 	    	}
-	    	gen_store(ctx, MO_TESW, rs1, rs2, (extract32(ctx->opcode, 17, 15)));
+	    	printf("sth 32\n");
+	    	gen_store(ctx, MO_TESW, rs1, rs2, ((extract32(ctx->opcode, 17, 15)))<<1);
 	    	//this is STORE HALFWORD
 	    	break;
+
 	    case OPC_RH850_ADDI_imm16_reg1_reg2:
 	    	gen_arithmetic(ctx, rs1,rs2, OPC_RH850_ADDI_imm16_reg1_reg2);
 	    	break;
@@ -2901,14 +2938,14 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 				} else {
 					//this is LD.HU
-					gen_load(ctx, MO_TEUW, rd, rs1, imm);
+					printf("ldhu 32 \n");
+					gen_load(ctx, MO_TEUW, rs2, rs1, ld_imm);
 					break;
 				}
 			}
 			formXop = MASK_OP_32BIT_SUB(ctx->opcode);		//sub groups based on bits b23-b26
 			switch(formXop){
 				case OPC_RH850_LDSR_RIE_SETF_STSR:
-					printf("checking LDSR decode path \n");
 					check32bitZERO = extract32(ctx->opcode, 21, 2);
 					switch(check32bitZERO){
 					case 0:
@@ -2922,8 +2959,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					case OPC_RH850_LDSR_reg2_regID_selID:
 						gen_special(ctx, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
 						break;
-					case 2:
-						//STSR
+					case OPC_RH850_STSR_regID_reg2_selID:
+						gen_special(ctx, rs1, rs2, OPC_RH850_STSR_regID_reg2_selID);
 						break;
 					}
 					break;
@@ -3201,11 +3238,21 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 				//JR
 			} else {
 				//JARL1
+
 			}
-		} else if (extract32(ctx->opcode, 16, 3) == 0x3){
-			//PREPARE2
-		} else if (extract32(ctx->opcode, 16, 3) == 0x1){
-			//PREPARE1
+		}else{
+			if (extract32(ctx->opcode, 11, 5) != 0){
+				//LD.BU
+				printf("ld.bu \n");
+				gen_load(ctx, MO_TEUW, rs2, rs1, (ld_imm));
+			}else{
+				if (extract32(ctx->opcode, 16, 3) == 0x3){
+					//PREPARE2
+				}
+				 else if (extract32(ctx->opcode, 16, 3) == 0x1){
+					 //PREPARE1
+				 }
+			}
 		}
 	}
 
@@ -3319,8 +3366,10 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		} else {
 			if(extract32(rs1,4,1)==1){
 				//SLD.HU
+				printf("sld.hu \n");
 			}else{
 				//SLD.BU
+				printf("sld.bu \n");
 			}
 			break;
 		}
@@ -3392,21 +3441,34 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 
 	switch(opIV){
 	case OPC_RH850_16bit_SLDB:
+		printf("sld.b \n");
 		break;
 	case OPC_RH850_16bit_SLDH:
+		printf("sld.h \n");
 		break;
 	case OPC_RH850_16bit_IV10:
 		if(extract32(rs1,0,1)==1){
 			//SST.W
+			printf("sst.w \n");
 		}
 		else{
 			//SLD.H
+			printf("sld.h \n");
 		}
 		break;
 	case OPC_RH850_16bit_SSTB:
+		printf("sst.b \n");
 		break;
 	case OPC_RH850_16bit_SSTH:
+		printf("sst.h \n");
 		break;
+	}
+
+	if (extract32(op,7,4)==6){
+		printf("sld.b \n");
+	}
+	if (extract32(op,7,4)==7){
+		printf("sst.b \n");
 	}
 
 }
