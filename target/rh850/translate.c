@@ -134,8 +134,8 @@ static void generate_exception(DisasContext *ctx, int excp)
     tcg_temp_free_i32(helper_tmp);
     ctx->bstate = BS_BRANCH;
 }
-*/
 
+*/
 
 static void gen_exception_debug(void)
 {
@@ -192,6 +192,15 @@ static inline void gen_get_gpr(TCGv t, int reg_num)
     }
 }
 
+
+/* Selection based on group ID needs to be added, once
+ * the system register groups are implemented
+ */
+static inline void gen_get_sysreg(TCGv t, int reg_num)
+{
+     tcg_gen_mov_tl(t, cpu_sysRegs[reg_num]);
+}
+
 /* Wrapper for setting reg values - need to check of reg is zero since
  * cpu_gpr[0] is not actually allocated. this is more for safety purposes,
  * since we usually avoid calling the OP_TYPE_gen function if we see a write to
@@ -202,6 +211,15 @@ static inline void gen_set_gpr(int reg_num_dst, TCGv t)
     if (reg_num_dst != 0) {
         tcg_gen_mov_tl(cpu_gpr[reg_num_dst], t);
     }
+}
+
+
+/* Selection based on group ID needs to be added, once
+ * the system register groups are implemented
+ */
+static inline void gen_set_sysreg(int reg_num_dst, TCGv t)
+{
+	tcg_gen_mov_tl(cpu_sysRegs[reg_num_dst], t);
 }
 
 static inline void gen_set_psw(TCGv t)
@@ -2438,7 +2456,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)	// co
 
 		}	break;
 
-		case OPC_RH850_DIVH_reg1_reg2:{	//prva in druga
+		case OPC_RH850_DIVH_reg1_reg2:{
 
 			TCGLabel *cont;
 			TCGLabel *end;
@@ -2460,7 +2478,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)	// co
 			fin = gen_new_label();
 
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
-			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to end
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to cont
 			tcg_gen_br(fin);
 
 			gen_set_label(cont);
@@ -2701,6 +2719,7 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	TCGv temp = tcg_temp_new_i32();
+	int regID = rs2;
 
 	switch(operation){
 	case OPC_RH850_CTRET:    		// how to affect the ctx->pc?
@@ -2726,10 +2745,20 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
 		break;
-	}
-}
-//
+	case OPC_RH850_LDSR_reg2_regID_selID:
+		gen_reset_flags(ctx);
+		printf("ldsr instruction with ID: %x", regID);
+		TCGv r2 = tcg_temp_new();
+		gen_get_gpr(r2, rs1);
+		gen_set_sysreg(regID, r2);
+		break;
 
+
+	}
+
+
+
+}
 static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
 	uint32_t op;
@@ -2874,6 +2903,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 			formXop = MASK_OP_32BIT_SUB(ctx->opcode);		//sub groups based on bits b23-b26
 			switch(formXop){
 				case OPC_RH850_LDSR_RIE_SETF_STSR:
+					printf("checking LDSR decode path \n");
 					check32bitZERO = extract32(ctx->opcode, 21, 2);
 					switch(check32bitZERO){
 					case 0:
@@ -2884,8 +2914,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SETF_cccc_reg2);
 						}
 						break;
-					case 1:
-						//LDSR
+					case OPC_RH850_LDSR_reg2_regID_selID:
+						gen_special(ctx, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
 						break;
 					case 2:
 						//STSR

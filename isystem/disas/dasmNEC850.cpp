@@ -1319,6 +1319,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 17, 21)) + "," + NecGetReg(NecExtractBits(dwInst, 0, 5)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 27, 32))); 
         if (0x5 != NecExtractBits(dwInst, 17, 21))
           //FlagConditional();
+
         return 4;
       }
     case 0x0E3F:
