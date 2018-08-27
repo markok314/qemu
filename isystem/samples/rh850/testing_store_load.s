@@ -5,12 +5,14 @@
 
 __iar_program_start:
 	mov 0x12345678,r1
-	ST.H r1,0x0[r0]
-	LD.H 0x0[r0],r2
+	mov 0x0,r2
+	mov 0x11111111,r5
+	ST.W r1,0x20[r2]
+	LD.W 0x20[r2],r5
 	
-	mov 0x87654321,r4
-	ST.H r4,0x20[r0]
-	LD.H 0x20[r0],r5
+	;mov 0x77654321,r4
+	;ST.H r4,0x20[r0]
+	;LD.H 0x20[r0],r5
 	
 
 	;ST.B r1,0x40[r0]
