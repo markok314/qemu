@@ -320,6 +320,7 @@ static void gen_add_CC(TCGv_i32 t0, TCGv_i32 t1)
     tcg_gen_movi_i32(tmp, 0);
     tcg_gen_add2_i32(cpu_SF, cpu_CYF, t0, tmp, t1, tmp);
     tcg_gen_mov_i32(cpu_ZF, cpu_SF);
+
     tcg_gen_xor_i32(cpu_OVF, cpu_SF, t0);
     tcg_gen_xor_i32(tmp, t0, t1);
     tcg_gen_andc_i32(cpu_OVF, cpu_OVF, tmp);
@@ -3560,6 +3561,10 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         }
 
         ctx.pc = ctx.next_pc;
+
+        // Setting PSW to 0 so we can write new state
+
+        tcg_gen_movi_i32(cpu_sysRegs[PSW_register], 0x0);
 
         // Writing flag values to PSW register
 
