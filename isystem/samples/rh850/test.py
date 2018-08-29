@@ -21,7 +21,7 @@ import argparse
 import subprocess
 import sys
 import checkRegisters as cr
-#import checkRegistersBlueBox as crbb
+import checkRegistersBlueBox as crbb
 
 parser = argparse.ArgumentParser()
 parser.add_argument("file", help="test file without .s")
@@ -30,8 +30,8 @@ parser.add_argument("-f", "--flags", help="also check flags")
 
 args = parser.parse_args()
 
-cmd = ['./build.sh '+args.file]
-subprocess.check_call(cmd, shell=True, executable='/bin/bash')
+#cmd = ['/build.sh '+args.file]
+#subprocess.check_call(cmd, shell=True, executable='/bin/bash')
 
 subprocess.check_call("../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -d"
                       " nochain,exec,in_asm,cpu -D ../../../rh850.log -kernel "+args.file+".elf &", shell=True)
@@ -44,7 +44,9 @@ NUM_OF_INTS_TO_PRINT = args.number
 NUM_OF_ALL_INST = NUM_OF_REGISTERS + NUM_OF_INTS_TO_PRINT
 
 cr.check_registers('../../../rh850.log', NUM_OF_ALL_INST)
-#crbb.check_registers_blue_box(args.file,NUM_OF_ALL_INST)
+crbb.check_registers_blue_box(args.file,NUM_OF_ALL_INST)
+
+sys.stdout = sys.__stdout__
 
 log_qemu = open("log_qemu.log", "r")
 log_blubox = open("log_blubox.log", "r")
@@ -79,13 +81,14 @@ for line1, line2 in zip(log_qemu, log_blubox):
             if args.flags:
                 if line1[-2:] != line2[-2:]:
                     # CHECKING JUST LAST 4 BITS OF PSW REG
-                    print("ERROR" + line1[:-1] + line2[:-1])
+                    print("ERROR" + line1[:-1] +" "+ line2[:-1])
                     isOkay = False
         else:
             #PC AND OTHER GPR
             if line1.split(': ')[1] != line2.split('x')[1]:
-                print("ERROR" + line1[:-1] + line2[:-1])
+                print("ERROR" + line1[:-1] +" " +  line2[:-1])
                 isOkay = False
+
         index = index + 1
 
         if(index == NUM_OF_PRINTED_REGISTERS):
@@ -97,6 +100,8 @@ for line1, line2 in zip(log_qemu, log_blubox):
                 print("-----------------")
             index = 0
             isOkay = True
+
+
 
     start = start + 1
 

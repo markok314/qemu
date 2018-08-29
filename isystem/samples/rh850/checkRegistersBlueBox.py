@@ -14,17 +14,17 @@ def unsigned64(x):
   """
   return x & 0xffffffffffffffff
 
-def addFileForDownload(filePath, fileType):
+def addFileForDownload(filePath, fileType,ideCtrl):
     idx = ideCtrl.addDynamicOption('/IDE/Debug.DownloadFiles.File')
     ideCtrl.setOption('/IDE/Debug.DownloadFiles.File[' + str(idx) + '].Path', filePath)
     ideCtrl.setOption('/IDE/Debug.DownloadFiles.File[' + str(idx) + '].Options.Type', fileType)
 
 
-def removeFileForDownload(filePath):
+def removeFileForDownload(filePath,ideCtrl):
     idx = ideCtrl.findDynamicOption('/IDE/Debug.DownloadFiles.File', 'Path', filePath)
     ideCtrl.removeDynamicOption('/IDE/Debug.DownloadFiles.File', idx)
 
-def printRegisters():
+def printRegisters(debugCtrl):
     print("----------")
     registerName = "pc"
     value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
@@ -47,14 +47,26 @@ def check_registers_blue_box(file, num_of_inst_to_print):
     ideCtrl = ic.CIDEController(cmgr)
     downloadFile = '../' + file + '.elf'
     filetype = "ELF"
-    addFileForDownload(downloadFile, filetype)
+    addFileForDownload(downloadFile, filetype,ideCtrl)
+    ec = ic.CExecutionController(cmgr)
 
     debugCtrl.download()
 
-    for x in range(num_of_inst_to_print):
-      printRegisters()
-      debugCtrl.stepInst()
-    printRegisters()
+    addrCtrl = ic.CAddressController(cmgr)
+    #addr = addrCtrl.getLabelAddress('Lbl')
 
-    removeFileForDownload(downloadFile)
+    isEnd = True
+    while isEnd:
+        try:
+            printRegisters(debugCtrl)
+            debugCtrl.stepInst()
+            sys.stdout = sys.__stdout__
+            status = ec.getCPUStatus(True)
+            print(hex(status.getExecutionPoint()))
+            #print(hex(addr.getAddress()))
+        except:
+            isEnd = False
+
+
+    removeFileForDownload(downloadFile,ideCtrl)
 
