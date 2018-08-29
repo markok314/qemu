@@ -1030,6 +1030,7 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)	/
 	TCGv r2 = tcg_temp_new();
 
 	TCGLabel *cont;
+	TCGLabel *addToR2;
 
 	gen_get_gpr(r1, rs1);
 	gen_get_gpr(r2, rs2);
@@ -1096,9 +1097,15 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			condResult = condition_satisfied(int_cond);
 			gen_set_gpr(15, condResult);
 			cont = gen_new_label();
+			addToR2 = gen_new_label();
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x7fffffff, addToR2);
 			tcg_gen_addi_tl(r1_local, r1_local, 0x1);
+			tcg_gen_br(cont);
+
+			gen_set_label(addToR2);
+			tcg_gen_subi_i32(r2_local, r2_local, 0x1);
 
 			gen_set_label(cont);
 			tcg_gen_sub_tl(r3_local, r2_local, r1_local);
@@ -1129,6 +1136,8 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 	TCGLabel *end;
 	TCGLabel *cont;
 	TCGLabel *cont2;
+	TCGLabel *setMax;
+	TCGLabel *dontChange;
 
 	switch(operation){
 
@@ -1149,6 +1158,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			end = gen_new_label();
 			cont = gen_new_label();
 			cont2 = gen_new_label();
+
 
 			tcg_gen_add_i32(result, r1_local, r2_local);
 
@@ -1293,6 +1303,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 		}	break;
 
 		case OPC_RH850_SATSUB_reg1_reg2: {
+
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -1308,15 +1319,33 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			end = gen_new_label();
 			cont = gen_new_label();
 			cont2 = gen_new_label();
+			setMax = gen_new_label();
+			dontChange = gen_new_label();
+
+			/*
+			 * Negating second operand and using satadd code. When negating an operand
+			 * with value 0x80000000, the result overflows positive numbers and is not
+			 * negated. If this happens, the operand is first incremented, and then negated.
+			 * The second operand is as well incremented, if it's value is less than 0x7fffffff.
+			 * Otherwise, the result is set to MAX and SATF is set.
+			 * This was done in all following saturated subtraction functions.
+			 */
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x80000000, dontChange);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r2_local, 0x7fffffff, setMax);
+
+			tcg_gen_addi_i32(r1_local, r1_local, 0x1);
+			tcg_gen_addi_i32(r2_local, r2_local, 0x1);
+			gen_set_label(dontChange);
 
 			tcg_gen_neg_i32(r1_local, r1_local);
-			gen_set_gpr(20, r1_local);					//if r1=0x80000000, switch operands?
 			tcg_gen_add_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
 
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
+			gen_set_label(setMax);
 			tcg_gen_mov_i32(result, max);
 			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
@@ -1332,7 +1361,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			gen_set_label(end);
 			gen_set_gpr(rs2, result);
 
-			gen_satsub_CC(r2_local, r1_local, result); ////////////////////////////
+			gen_satsub_CC(r2_local, r1_local, result);
 
 			tcg_temp_free(result);
 			tcg_temp_free(check);
@@ -1344,7 +1373,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 
 		}	break;
 
-		case OPC_RH850_SATSUB_reg1_reg2_reg3: {	///SATSUB reg1, reg2, reg3
+		case OPC_RH850_SATSUB_reg1_reg2_reg3: {
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -1352,7 +1381,6 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			TCGv min = tcg_temp_local_new();
 			TCGv max = tcg_temp_local_new();
 			TCGv zero = tcg_temp_local_new();
-			TCGv neg_correction = tcg_temp_local_new();
 			tcg_gen_movi_i32(min, 0x80000000);
 			tcg_gen_movi_i32(max, 0x7fffffff);
 			tcg_gen_mov_i32(r1_local, r1);
@@ -1361,25 +1389,25 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			end = gen_new_label();
 			cont = gen_new_label();
 			cont2 = gen_new_label();
+			setMax = gen_new_label();
+			dontChange = gen_new_label();
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 
-			/*
-			 * Negating second operand and using satadd. When negating 0x80000000, result
-			 * overflows positive numbers.
-			 */
-			tcg_gen_setcondi_i32(TCG_COND_EQ, neg_correction, r1_local, 0x80000000);
-			tcg_gen_add_i32(r1_local, neg_correction, r1_local);
-			tcg_gen_add_i32(r2_local, neg_correction, r2_local);
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x80000000, dontChange);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r2_local, 0x7fffffff, setMax);
 
+			tcg_gen_addi_i32(r1_local, r1_local, 0x1);
+			tcg_gen_addi_i32(r2_local, r2_local, 0x1);
+			gen_set_label(dontChange);
 
 			tcg_gen_neg_i32(r1_local, r1_local);
-			gen_set_gpr(20, r1_local);
 			tcg_gen_add_i32(result, r1_local, r2_local);
 
 			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
 
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
+			gen_set_label(setMax);
 			tcg_gen_mov_i32(result, max);
 			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
@@ -1395,6 +1423,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			gen_set_label(end);
 			gen_set_gpr(int_rs3, result);
 
+			tcg_gen_neg_i32(r1_local, r1_local);
 			gen_satsub_CC(r2_local, r1_local, result);
 
 			tcg_temp_free(result);
@@ -1407,7 +1436,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 
 		}	break;
 
-		case OPC_RH850_SATSUBI: {//SATSUBI imm16, reg1, reg2
+		case OPC_RH850_SATSUBI: {
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv imm_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -1425,6 +1454,16 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			end = gen_new_label();
 			cont = gen_new_label();
 			cont2 = gen_new_label();
+			setMax = gen_new_label();
+			dontChange = gen_new_label();
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x80000000, dontChange);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, imm_local, 0x7fffffff, setMax);
+
+			tcg_gen_addi_i32(r1_local, r1_local, 0x1);
+			tcg_gen_addi_i32(imm_local, imm_local, 0x1);
+			gen_set_label(dontChange);
+
 
 			tcg_gen_neg_i32(imm_local, imm_local);
 
@@ -1434,6 +1473,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 
 			tcg_gen_sub_i32(check, max, r1_local);
 			tcg_gen_brcond_tl(TCG_COND_LE, imm_local, check, end);
+			gen_set_label(setMax);
 			tcg_gen_mov_i32(result, max);
 			tcg_gen_movi_i32(cpu_SATF, 0x1);
 			tcg_gen_br(end);
@@ -2799,10 +2839,8 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		break;
 
 	}
-
-
-
 }
+
 static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
 	//uint32_t op;
