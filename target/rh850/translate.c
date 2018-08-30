@@ -2781,9 +2781,12 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	switch(operation){
 	case 0:
-		printf("This is a jump \n");
-		tcg_gen_movi_tl(cpu_pc, 8);
-		ctx->next_pc = 8;
+
+		//tcg_gen_mov_i32(cpu_pc, dest);
+		//ctx->next_pc = ctx->pc + 6;
+
+		tcg_gen_goto_tb(0);
+
 		break;
 	}
 
