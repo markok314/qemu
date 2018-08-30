@@ -941,7 +941,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			tcg_gen_add_tl(r2,r1, tcg_imm32);
 			gen_set_gpr(rs2, r2);
 
-			gen_add_CC(r2, tcg_imm32);
+			gen_add_CC(r1, tcg_imm32);
 
 			break;
 
