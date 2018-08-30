@@ -2782,8 +2782,8 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 	switch(operation){
 	case 0:
 		printf("This is a jump \n");
-		tcg_gen_mov_tl(cpu_pc, dest);
-		ctx->next_pc = ctx->pc+8;
+		tcg_gen_movi_tl(cpu_pc, 8);
+		ctx->next_pc = 8;
 		break;
 	}
 
@@ -3511,14 +3511,14 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		printf("sst.h \n");
 		break;
 	}
-
+/*
 	if (extract32(op,7,4)==6){
 		printf("sld.b \n");
 	}
 	if (extract32(op,7,4)==7){
 		printf("sst.b \n");
 	}
-
+*/
 }
 
 void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
