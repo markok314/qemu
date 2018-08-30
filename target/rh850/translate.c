@@ -866,12 +866,12 @@ static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operatio
 
 	int rs3;
 	int rs4;
-	rs3 = extract32(ctx->opcode, 28, 4);
-	rs4 = extract32(ctx->opcode, 17, 4);
+
+	rs3 = extract32(ctx->opcode, 28, 4) << 1;
+	rs4 = extract32(ctx->opcode, 17, 4) << 1;
 
 	gen_get_gpr(addLo, rs3);
 	gen_get_gpr(addHi, rs3+1);
-
 
 	switch(operation){
 		case OPC_RH850_MAC_reg1_reg2_reg3_reg4:

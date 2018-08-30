@@ -1460,8 +1460,8 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
   {
     switch(dwForm1)
     {
-    case 0x0F3F: SET_STR(bQD, Instruction, "MAC");  SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5))+ "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 17, 21) << 1) + "," + NecGetReg(NecExtractBits(dwInst, 28, 32) << 1)); return 4;
-    case 0x0FBF: SET_STR(bQD, Instruction, "MACU"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5))+ "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 17, 21) << 1) + "," + NecGetReg(NecExtractBits(dwInst, 28, 32) << 1)); return 4;
+    case 0x0F3F: SET_STR(bQD, Instruction, "MAC");  SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5))+ "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 28, 32) << 1) + "," + NecGetReg(NecExtractBits(dwInst, 17, 21) << 1)); return 4;
+    case 0x0FBF: SET_STR(bQD, Instruction, "MACU"); SET_STR(bQD, Operand, NecGetReg(NecExtractBits(dwInst, 0, 5))+ "," + NecGetReg(NecExtractBits(dwInst, 11, 16)) + "," + NecGetReg(NecExtractBits(dwInst, 28, 32) << 1) + "," + NecGetReg(NecExtractBits(dwInst, 17, 21) << 1)); return 4;
     }
   }
 
