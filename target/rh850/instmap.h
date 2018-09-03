@@ -180,6 +180,23 @@ enum{		//enum for gen_data_manipulation cases
 enum{
 	OPC_RH850_LDSR_reg2_regID_selID	= 1,
 	OPC_RH850_STSR_regID_reg2_selID = 2,
+
+	//check for unintentional matching
+	OPC_RH850_RIE 					= 3,
+	OPC_RH850_CALLT_imm6			= 4,
+	OPC_RH850_CAXI_reg1_reg2_reg3	= 5,
+	OPC_RH850_CLL					= 6,
+	OPC_RH850_DISPOSE_imm5_list12	= 7,
+	OPC_RH850_DISPOSE_imm5_list12_reg1 = 8,
+	OPC_RH850_FETRAP_vector4		= 15,
+};
+
+enum{ // magic numbers for branch opcodes
+	OPC_RH850_JR_imm22			= 0,
+	OPC_RH850_JR_imm32			= 1,
+	OPC_RH850_JARL_disp22_reg2	= 2,
+	OPC_RH850_JARL_disp32_reg1	= 3, //48-bit
+	OPC_RH850_JARL_reg1_reg3	= 4,
 };
 
 #define MASK_OP_FORMAT_I_0(op)	(MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0x1F << 0)))

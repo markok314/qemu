@@ -2764,12 +2764,16 @@ static void gen_branch(DisasContext *ctx, int memop, int rs1, int rs2, int opera
 	tcg_gen_movi_tl(cpu_pc, 0x0);
 
 	switch(operation){
+		case OPC_RH850_JR_imm22:
+			tcg_gen_goto_tb(1);
+			break;
+
 		case 1:	//BCOND disp9
 			imm_9 = extract32(ctx->opcode, 4, 3) | (extract32(ctx->opcode, 11, 5) << 0x3);
 			tcg_gen_movi_i32(imm, imm_9);
-			printf("this is the displacement in BCOND: %x \n", ctx->opcode);
-			printf("this is the displacement in BCOND: %x \n", (extract32(ctx->opcode, 11, 5) << 0x3));
-			printf("this is the displacement in BCOND: %x \n", imm_9);
+			//printf("this is the displacement in BCOND: %x \n", ctx->opcode);
+			//printf("this is the displacement in BCOND: %x \n", (extract32(ctx->opcode, 11, 5) << 0x3));
+			//printf("this is the displacement in BCOND: %x \n", imm_9);
 	}
 
 }
@@ -2804,6 +2808,13 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	int regID;
 
 	switch(operation){
+	case OPC_RH850_CALLT_imm6:
+		break;
+	case OPC_RH850_CAXI_reg1_reg2_reg3:
+		break;
+	case OPC_RH850_CLL:
+		break;
+
 	case OPC_RH850_CTRET:    		// how to affect the ctx->pc?
 
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[CTPC_register]);
@@ -2816,6 +2827,14 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	case OPC_RH850_DI:
 		tcg_gen_movi_i32(cpu_ID, 0x1);
 		break;
+	case OPC_RH850_DISPOSE_imm5_list12:
+
+		break;
+
+	case OPC_RH850_DISPOSE_imm5_list12_reg1:
+
+		break;
+
 	case OPC_RH850_EI:
 		tcg_gen_movi_i32(cpu_ID, 0x0);
 		break;
@@ -2827,6 +2846,14 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
 		break;
+
+	case OPC_RH850_FETRAP_vector4:
+		break;
+
+	case OPC_RH850_HALT:
+		break;
+
+
 	case OPC_RH850_LDSR_reg2_regID_selID:
 		regID=rs2;
 		if(regID==PSW_register){
@@ -2835,6 +2862,9 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		gen_get_gpr(r2, rs1);
 		gen_set_sysreg(regID, r2);
 		break;
+
+	//case OPC_RH850_LDLW
+
 	case OPC_RH850_STSR_regID_reg2_selID:
 		regID=rs1;
 		gen_get_sysreg(r2, regID);
@@ -2874,8 +2904,11 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
 		if (rs2 == 0x0){
+			gen_branch(ctx, 0, 0, rs2, OPC_RH850_JR_imm32);
 			// this is JR2 (48bit inst)
+
 		} else {
+			gen_branch(ctx, 0, 0, rs2, OPC_RH850_JARL_disp32_reg1);
 			// this is JARL2 (48bit inst)
 		}
 	}
@@ -2953,20 +2986,40 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	break;
 	    case OPC_RH850_MOVEA:
 	    	if ( extract32(ctx->opcode, 11, 5) == 0 ){
-	    		printf("ta ukaz bi moral biti prestrezen ze prej!!! \n");
-	    		gen_arithmetic(ctx, imm_32, rs1, OPC_RH850_MOV_imm32_reg1); //this is MOV3
+	    		printf("This instruction should be reached earlier!!! \n");
+	    		gen_arithmetic(ctx, imm_32, rs1, OPC_RH850_MOV_imm32_reg1); //this is 48bit MOV
 	    	} else {
 	    		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVEA_imm16_reg1_reg2);
 	    	}
 	    	break;
-	    case OPC_RH850_MOVHI_imm16_reg1_reg2:
-	    	gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVHI_imm16_reg1_reg2);
+	    case OPC_RH850_MOVHI_imm16_reg1_reg2: // this is also the path for DISPOSE instructions
+
+	    	if(extract32(ctx->opcode, 11, 5)!=0x0){
+	    		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVHI_imm16_reg1_reg2);
+	    	} else {
+	    		if(extract32(ctx->opcode, 16, 5)==0x0){
+	    			gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12);
+	    		} else {
+	    			gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12_reg1);
+	    		}
+	    	}
 	    	break;
+
 	    case OPC_RH850_ORI_imm16_reg1_reg2:
 	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ORI_imm16_reg1_reg2);
 	    	break;
-	    case OPC_RH850_SATSUBI:
-	    	gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBI);
+
+	    case OPC_RH850_SATSUBI:				// this is also the path for DISPOSE instructions
+	    	if(extract32(ctx->opcode, 11, 5)!=0x0){
+	    		gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBI);
+			} else {
+				if(extract32(ctx->opcode, 16, 5)==0x0){
+					gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12);
+				} else {
+					gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12_reg1);
+				}
+			}
+
 	    	break;
 	    case OPC_RH850_XORI_imm16_reg1_reg2:
 	    	gen_logical(ctx, rs1, rs2, OPC_RH850_XORI_imm16_reg1_reg2);
@@ -3094,25 +3147,27 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 					}
 					break;
-				case OPC_RH850_FORMAT_X:	// 0010 //format X instructions
-							// 		//(+JARL3 - added due to MASK_OP_FORMAT_X matching)
+				case OPC_RH850_FORMAT_X:		//format X instructions
+												//(+JARL3 - added due to MASK_OP_FORMAT_X matching)
 					formXop = MASK_OP_FORMAT_X(ctx->opcode);
 					switch(formXop){
 						case OPC_RH850_CLL_CACHE:
-							if ((extract32(ctx->opcode, 27, 5) == 0x1E) && (extract32(ctx->opcode, 0, 5) == 0x1F)){
+							if ((extract32(ctx->opcode, 27, 5) == 0x1E) &&
+									(extract32(ctx->opcode, 0, 5) == 0x1F)){
 								//CLL
 							} else {
 								//CACHE; if cacheop bits are 1111110, opcode matches CLL ins,
-								//then thay are THE SAME instruction, so this should be correct
+								//then they are THE SAME instruction, so this should be correct
 							}
 							break;
 						case OPC_RH850_CTRET:
 							gen_special(ctx, rs1, rs2, OPC_RH850_CTRET);
 							break;
 						case OPC_RH850_DI:
+							gen_special(ctx, rs1, rs2, OPC_RH850_DI);
 							break;
 						case OPC_RH850_EI:
-
+							gen_special(ctx, rs1, rs2, OPC_RH850_EI);
 							break;
 						case OPC_RH850_EIRET:
 							break;
@@ -3121,6 +3176,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_HALT:
 							break;
 						case OPC_RH850_JARL3:
+							gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_reg1_reg3);
 							break;
 						case OPC_RH850_SNOOZE:
 							break;
@@ -3191,6 +3247,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 				case OPC_RH850_FORMAT_XII:	// 0110 //format XII instructions
 									//excluding MUL and including CMOV
+									// add LDL.W and STC.W!!!
 					checkXII = extract32(ctx->opcode, 21, 2);
 
 					switch(checkXII){
@@ -3224,7 +3281,9 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
 						case OPC_RH850_SCH0R_reg2_reg3:
+							printf("LDL.W is here \n");
 							gen_bit_search(ctx, rs2, OPC_RH850_SCH0R_reg2_reg3);
+
 							//SCH0R
 							break;
 						case OPC_RH850_SCH1R_reg2_reg3:
@@ -3286,9 +3345,12 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 		if(extract32(ctx->opcode, 16, 1) == 0){
 
 			if (extract32(ctx->opcode, 11, 5) == 0){
+				gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JR_imm22);
 				//JR
 			} else {
+				gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_disp22_reg2);
 				//JARL1
+
 
 			}
 		}else{
@@ -3347,7 +3409,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_2:
 		if (rs2 == 0){
 			if (rs1 == 0){
-				//RIE
+				gen_special(ctx, rs1, rs2, OPC_RH850_RIE);
+				//RIE format 1
 				break;
 			} else {
 				//SWITCH
