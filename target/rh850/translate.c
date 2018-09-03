@@ -2785,7 +2785,7 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 		//tcg_gen_mov_i32(cpu_pc, dest);
 		//ctx->next_pc = ctx->pc + 6;
 
-		tcg_gen_goto_tb(0);
+		//gen_goto_tb(ctx, 0, dest);
 
 		break;
 	}
