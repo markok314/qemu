@@ -11,5 +11,6 @@ __iar_program_start:
    mov     10, r6
    add     r6, r7
    mov     r7, r10
+   ldl.w  [r1], r3
 
    end
