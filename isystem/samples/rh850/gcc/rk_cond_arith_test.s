@@ -1,6 +1,12 @@
 .text
 .include "gpr_init.s"
 
+# explanation of comments
+# 0 - the conditions are not satisfied
+# 1 - the conditions are satisfied
+
+
+
 #----------------------------------ADF-----
 
 	mov 0x1, r1
@@ -11,24 +17,25 @@
 	mov 0x80000000, r6
 	mov 0x8000000f, r7
 #-------
-	cmp r1, r2		# no flag is set
+	cmp r1, r2		# no flag is set 
 
-	adf V, r1, r2, r8
-	adf NV, r1, r2, r9
-	adf C, r1, r2, r10
-	adf NC, r1, r2, r11
-	adf Z, r1, r2, r12
-	adf NZ, r1, r2, r13	
-	adf NH, r1, r2, r14
-	adf H, r1, r2, r15
-	adf S, r1, r2, r16
-	adf NS, r1, r2, r17
-	adf T, r1, r2, r18
-	adf LT, r1, r2, r19
-	adf GE, r1, r2, r20
-	adf LE, r1, r2, r21
-	adf GT, r1, r2, r22
+	adf V, r1, r2, r8	# 0
+	adf NV, r1, r2, r9	# 1
+	adf C, r1, r2, r10	# 0
+	adf NC, r1, r2, r11	# 1
+	adf Z, r1, r2, r12	# 0
+	adf NZ, r1, r2, r13	# 1
+	adf NH, r1, r2, r14	# 0 
+	adf H, r1, r2, r15	# 1
+	adf S, r1, r2, r16	# 0
+	adf NS, r1, r2, r17	# 1
+	adf T, r1, r2, r18	# 1
+	adf LT, r1, r2, r19	# 0
+	adf GE, r1, r2, r20	# 1
+	adf LE, r1, r2, r21	# 0
+	adf GT, r1, r2, r22	# 1
 #-------
+
 	cmp r2, r1		# CY and S flags are set
 
 	adf v, r3, r2, r8

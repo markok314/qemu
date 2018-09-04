@@ -10,10 +10,10 @@
 
 #----------------------------------satadd---
 
-	satadd r1, r5, r15
-	satadd r2, r5, r15
-	satadd r3, r2, r8
-	satadd r3, r4, r9
+	satadd r1, r5, r15	; pos+pos = no saturation	
+	satadd r2, r5, r15	; neg+pos = no saturation
+	satadd r3, r2, r8	; pos+neg = no saturation
+	satadd r3, r4, r9	; pos+MIN = 
 	satadd r3, r1, r7
 	satadd r1, r2, r7
 	satadd r1, r5, r7

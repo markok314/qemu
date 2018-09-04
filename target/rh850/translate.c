@@ -153,12 +153,13 @@ static void gen_exception_illegal(DisasContext *ctx)
 {
     generate_exception(ctx, RH850_EXCP_ILLEGAL_INST);
 }
-
 */
+
 static inline bool use_goto_tb(DisasContext *ctx, target_ulong dest)
 {
     if (unlikely(ctx->singlestep_enabled)) {
-        return false;
+        //return false;
+    	return true; // set true for testing purposes
     }
 
 #ifndef CONFIG_USER_ONLY
@@ -219,8 +220,9 @@ static inline void gen_set_gpr(int reg_num_dst, TCGv t)
 }
 
 
-/* Selection based on group ID needs to be added, once
- * the system register groups are implemented
+/*
+ * TODO: Selection based on group ID needs to be added,
+ * once the system register groups are implemented
  */
 static inline void gen_set_sysreg(int reg_num_dst, TCGv t)
 {
@@ -2746,6 +2748,84 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)	// co
 	tcg_temp_free_i32(tcg_r3);
 }
 
+static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
+                       int rs1, int rs2, target_long bimm)
+{
+    TCGLabel *l = gen_new_label();
+    TCGv condTest, condOK;
+
+    condOK = tcg_temp_local_new();
+    condTest = tcg_temp_local_new();
+
+    condTest = condition_satisfied(cond);
+    tcg_gen_movi_i32(condOK, 0x1);
+
+    printf("to je cond code %x \n to je displ %x", cond, bimm);
+
+    tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
+/*
+    switch (cond) {
+    case OPC_RH850_BV:
+    	break;
+   //OPC_RH850_BC
+    case OPC_RH850_BL:
+    	break;
+    //OPC_RH850_BE
+    //OPC_RH850_BT
+    case OPC_RH850_BZ:
+    	tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
+    	break;
+    case OPC_RH850_BNH:
+    	break;
+    case OPC_RH850_BN:
+    	break;
+    case OPC_RH850_BR:
+    	break;
+    case OPC_RH850_BLT:
+    	tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
+    	break;
+    case OPC_RH850_BLE:
+    	break;
+    case OPC_RH850_BNV:
+    	break;
+    //OPC_RH850_BNL
+    case OPC_RH850_BNC:
+    	break;
+    ///OPC_RH850_BNZ
+    //OPC_RH850_BF
+    case OPC_RH850_BNE:
+    	tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
+    	break;
+    case OPC_RH850_BH:
+    	break;
+    case OPC_RH850_BP:
+    	break;
+    case OPC_RH850_BSA:
+    	break;
+    case OPC_RH850_BGE:
+    	break;
+    case OPC_RH850_BGT:
+    	break;
+    default:
+        //gen_exception_illegal(ctx);
+        return;
+    }
+    //tcg_temp_free(source1);
+    //tcg_temp_free(source2);
+*/
+    gen_goto_tb(ctx, 1, ctx->next_pc);
+    gen_set_label(l); /* branch taken */
+    //if (!riscv_has_ext(env, RVC) && ((ctx->pc + bimm) & 0x3)) {
+        /* misaligned */
+        //gen_exception_inst_addr_mis(ctx);
+
+    //} else {
+    	gen_goto_tb(ctx, 0, ctx->pc + bimm);
+    //}
+    ctx->bstate = BS_BRANCH;
+}
+
+/*
 static void gen_branch(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
 {
 	TCGv tcg_r1 = tcg_temp_new();
@@ -2777,7 +2857,7 @@ static void gen_branch(DisasContext *ctx, int memop, int rs1, int rs2, int opera
 	}
 
 }
-
+*/
 static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	TCGv dest = tcg_temp_new();//this func is only for testing, it can be deleted
@@ -2904,11 +2984,11 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
 		if (rs2 == 0x0){
-			gen_branch(ctx, 0, 0, rs2, OPC_RH850_JR_imm32);
+			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JR_imm32);
 			// this is JR2 (48bit inst)
 
 		} else {
-			gen_branch(ctx, 0, 0, rs2, OPC_RH850_JARL_disp32_reg1);
+			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JARL_disp32_reg1);
 			// this is JARL2 (48bit inst)
 		}
 	}
@@ -2919,6 +2999,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 	int rs1;
 	int rs2;
+	int cond;
 	//int rd;
 	uint32_t op;
 	uint32_t formXop;
@@ -3039,6 +3120,13 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 			if (extract32(ctx->opcode, 16, 1) == 0x1 ) { //if bit 16=1 its either b.cond or ld.hu
 				if (rs2 == 0x0) {
 					//this is BCOND2
+					cond = extract32(ctx->opcode, 0, 4);
+					imm_32 = (extract32(ctx->opcode, 4, 1) || (extract32(ctx->opcode, 17, 15) << 1)) << 1;
+					if((imm_32 & 0x10000) == 0x10000){	// check 17th bit if signed
+						imm_32 |= (0x7fff << 17);
+					}
+					gen_branch(env, ctx, cond, rs1, rs2, imm_32);
+
 					break;
 				} else {
 					//this is LD.HU
@@ -3176,7 +3264,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_HALT:
 							break;
 						case OPC_RH850_JARL3:
-							gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_reg1_reg3);
+							//gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_reg1_reg3);
 							break;
 						case OPC_RH850_SNOOZE:
 							break;
@@ -3345,10 +3433,10 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 		if(extract32(ctx->opcode, 16, 1) == 0){
 
 			if (extract32(ctx->opcode, 11, 5) == 0){
-				gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JR_imm22);
+				//gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JR_imm22);
 				//JR
 			} else {
-				gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_disp22_reg2);
+				//gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_disp22_reg2);
 				//JARL1
 
 
@@ -3375,14 +3463,28 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 {
 	int rs1;
 	int rs2;
-	int imm;
+	int cond;
 	uint32_t op;
 	uint32_t subOpCheck;
+	uint32_t imm;
 
 	op = MASK_OP_MAJOR(ctx->opcode);
 	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
 	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
 	imm = rs1;
+
+	if((op & 0xf << 7) == OPC_RH850_BCOND ){
+		printf(" this is in BCOND \n");
+		cond = extract32(ctx->opcode, 0, 4);
+		imm = ( extract32(ctx->opcode, 4, 3) | (extract32(ctx->opcode, 11, 5) << 3)) << 1 ;
+		if ( (imm & 0x100) == 0x100){
+			imm |=  (0x7fffff << 9);
+		}
+		gen_branch(env, ctx, cond, rs1, rs2, imm);
+
+		return;
+	}
+
 
 	switch(op){
 	case OPC_RH850_16bit_0:
@@ -3427,7 +3529,17 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_BCOND: //BCOND disp9
-		gen_branch(ctx, 0, rs1, rs2, 1);
+
+		printf(" this is NOT COOL \n");
+		cond = extract32(ctx->opcode, 0, 4);
+		imm = (extract32(ctx->opcode, 4, 3) || ( extract32(ctx->opcode, 11, 5) << 3)) << 1;
+		if ( (imm & 0x100) == 0x100){
+			imm |=  (0x7fffff << 9);
+		}
+
+		gen_branch(env, ctx, cond, rs1, rs2, imm);
+
+		//gen_branch(ctx, 0, rs1, rs2, 1);
 		break;
 
 	case OPC_RH850_16bit_4:
@@ -3577,6 +3689,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		printf("sst.h \n");
 		break;
 	}
+
+
 /*
 	if (extract32(op,7,4)==6){
 		printf("sld.b \n");
