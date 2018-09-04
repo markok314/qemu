@@ -1,0 +1,46 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+FLASH            0x00000000         0x00080000         xr
+RAM              0xfee00000         0x00010000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+                0x00000000                _Min_Heap_Size = 0x0
+                0x00000400                _Min_Stack_Size = 0x400
+
+.text           0x00000000       0xa6
+ *(.isr_vector)
+ *(.text*)
+ .text          0x00000000       0xa6 test_bit_search.o
+ *(.glue_7t)
+ *(.glue_7)
+ *(.rodata*)
+                0x000000a6                _etext = .
+                0x000000a6                _sidata = .
+
+.data           0xfee00000        0x0 load address 0x000000a6
+                0xfee00000                _sdata = .
+ *(vtable)
+ *(.data*)
+ .data          0xfee00000        0x0 test_bit_search.o
+                0xfee00000                _edata = .
+
+.bss            0xfee00000        0x0 load address 0x000000a6
+                0xfee00000                _sbss = .
+ *(.bss*)
+ .bss           0xfee00000        0x0 test_bit_search.o
+ *(COMMON)
+                0xfee00000                _ebss = .
+ *(.stack)
+                0xfee00000                _estack = .
+LOAD test_bit_search.o
+LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2\libgcc.a
+START GROUP
+LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2/../../../../v850-elf/lib\libc.a
+LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2\libgcc.a
+END GROUP
+LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2\libgcc.a
+OUTPUT(test_bit_search.elf elf32-v850)

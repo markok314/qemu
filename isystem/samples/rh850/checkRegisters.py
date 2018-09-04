@@ -11,8 +11,8 @@ import os
 import sys
 
 
-def check_registers(file,NUM_OF_INTS_TO_PRINT):
-    sys.stdout = open('log_qemu.log', 'w')
+def check_registers(file,NUM_OF_INTS_TO_PRINT,file_name):
+    sys.stdout = open('log_qemu_'+file_name+'.log', 'w')
     instNumber = 0
     counter = 0
     out = ['','']
