@@ -189,6 +189,7 @@ enum{
 	OPC_RH850_DISPOSE_imm5_list12	= 7,
 	OPC_RH850_DISPOSE_imm5_list12_reg1 = 8,
 	OPC_RH850_FETRAP_vector4		= 15,
+	OPC_RH850_SWITCH_reg1			= 10,
 };
 
 enum{ // magic numbers for branch opcodes
@@ -197,32 +198,6 @@ enum{ // magic numbers for branch opcodes
 	OPC_RH850_JARL_disp22_reg2	= 2,
 	OPC_RH850_JARL_disp32_reg1	= 3, //48-bit
 	OPC_RH850_JARL_reg1_reg3	= 4,
-};
-
-enum {
-	OPC_RH850_BV 		= 0,		//OV = 1
-	OPC_RH850_BC 		= 1,		//CY = 1
-	OPC_RH850_BL		= 1,
-	OPC_RH850_BE 		= 2,		//Z = 1
-	OPC_RH850_BT		= 2,
-	OPC_RH850_BZ		= 2,
-	OPC_RH850_BNH 		= 3,		//(CY or Z) = 1
-	OPC_RH850_BN		= 4,		//S = 1
-	OPC_RH850_BR		= 5,		//Always
-	OPC_RH850_BLT		= 6,		//(S xor OV) = 1
-	OPC_RH850_BLE 		= 7,		//((S xor OV) or Z) = 1
-
-	OPC_RH850_BNV 		= 8,		//OV = 0
-	OPC_RH850_BNL 		= 9,		//CY = 0
-	OPC_RH850_BNC		= 9,
-	OPC_RH850_BNZ 		= 10,		//Z = 0
-	OPC_RH850_BNE 		= 10,
-	OPC_RH850_BF		= 10,
-	OPC_RH850_BH 		= 11,		//(CY or Z) = 0
-	OPC_RH850_BP		= 12,		//S = 0
-	OPC_RH850_BSA		= 13,		//SAT = 1
-	OPC_RH850_BGE		= 14,		//(S xor OV) = 0
-	OPC_RH850_BGT 		= 15,		//((S xor OV) or Z) = 0
 };
 
 

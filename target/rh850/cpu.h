@@ -260,9 +260,9 @@ static inline RH850CPU *rh850_env_get_cpu(CPURH850State *env)
 }
 
 static inline int rh850_has_ext(CPURH850State *env, target_ulong ext)
-{
-    //return (env->misa & ext) != 0;
-	return false;
+{		// TODO: what does value 'ext' represent??
+    return (env->misa & ext) != 0;
+	//return false;
 }
 
 static inline bool rh850_feature(CPURH850State *env, int feature)

@@ -142,6 +142,23 @@ static void generate_exception(DisasContext *ctx, int excp)
 
 */
 
+static void generate_exception_mbadaddr(DisasContext *ctx, int excp)
+{
+    tcg_gen_movi_tl(cpu_pc, ctx->pc);
+    tcg_gen_st_tl(cpu_pc, cpu_env, offsetof(CPURH850State, badaddr));
+    TCGv_i32 helper_tmp = tcg_const_i32(excp);
+    gen_helper_raise_exception(cpu_env, helper_tmp);
+    tcg_temp_free_i32(helper_tmp);
+    ctx->bstate = BS_BRANCH;
+}
+
+static void gen_exception_inst_addr_mis(DisasContext *ctx)
+{
+    generate_exception_mbadaddr(ctx, 0xc0);
+}
+
+
+
 static void gen_exception_debug(void)
 {
     TCGv_i32 helper_tmp = tcg_const_i32(EXCP_DEBUG);
@@ -2760,107 +2777,27 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
     condTest = condition_satisfied(cond);
     tcg_gen_movi_i32(condOK, 0x1);
 
-    printf("to je cond code %x \n to je displ %x", cond, bimm);
 
     tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
-/*
-    switch (cond) {
-    case OPC_RH850_BV:
-    	break;
-   //OPC_RH850_BC
-    case OPC_RH850_BL:
-    	break;
-    //OPC_RH850_BE
-    //OPC_RH850_BT
-    case OPC_RH850_BZ:
-    	tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
-    	break;
-    case OPC_RH850_BNH:
-    	break;
-    case OPC_RH850_BN:
-    	break;
-    case OPC_RH850_BR:
-    	break;
-    case OPC_RH850_BLT:
-    	tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
-    	break;
-    case OPC_RH850_BLE:
-    	break;
-    case OPC_RH850_BNV:
-    	break;
-    //OPC_RH850_BNL
-    case OPC_RH850_BNC:
-    	break;
-    ///OPC_RH850_BNZ
-    //OPC_RH850_BF
-    case OPC_RH850_BNE:
-    	tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
-    	break;
-    case OPC_RH850_BH:
-    	break;
-    case OPC_RH850_BP:
-    	break;
-    case OPC_RH850_BSA:
-    	break;
-    case OPC_RH850_BGE:
-    	break;
-    case OPC_RH850_BGT:
-    	break;
-    default:
-        //gen_exception_illegal(ctx);
-        return;
-    }
-    //tcg_temp_free(source1);
-    //tcg_temp_free(source2);
-*/
+
+
     gen_goto_tb(ctx, 1, ctx->next_pc);
     gen_set_label(l); /* branch taken */
-    //if (!riscv_has_ext(env, RVC) && ((ctx->pc + bimm) & 0x3)) {
+    if (!rh850_has_ext(env, 0) && ((ctx->pc + bimm) & 0x3)) {
         /* misaligned */
-        //gen_exception_inst_addr_mis(ctx);
-
-    //} else {
+    	printf("Address was misaligned! \n");
+        gen_exception_inst_addr_mis(ctx);
+    } else {
+    	printf("This is the new PC: %x \n", (ctx->pc+bimm));
     	gen_goto_tb(ctx, 0, ctx->pc + bimm);
-    //}
+    }
     ctx->bstate = BS_BRANCH;
 }
 
-/*
-static void gen_branch(DisasContext *ctx, int memop, int rs1, int rs2, int operation)
-{
-	TCGv tcg_r1 = tcg_temp_new();
-	TCGv tcg_r2 = tcg_temp_new();
-	TCGv imm = tcg_temp_new();
-	uint32_t imm_9;
 
+static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){ //this function is only for testing, it can be deleted
 
-	gen_get_gpr(tcg_r1, rs1);
-	gen_get_gpr(tcg_r2, rs2);
-
-	//TESTING
-
-	printf("test");
-	//gen_goto_tb(ctx,2, 0x2);
-	tcg_gen_movi_tl(cpu_pc, 0x0);
-
-	switch(operation){
-		case OPC_RH850_JR_imm22:
-			tcg_gen_goto_tb(1);
-			break;
-
-		case 1:	//BCOND disp9
-			imm_9 = extract32(ctx->opcode, 4, 3) | (extract32(ctx->opcode, 11, 5) << 0x3);
-			tcg_gen_movi_i32(imm, imm_9);
-			//printf("this is the displacement in BCOND: %x \n", ctx->opcode);
-			//printf("this is the displacement in BCOND: %x \n", (extract32(ctx->opcode, 11, 5) << 0x3));
-			//printf("this is the displacement in BCOND: %x \n", imm_9);
-	}
-
-}
-*/
-static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
-
-	TCGv dest = tcg_temp_new();//this func is only for testing, it can be deleted
+	TCGv dest = tcg_temp_new();
 	gen_get_gpr(dest, rs1);
 
 	switch(operation){
@@ -2884,18 +2821,38 @@ static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	TCGv temp = tcg_temp_new_i32();
+	TCGv adr = tcg_temp_new_i32();
 	TCGv r2 = tcg_temp_new();
 	int regID;
+	int imm;
 
 	switch(operation){
 	case OPC_RH850_CALLT_imm6:
+
+		tcg_gen_addi_i32(cpu_sysRegs[CTPC_register], cpu_pc, 0x2);
+		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0xf);
+
+		tcg_gen_andi_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], 0xfffffff0);
+		tcg_gen_or_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], temp);
+
+		imm = extract32(ctx->opcode, 0, 6);
+		tcg_gen_movi_i32(adr, imm);
+		tcg_gen_shli_i32(adr, adr, 0x1);
+		tcg_gen_ext8s_i32(adr, adr);
+		tcg_gen_add_i32(adr, cpu_sysRegs[CTBP_register], adr);
+
+		// TODO: Load and set the new PC, check for misaligned access
+
 		break;
 	case OPC_RH850_CAXI_reg1_reg2_reg3:
 		break;
 	case OPC_RH850_CLL:
+
 		break;
 
-	case OPC_RH850_CTRET:    		// how to affect the ctx->pc?
+	case OPC_RH850_CTRET:
+
+		// TODO: Load and set the new PC, check for misaligned access
 
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[CTPC_register]);
 		tcg_gen_andi_i32(temp, cpu_sysRegs[CTPSW_register], 0x1f);
@@ -2918,16 +2875,26 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	case OPC_RH850_EI:
 		tcg_gen_movi_i32(cpu_ID, 0x0);
 		break;
-	case OPC_RH850_EIRET:			// how to affect the ctx->pc?
+	case OPC_RH850_EIRET:			// TODO: Load and set the new PC, check for misaligned access
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[EIPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[EIPSW_register]);
 		break;
-	case OPC_RH850_FERET:			// how to affect the ctx->pc?
+	case OPC_RH850_FERET:			// TODO: Load and set the new PC, check for misaligned access
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
 		break;
 
 	case OPC_RH850_FETRAP_vector4:
+
+		tcg_gen_addi_i32(cpu_sysRegs[FEPC_register], cpu_pc, 0x2);
+		tcg_gen_mov_i32(cpu_sysRegs[FEPSW_register], cpu_sysRegs[PSW_register]);
+		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], 0x0); // TODO: Write the correct except. cause code
+		tcg_gen_movi_i32(cpu_UM, 0x0);
+		tcg_gen_movi_i32(cpu_NP, 0x1);
+		tcg_gen_movi_i32(cpu_EP, 0x1);
+		tcg_gen_movi_i32(cpu_ID, 0x1);
+		// TODO: Write the correct except. handler address to PC
+
 		break;
 
 	case OPC_RH850_HALT:
@@ -2943,7 +2910,30 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		gen_set_sysreg(regID, r2);
 		break;
 
-	//case OPC_RH850_LDLW
+	//case OPC_RH850_LDLW:
+	//	break;
+
+	//case OPC_RH850_NOP:
+	//	break;
+
+	case OPC_RH850_RIE:
+
+		tcg_gen_addi_i32(cpu_sysRegs[FEPC_register], cpu_pc, 0x2);
+		tcg_gen_mov_i32(cpu_sysRegs[FEPSW_register], cpu_sysRegs[PSW_register]);
+		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], 0x0); // TODO: Write the correct except. cause code
+		tcg_gen_movi_i32(cpu_UM, 0x0);
+		tcg_gen_movi_i32(cpu_NP, 0x1);
+		tcg_gen_movi_i32(cpu_EP, 0x1);
+		tcg_gen_movi_i32(cpu_ID, 0x1);
+		// TODO: Write the correct except. handler address to PC
+
+		break;
+
+	case OPC_RH850_SNOOZE:
+		break;
+
+	//case OPC_RH850_STCW:
+	//	break;
 
 	case OPC_RH850_STSR_regID_reg2_selID:
 		regID=rs1;
@@ -2951,6 +2941,23 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		gen_set_gpr(rs2, r2);
 		break;
 
+	case OPC_RH850_SWITCH_reg1: // TODO: Load and set the new PC, check for misaligned access
+		gen_get_gpr(adr, rs1);
+		tcg_gen_shli_i32(adr, adr, 0x1);
+		tcg_gen_add_i32(adr, adr, cpu_pc);
+		tcg_gen_addi_i32(adr, adr, 0x2);
+		break;
+
+	// SYNC instructions will not be implemented
+
+	case OPC_RH850_TRAP:
+		tcg_gen_addi_i32(cpu_sysRegs[EIPC_register], cpu_pc, 0x4);
+		tcg_gen_mov_i32(cpu_sysRegs[EIPSW_register], cpu_sysRegs[PSW_register]);
+		tcg_gen_movi_i32(cpu_sysRegs[EIIC_register], 0x0); // TODO: Write the correct except. cause code
+		tcg_gen_movi_i32(cpu_UM, 0x0);
+		tcg_gen_movi_i32(cpu_EP, 0x1);
+		tcg_gen_movi_i32(cpu_ID, 0x1);
+		break;
 	}
 }
 
@@ -3229,6 +3236,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 								if (extract32(ctx->opcode, 19, 1) == 0){
 									//TST1
 								} else {
+									gen_special(ctx, rs1, rs2, OPC_RH850_CAXI_reg1_reg2_reg3);
 									//CAXI
 								}
 							}
@@ -3474,12 +3482,13 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	imm = rs1;
 
 	if((op & 0xf << 7) == OPC_RH850_BCOND ){
-		printf(" this is in BCOND \n");
 		cond = extract32(ctx->opcode, 0, 4);
 		imm = ( extract32(ctx->opcode, 4, 3) | (extract32(ctx->opcode, 11, 5) << 3)) << 1 ;
+
 		if ( (imm & 0x100) == 0x100){
 			imm |=  (0x7fffff << 9);
 		}
+
 		gen_branch(env, ctx, cond, rs1, rs2, imm);
 
 		return;
@@ -3626,6 +3635,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_16:
 		if (rs2 == 0){
+			gen_special(ctx, rs1, rs2, OPC_RH850_CALLT_imm6);
 			//CALLT
 			break;
 		} else {
@@ -3635,7 +3645,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_17:
 		if (rs2 == 0){
-			//CALLT
+			gen_special(ctx, rs1, rs2, OPC_RH850_CALLT_imm6);
 			break;
 		} else {
 			gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATADD_imm5_reg2);
