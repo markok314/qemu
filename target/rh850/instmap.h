@@ -91,7 +91,7 @@ enum {
 	OPC_RH850_MOVEA	=	(0x31 << 5),     	// this is also MOV 3, which is 48 bit
 	OPC_RH850_MOVHI_imm16_reg1_reg2	=	(0x32 << 5),
 	OPC_RH850_ORI_imm16_reg1_reg2	=	(0x34 << 5),
-	OPC_RH850_SATSUBI=	(0x33 << 5),
+	OPC_RH850_SATSUBI_imm16_reg1_reg2=	(0x33 << 5),
 	OPC_RH850_XORI_imm16_reg1_reg2	=	(0x35 << 5),
 
 
@@ -137,6 +137,7 @@ enum{
 	OPC_RH850_SATADD_reg1_reg2_reg3	= 3,
 	OPC_RH850_SATSUB_reg1_reg2		= 4,
 	OPC_RH850_SATSUB_reg1_reg2_reg3 = 5,
+	OPC_RH850_SATSUBR_reg1_reg2		= 6,
 };
 
 enum{

@@ -1456,7 +1456,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 
 		}	break;
 
-		case OPC_RH850_SATSUBI: {
+		case OPC_RH850_SATSUBI_imm16_reg1_reg2: {
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv imm_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -1517,6 +1517,77 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)		// c
 			tcg_temp_free(max);
 			tcg_temp_free(r1_local);
 			tcg_temp_free(imm_local);
+			tcg_temp_free(zero);
+
+		}	break;
+
+		case OPC_RH850_SATSUBR_reg1_reg2: {
+
+			TCGv r1_local = tcg_temp_local_new();
+			TCGv r2_local = tcg_temp_local_new();
+			TCGv result = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
+			TCGv min = tcg_temp_local_new();
+			TCGv max = tcg_temp_local_new();
+			TCGv zero = tcg_temp_local_new();
+			tcg_gen_movi_i32(min, 0x80000000);
+			tcg_gen_movi_i32(max, 0x7fffffff);
+			tcg_gen_mov_i32(r1_local, r2);
+			tcg_gen_mov_i32(r2_local, r1);
+			tcg_gen_movi_i32(zero, 0x0);
+			end = gen_new_label();
+			cont = gen_new_label();
+			cont2 = gen_new_label();
+			setMax = gen_new_label();
+			dontChange = gen_new_label();
+
+			/*
+			 * Negating second operand and using satadd code. When negating an operand
+			 * with value 0x80000000, the result overflows positive numbers and is not
+			 * negated. If this happens, the operand is first incremented, and then negated.
+			 * The second operand is as well incremented, if it's value is less than 0x7fffffff.
+			 * Otherwise, the result is set to MAX and SATF is set.
+			 * This was done in all following saturated subtraction functions.
+			 */
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x80000000, dontChange);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, r2_local, 0x7fffffff, setMax);
+
+			tcg_gen_addi_i32(r1_local, r1_local, 0x1);
+			tcg_gen_addi_i32(r2_local, r2_local, 0x1);
+			gen_set_label(dontChange);
+
+			tcg_gen_neg_i32(r1_local, r1_local);
+			tcg_gen_add_i32(result, r1_local, r2_local);
+
+			tcg_gen_brcond_tl(TCG_COND_LT, r1_local, zero, cont);
+
+			tcg_gen_sub_i32(check, max, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_LE, r2_local, check, end);
+			gen_set_label(setMax);
+			tcg_gen_mov_i32(result, max);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
+			tcg_gen_br(end);
+
+			//---------------------------------------------------------------------------------
+			gen_set_label(cont);
+			tcg_gen_sub_i32(check, min, r1_local);
+			tcg_gen_brcond_tl(TCG_COND_GE, r2_local, check, cont2);
+			tcg_gen_mov_i32(result, min);
+			tcg_gen_movi_i32(cpu_SATF, 0x1);
+
+			gen_set_label(cont2);
+			gen_set_label(end);
+			gen_set_gpr(rs2, result);
+
+			gen_satsub_CC(r2_local, r1_local, result);
+
+			tcg_temp_free(result);
+			tcg_temp_free(check);
+			tcg_temp_free(min);
+			tcg_temp_free(max);
+			tcg_temp_free(r1_local);
+			tcg_temp_free(r2_local);
 			tcg_temp_free(zero);
 
 		}	break;
@@ -2492,10 +2563,6 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)	// co
 
 		case OPC_RH850_DIV_reg1_reg2_reg3:{
 
-			// 0x80000000/0xffffffff=0x80000000; cpu_OVF=1
-			// reg2/0x0000=undefined; cpu_OVF=1
-			// if reg2==reg3; reg2=remainder
-
 			TCGLabel *cont;
 			TCGLabel *end;
 			TCGLabel *fin;
@@ -2781,19 +2848,21 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
 
     gen_goto_tb(ctx, 1, ctx->next_pc);
     gen_set_label(l); /* branch taken */
-    if (!rh850_has_ext(env, 0) && ((ctx->pc + bimm) & 0x3)) {
+    if (!rh850_has_ext(env, 4) && ((ctx->pc + bimm) & 0x3)) {
+
         /* misaligned */
-    	printf("Address was misaligned! \n");
+    	printf("Address was misaligned! (PC is %x) \n  This is first if cond: %x \n ", ctx->pc + bimm, rh850_has_ext(env, 2));
         gen_exception_inst_addr_mis(ctx);
     } else {
-    	printf("This is the new PC: %x \n", (ctx->pc+bimm));
+    	printf("This is the new PC: %x \n  This is first if cond: %x \n", (ctx->pc+bimm), rh850_has_ext(env, 2));
     	gen_goto_tb(ctx, 0, ctx->pc + bimm);
+
     }
     ctx->bstate = BS_BRANCH;
 }
 
-
-static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){ //this function is only for testing, it can be deleted
+//this function is only for testing, it can be deleted
+static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	TCGv dest = tcg_temp_new();
 	gen_get_gpr(dest, rs1);
@@ -3093,9 +3162,9 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ORI_imm16_reg1_reg2);
 	    	break;
 
-	    case OPC_RH850_SATSUBI:
+	    case OPC_RH850_SATSUBI_imm16_reg1_reg2:
 	    	if(extract32(ctx->opcode, 11, 5)!=0x0){
-	    		gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBI);
+	    		gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBI_imm16_reg1_reg2);
 			} else {
 				if(extract32(ctx->opcode, 16, 5)==0x0){
 					gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12);
@@ -3537,8 +3606,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ZXB_reg1);
 			break;
 		} else {
-			//SATSUBR (using SATSUB with switched registers)
-			gen_sat_op(ctx, rs2, rs1, OPC_RH850_SATSUB_reg1_reg2);
+			gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBR_reg1_reg2);
 			break;
 		}
 		break;
