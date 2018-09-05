@@ -756,7 +756,7 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 	TCGv tcg_temp = tcg_temp_new();
 
 	switch(operation){
-		case OPC_RH850_MUL_reg1_reg2_reg3: //MUL reg1, reg2, reg3
+		case OPC_RH850_MUL_reg1_reg2_reg3:
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 
@@ -767,18 +767,19 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 			gen_set_gpr(int_rs3,tcg_r3);
 			break;
 
-		case OPC_RH850_MUL_imm9_reg2_reg3: //MUL imm9, reg2, reg3
+		case OPC_RH850_MUL_imm9_reg2_reg3:
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 
 			imm_32 = extract32(ctx->opcode, 18, 4);
 			imm_32 = imm | (imm_32 << 5);
-			if((imm_32 & 0x100) == 0x100){
-				imm_32 = imm_32 | (0x7f << 9); //SIGN EXTETEND to 16 bit
-			}
 
+			// sign extension
+			if((imm_32 & 0x100) == 0x100){
+				imm_32 = imm_32 | (0x7f << 9);
+			}
 			tcg_gen_movi_tl(tcg_imm32, imm_32);
-			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32); //SIGN EXTETEND to 32 bit
+			tcg_gen_ext16s_tl(tcg_imm32, tcg_imm32);
 
 			tcg_gen_muls2_i32(r2, tcg_r3, tcg_imm32, r2);
 
@@ -869,7 +870,7 @@ static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)	// 
 
 }
 
-static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation)	// IAR issue
+static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operation)	// completed
 {
 	TCGv r1 = tcg_temp_new();
 	TCGv r2 = tcg_temp_new();
@@ -2668,9 +2669,6 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)	// co
 		}	break;
 
 		case OPC_RH850_DIVHU_reg1_reg2_reg3:{
-			printf("this is in DIVHU \n");
-			// reg2/0x0000=undefined; cpu_OVF=1
-			// if reg2==reg3; reg2=remainder
 
 			TCGLabel *cont;
 			TCGLabel *fin;
@@ -2986,16 +2984,16 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 
 	}
 	if(extract32(ctx->opcode, 5, 11) == 0x31){
-		gen_arithmetic(ctx, 0, rs2, OPC_RH850_MOV_imm32_reg1);				// this is MOV3 (48bit inst)
+		gen_arithmetic(ctx, 0, rs2, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
 		if (rs2 == 0x0){
-			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JR_imm32);
+			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JR_imm32); change this to call
 			// this is JR2 (48bit inst)
 
 		} else {
-			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JARL_disp32_reg1);
+			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JARL_disp32_reg1); change this call
 			// this is JARL2 (48bit inst)
 		}
 	}
@@ -3007,28 +3005,24 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	int rs1;
 	int rs2;
 	int cond;
-	//int rd;
 	uint32_t op;
 	uint32_t formXop;
 	uint32_t checkXII;
 	uint32_t check32bitZERO;
-	//target_long imm;
 	target_long imm_32;
 	target_long ld_imm;
 
 	op = MASK_OP_MAJOR(ctx->opcode);
 	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
 	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
-	//rd = GET_RD(ctx->opcode);
-	//imm = GET_IMM(ctx->opcode);
-	TCGv r1 = tcg_temp_local_new();		//temp
-	TCGv r2 = tcg_temp_local_new();		//temp
+	TCGv r1 = tcg_temp_local_new();
+	TCGv r2 = tcg_temp_local_new();
 	imm_32 = GET_IMM_32(ctx->opcode);
 	ld_imm = extract32(ctx->opcode, 17, 15);
 	ld_imm = ld_imm << 1;
 
-	gen_get_gpr(r1, rs1);		//loading rs1 to r1
-	gen_get_gpr(r2, rs2);		//loading rs2 to r2
+	gen_get_gpr(r1, rs1);
+	gen_get_gpr(r2, rs2);
 
 
 	switch(op){
@@ -3069,19 +3063,21 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    case OPC_RH850_ADDI_imm16_reg1_reg2:
 	    	gen_arithmetic(ctx, rs1,rs2, OPC_RH850_ADDI_imm16_reg1_reg2);
 	    	break;
+
 	    case OPC_RH850_ANDI_imm16_reg1_reg2:
 	    	gen_logical(ctx, rs1, rs1, OPC_RH850_ANDI_imm16_reg1_reg2);
 	    	break;
+
 	    case OPC_RH850_MOVEA:
 	    	if ( extract32(ctx->opcode, 11, 5) == 0 ){
-	    		printf("This instruction should be reached earlier!!! \n");
-	    		gen_arithmetic(ctx, imm_32, rs1, OPC_RH850_MOV_imm32_reg1); //this is 48bit MOV
+	    		// This is 48bit MOV
+	    		// This instruction should be reached first in decode_RH850_48
 	    	} else {
 	    		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVEA_imm16_reg1_reg2);
 	    	}
 	    	break;
-	    case OPC_RH850_MOVHI_imm16_reg1_reg2: // this is also the path for DISPOSE instructions
 
+	    case OPC_RH850_MOVHI_imm16_reg1_reg2:
 	    	if(extract32(ctx->opcode, 11, 5)!=0x0){
 	    		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVHI_imm16_reg1_reg2);
 	    	} else {
@@ -3097,7 +3093,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ORI_imm16_reg1_reg2);
 	    	break;
 
-	    case OPC_RH850_SATSUBI:				// this is also the path for DISPOSE instructions
+	    case OPC_RH850_SATSUBI:
 	    	if(extract32(ctx->opcode, 11, 5)!=0x0){
 	    		gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBI);
 			} else {
@@ -3112,6 +3108,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    case OPC_RH850_XORI_imm16_reg1_reg2:
 	    	gen_logical(ctx, rs1, rs2, OPC_RH850_XORI_imm16_reg1_reg2);
 	    	break;
+
 	    case OPC_RH850_LOOP:
 	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
 	    		//loop
@@ -3121,14 +3118,15 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 	    	break;
 	    case OPC_RH850_CLR:
-
+	    		//clr
 	    	break;
-		case OPC_RH850_32bit_1:				//this is the opcode=11111 group; formats IX, X, XI, XII
+		case OPC_RH850_32bit_1:		/* case for opcode = 11111 ; formats IX, X, XI, XII */
 			if (extract32(ctx->opcode, 16, 1) == 0x1 ) { //if bit 16=1 its either b.cond or ld.hu
 				if (rs2 == 0x0) {
 					//this is BCOND2
 					cond = extract32(ctx->opcode, 0, 4);
-					imm_32 = (extract32(ctx->opcode, 4, 1) || (extract32(ctx->opcode, 17, 15) << 1)) << 1;
+					imm_32 = (extract32(ctx->opcode, 4, 1) ||
+							(extract32(ctx->opcode, 17, 15) << 1)) << 1;
 					if((imm_32 & 0x10000) == 0x10000){	// check 17th bit if signed
 						imm_32 |= (0x7fff << 17);
 					}
@@ -3149,9 +3147,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					switch(check32bitZERO){
 					case 0:
 						if(extract32(ctx->opcode, 4, 1)==1){
-							//RIE
+							gen_special(ctx, rs1, rs2, OPC_RH850_RIE);
 						} else {
-							//SETF
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SETF_cccc_reg2);
 						}
 						break;
@@ -3166,81 +3163,84 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 				case OPC_RH850_FORMAT_IX:		//format IX instructions
 					formXop = MASK_OP_FORMAT_IX(ctx->opcode);	//mask on bits 21, 22
 					switch(formXop){
-						case OPC_RH850_BINS_0:
-							if (extract32(ctx->opcode, 20, 1) == 1){
-								//BINS0
-								gen_data_manipulation(ctx, rs1, rs2, 123456);
-								//printf("BINS0\n");
+					case OPC_RH850_BINS_0:
+						if (extract32(ctx->opcode, 20, 1) == 1){
+							//BINS0
+							gen_data_manipulation(ctx, rs1, rs2, 123456);
+							//printf("BINS0\n");
+						}
+						else{
+							if (extract32(ctx->opcode, 17, 1) == 0){
+								gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2);
+							}else{
+								gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2_reg3);
 							}
-							else{
-								if (extract32(ctx->opcode, 17, 1) == 0){
-									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2);
-								}else{
-									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHR_reg1_reg2_reg3);
-								}
-							}
-							break;
-						case OPC_RH850_BINS_1:
-							if (extract32(ctx->opcode, 20, 1) == 1){
-								//BINS1
-								gen_data_manipulation(ctx, rs1, rs2, 123456);
-								printf("BINS1\n");
-							}
-							else{
-								if (extract32(ctx->opcode, 17, 1) == 0){
-									//SAR format IX
-									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2);
-								}else{
-									//SAR format XI
-									gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2_reg3);
-								}
-							}
+						}
 						break;
-						case OPC_RH850_BINS_2:
-							if (extract32(ctx->opcode, 20, 1) == 1){
-								//BINS2
-								gen_data_manipulation(ctx, rs1, rs2, 123456);
-								printf("BINS2\n");
+					case OPC_RH850_BINS_1:
+						if (extract32(ctx->opcode, 20, 1) == 1){
+							//BINS1
+							gen_data_manipulation(ctx, rs1, rs2, 123456);
+							printf("BINS1\n");
+						}
+						else{
+							if (extract32(ctx->opcode, 17, 1) == 0){
+								//SAR format IX
+								gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2);
+							}else{
+								//SAR format XI
+								gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2_reg3);
 							}
-							else{
-								if (extract32(ctx->opcode, 17, 1) == 0){
-									if (extract32(ctx->opcode, 18, 1) == 1){
-										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ROTL_imm5_reg2_reg3);
-									}
-									else{
-										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHL_reg1_reg2);
-									}
-								}else{
-									if (extract32(ctx->opcode, 18, 1) == 1){
-										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ROTL_reg1_reg2_reg3);
-									}
-									else{
-										gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SHL_reg1_reg2_reg3);
-									}
+						}
+					break;
+					case OPC_RH850_BINS_2:
+						if (extract32(ctx->opcode, 20, 1) == 1){
+							//BINS2
+							gen_data_manipulation(ctx, rs1, rs2, 123456);
+							printf("BINS2\n");
+						}
+						else{
+							if (extract32(ctx->opcode, 17, 1) == 0){
+								if (extract32(ctx->opcode, 18, 1) == 1){
+									gen_data_manipulation(ctx, rs1, rs2,
+											OPC_RH850_ROTL_imm5_reg2_reg3);
+								}
+								else{
+									gen_data_manipulation(ctx, rs1, rs2,
+											OPC_RH850_SHL_reg1_reg2);
+								}
+							}else{
+								if (extract32(ctx->opcode, 18, 1) == 1){
+									gen_data_manipulation(ctx, rs1, rs2,
+											OPC_RH850_ROTL_reg1_reg2_reg3);
+								}
+								else{
+									gen_data_manipulation(ctx, rs1, rs2,
+											OPC_RH850_SHL_reg1_reg2_reg3);
 								}
 							}
+						}
+						break;
+					case OPC_RH850_CLR1:
+						check32bitZERO = extract32(ctx->opcode, 16, 3);
+						switch(check32bitZERO){
+						case 0:
+							//SET
 							break;
-						case OPC_RH850_CLR1:
-							check32bitZERO = extract32(ctx->opcode, 16, 3);
-							switch(check32bitZERO){
-							case 0:
-								//SET
-								break;
-							case 2:
-								//NOT1
-								break;
-							case 4:
-								//CLR1
-								break;
-							case 6:
-								if (extract32(ctx->opcode, 19, 1) == 0){
-									//TST1
-								} else {
-									gen_special(ctx, rs1, rs2, OPC_RH850_CAXI_reg1_reg2_reg3);
-									//CAXI
-								}
+						case 2:
+							//NOT1
+							break;
+						case 4:
+							//CLR1
+							break;
+						case 6:
+							if (extract32(ctx->opcode, 19, 1) == 0){
+								//TST1
+							} else {
+								gen_special(ctx, rs1, rs2, OPC_RH850_CAXI_reg1_reg2_reg3);
 							}
-							break;
+						}
+						break;
 					}
 					break;
 				case OPC_RH850_FORMAT_X:		//format X instructions
@@ -3266,19 +3266,25 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							gen_special(ctx, rs1, rs2, OPC_RH850_EI);
 							break;
 						case OPC_RH850_EIRET:
+							gen_special(ctx, rs1, rs2, OPC_RH850_EIRET);
 							break;
 						case OPC_RH850_FERET:
+							gen_special(ctx, rs1, rs2, OPC_RH850_FERET);
 							break;
 						case OPC_RH850_HALT:
+							gen_special(ctx, rs1, rs2, OPC_RH850_HALT);
 							break;
 						case OPC_RH850_JARL3:
 							//gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_reg1_reg3);
 							break;
 						case OPC_RH850_SNOOZE:
+							gen_special(ctx, rs1, rs2, OPC_RH850_SNOOZE);
 							break;
 						case OPC_RH850_SYSCALL:
+							gen_special(ctx, rs1, rs2, OPC_RH850_SYSCALL);
 							break;
 						case OPC_RH850_TRAP:
+							gen_special(ctx, rs1, rs2, OPC_RH850_TRAP);
 							break;
 						case OPC_RH850_PREF:
 							break;
@@ -3289,7 +3295,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 					}
 					break;
-				case OPC_RH850_MUL_INSTS:		//MUL instructions
+				case OPC_RH850_MUL_INSTS:
 					if (extract32(ctx->opcode, 22, 1) == 0){
 						if (extract32(ctx->opcode, 21, 1) == 0){
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SASF_cccc_reg2);
@@ -3311,7 +3317,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					}
 					break;
 
-				case OPC_RH850_FORMAT_XI:					// DIV instructions in format XI
+				case OPC_RH850_FORMAT_XI:			// DIV instructions in format XI
 					formXop = extract32(ctx->opcode, 16, 7);
 					switch(formXop){
 
@@ -3341,9 +3347,9 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					}
 					break;
 
-				case OPC_RH850_FORMAT_XII:	// 0110 //format XII instructions
-									//excluding MUL and including CMOV
-									// add LDL.W and STC.W!!!
+				case OPC_RH850_FORMAT_XII:	// for opcode = 0110 ; format XII instructions
+											//excluding MUL and including CMOV
+											// add LDL.W and STC.W!!!
 					checkXII = extract32(ctx->opcode, 21, 2);
 
 					switch(checkXII){
@@ -3379,24 +3385,18 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_SCH0R_reg2_reg3:
 							printf("LDL.W is here \n");
 							gen_bit_search(ctx, rs2, OPC_RH850_SCH0R_reg2_reg3);
-
-							//SCH0R
 							break;
 						case OPC_RH850_SCH1R_reg2_reg3:
 							if (extract32(ctx->opcode, 19, 2) == 0x0){
 								gen_bit_search(ctx, rs2, OPC_RH850_SCH1R_reg2_reg3);
-								//SCH1R
 							} else if (extract32(ctx->opcode, 19, 2) == 0x3){
-								//STCW
+								//STC.W
 							}
-
 							break;
 						case OPC_RH850_SCH0L_reg2_reg3:
-							//SCH0L
 							gen_bit_search(ctx, rs2, OPC_RH850_SCH0L_reg2_reg3);
 							break;
 						case OPC_RH850_SCH1L_reg2_reg3:
-							//SCH1L
 							gen_bit_search(ctx, rs2, OPC_RH850_SCH1L_reg2_reg3);
 							break;
 						}
@@ -3413,7 +3413,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 								gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATADD_reg1_reg2_reg3);
 							} else {
 								gen_cond_arith(ctx, rs1, rs2, OPC_RH850_ADF_cccc_reg1_reg2_reg3);
-								// ADF
 							}
 							break;
 						case OPC_RH850_SBF_SATSUB:
@@ -3426,11 +3425,9 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 						case OPC_RH850_MAC_reg1_reg2_reg3_reg4:
 							gen_mul_accumulate(ctx, rs1, rs2, OPC_RH850_MAC_reg1_reg2_reg3_reg4);
-							//MAC
 							break;
 						case OPC_RH850_MACU_reg1_reg2_reg3_reg4:
 							gen_mul_accumulate(ctx, rs1, rs2, OPC_RH850_MACU_reg1_reg2_reg3_reg4);
-							//MACU
 							break;
 					}
 			}
@@ -3477,23 +3474,21 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	uint32_t imm;
 
 	op = MASK_OP_MAJOR(ctx->opcode);
-	rs1 = GET_RS1(ctx->opcode);			// rs1 is at b0-b4;
-	rs2 = GET_RS2(ctx->opcode);			// rs2 is at b11-b15;
+	rs1 = GET_RS1(ctx->opcode);			// rs1 at bits b0-b4;
+	rs2 = GET_RS2(ctx->opcode);			// rs2 at bits b11-b15;
 	imm = rs1;
 
-	if((op & 0xf << 7) == OPC_RH850_BCOND ){
+	if((op & 0xf << 7) == OPC_RH850_BCOND ){ // checking for 4 bit opcode for BCOND
 		cond = extract32(ctx->opcode, 0, 4);
 		imm = ( extract32(ctx->opcode, 4, 3) | (extract32(ctx->opcode, 11, 5) << 3)) << 1 ;
 
 		if ( (imm & 0x100) == 0x100){
 			imm |=  (0x7fffff << 9);
 		}
-
 		gen_branch(env, ctx, cond, rs1, rs2, imm);
 
 		return;
 	}
-
 
 	switch(op){
 	case OPC_RH850_16bit_0:
@@ -3521,15 +3516,14 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		if (rs2 == 0){
 			if (rs1 == 0){
 				gen_special(ctx, rs1, rs2, OPC_RH850_RIE);
-				//RIE format 1
 				break;
 			} else {
-				//SWITCH
+				gen_special(ctx, rs1, rs2, OPC_RH850_SWITCH_reg1);
 				break;
 			}
 		} else {
 			if (rs1 == 0){
-				//FETRAP
+				gen_special(ctx, rs1, rs2, OPC_RH850_FETRAP_vector4);
 				break;
 			} else {
 				gen_divide(ctx, rs1, rs2, OPC_RH850_DIVH_reg1_reg2);
@@ -3537,33 +3531,19 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			}
 		}
 		break;
-	case OPC_RH850_BCOND: //BCOND disp9
-
-		printf(" this is NOT COOL \n");
-		cond = extract32(ctx->opcode, 0, 4);
-		imm = (extract32(ctx->opcode, 4, 3) || ( extract32(ctx->opcode, 11, 5) << 3)) << 1;
-		if ( (imm & 0x100) == 0x100){
-			imm |=  (0x7fffff << 9);
-		}
-
-		gen_branch(env, ctx, cond, rs1, rs2, imm);
-
-		//gen_branch(ctx, 0, rs1, rs2, 1);
-		break;
 
 	case OPC_RH850_16bit_4:
 		if (rs2 == 0){
 			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_ZXB_reg1);
 			break;
 		} else {
-			//SATSUBR (calling SATSUB reg1, reg2 but with switched registers)
+			//SATSUBR (using SATSUB with switched registers)
 			gen_sat_op(ctx, rs2, rs1, OPC_RH850_SATSUB_reg1_reg2);
 			break;
 		}
 		break;
 	case OPC_RH850_16bit_5:
 		if (rs2 == 0){
-			//SXB
 			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SXB_reg1);
 			break;
 		} else {
@@ -3585,7 +3565,6 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SXH_reg1);
 			break;
 		} else {
-			//MULH
 			gen_multiply(ctx, rs1, rs2, OPC_RH850_MULH_reg1_reg2);
 			break;
 		}
@@ -3636,10 +3615,9 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_16:
 		if (rs2 == 0){
 			gen_special(ctx, rs1, rs2, OPC_RH850_CALLT_imm6);
-			//CALLT
 			break;
 		} else {
-			gen_arithmetic(ctx, imm, rs2, OPC_RH850_MOV_imm5_reg2);	//MOV format II
+			gen_arithmetic(ctx, imm, rs2, OPC_RH850_MOV_imm5_reg2);
 			break;
 		}
 		break;
@@ -3653,7 +3631,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		}
 		break;
 	case OPC_RH850_ADD_imm5_reg2:
-		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_ADD_imm5_reg2);	//add format II
+		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_ADD_imm5_reg2);
 		break;
 	case OPC_RH850_CMP_imm5_reg2:
 		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_CMP_imm5_reg2);
@@ -3672,7 +3650,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	}
 
-	//Format IV code bits 7-10
+	//Format IV ; dividing on code bits b7-b10
 	uint32_t opIV = op>>2;
 
 	switch(opIV){
@@ -3699,16 +3677,6 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		printf("sst.h \n");
 		break;
 	}
-
-
-/*
-	if (extract32(op,7,4)==6){
-		printf("sld.b \n");
-	}
-	if (extract32(op,7,4)==7){
-		printf("sst.b \n");
-	}
-*/
 }
 
 void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
@@ -3723,7 +3691,6 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     next_page_start = (pc_start & TARGET_PAGE_MASK) + TARGET_PAGE_SIZE;
     ctx.pc = pc_start;
 
-    //tcg_gen_movi_i32(cpu_sysRegs[4], 0x0);
 
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
@@ -3749,7 +3716,6 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     while (ctx.bstate == BS_NONE) {
         tcg_gen_insn_start(ctx.pc);
         num_insns++;
-        //gen_reset_flags(&ctx);		//function that resets flags in ctx
 
         if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))) {
             tcg_gen_movi_tl(cpu_pc, ctx.pc);
@@ -3771,10 +3737,10 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
         if ((extract32(ctx.opcode, 9, 2) != 0x3) && (extract32(ctx.opcode, 5, 11) != 0x17)){
 			ctx.next_pc = ctx.pc + 2;		//16 bit instructions
-			decode_RH850_16(env, &ctx);		//be careful about JR and JARL (32-bit FORMAT VI)
+			decode_RH850_16(env, &ctx);		//this function includes JR and JARL (32-bit FORMAT VI)
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
-        	if ( (extract32(ctx.opcode, 6, 11) == 0x41e) ||	//bits are 10000011110
+        	if ( (extract32(ctx.opcode, 6, 11) == 0x41e) ||	// 48 bit instructions
 			(extract32(ctx.opcode, 5, 11) == 0x31) ||	// MOVE3
 			(extract32(ctx.opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
 			(extract32(ctx.opcode, 5, 11) == 0x17) ) { //this is for 48bit JARL and JR (format VI)
