@@ -947,8 +947,8 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			}
 			tcg_gen_movi_i32(tcg_imm, imm);
 			tcg_gen_ext8s_i32(tcg_imm, tcg_imm);
-			tcg_gen_add_tl(r2, r2, tcg_imm);
-			gen_set_gpr(rs2, r2);
+			tcg_gen_add_tl(tcg_result, r2, tcg_imm);
+			gen_set_gpr(rs2, tcg_result);
 
 			gen_add_CC(r2, tcg_imm);
 
