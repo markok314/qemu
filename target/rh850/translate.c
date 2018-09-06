@@ -1114,7 +1114,6 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			gen_get_gpr(r3_local,int_rs3);
 
 			condResult = condition_satisfied(int_cond);
-			gen_set_gpr(15, condResult);
 			cont = gen_new_label();
 			addToR2 = gen_new_label();
 
