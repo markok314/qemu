@@ -406,8 +406,8 @@ static void gen_adf_second_CC(TCGv_i32 t0, TCGv_i32 t1)
 	gen_set_label(end);
 
 	tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x0, keepOVF);
-	tcg_gen_mov_i32(cpu_OVF, OV_flag);
-
+	//tcg_gen_mov_i32(cpu_OVF, OV_flag);
+	tcg_gen_xor_i32(cpu_OVF, cpu_OVF, OV_flag);
 	gen_set_label(keepOVF);
 	tcg_gen_brcondi_i32(TCG_COND_NE, cpu_CYF, 0x0, keepCYF);
 	tcg_gen_mov_i32(cpu_CYF, CY_flag);
