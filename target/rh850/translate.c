@@ -1085,7 +1085,6 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)	/
 			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
 			tcg_gen_addi_tl(r2_local, r2_local, 0x1);
 
-
 			gen_set_label(cont);
 			tcg_gen_add_tl(r3_local, r2_local, r1_local);
 			gen_add_CC(r1_local, r2_local);
@@ -1653,8 +1652,8 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 			break;
 
 		case OPC_RH850_XOR_reg1_reg2:
-			tcg_gen_xor_tl(r2, r2, r1);
-			gen_set_gpr(rs2, r2);
+			tcg_gen_xor_i32(result, r2, r1);
+			gen_set_gpr(rs2, result);
 			gen_logic_CC(result);
 			break;
 
@@ -1663,8 +1662,8 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 			tcg_gen_movi_i32(tcg_imm, imm_32);
 			tcg_gen_ext16u_i32(tcg_imm,tcg_imm);
 
-			tcg_gen_xor_i32(r2, r1, tcg_imm);
-			gen_set_gpr(rs2, r2);
+			tcg_gen_xor_i32(result, r1, tcg_imm);
+			gen_set_gpr(rs2, result);
 			gen_logic_CC(result);
 			break;
 	}
@@ -1672,6 +1671,7 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 	tcg_temp_free(r1);
 	tcg_temp_free(r2);
 	tcg_temp_free(tcg_imm);
+	tcg_temp_free(result);
 }
 
 static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int operation)	// completed
