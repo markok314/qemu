@@ -3452,7 +3452,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
 						case OPC_RH850_SCH0R_reg2_reg3:
-							printf("LDL.W is here \n");
+							//printf("LDL.W is here \n");
 							gen_bit_search(ctx, rs2, OPC_RH850_SCH0R_reg2_reg3);
 							break;
 						case OPC_RH850_SCH1R_reg2_reg3:
