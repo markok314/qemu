@@ -1799,8 +1799,9 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(tcg_r3,int_rs3);
+			//gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_mov_tl(tcg_temp2, tcg_r2);
+			tcg_gen_movi_i32(tcg_r3, 0x0);
 
 			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0xff000000);
 			tcg_gen_shri_tl(tcg_temp, tcg_temp, 0x8);
