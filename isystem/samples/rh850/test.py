@@ -96,6 +96,10 @@ for file in glob.glob("*.s"):
                             # CHECKING JUST LAST 4 BITS OF PSW REG
                             print("ERROR" + line1[:-1] +" "+ line2[:-1])
                             isOkay = False
+                        elif ((int(line1[-3]) % 2) != (int(line2[-3]) % 2)):
+			    #CHECKING SAT FLAG
+                            print("ERROR" + line1[:-1] +" "+ line2[:-1])
+                            isOkay = False
                 else:
                     #PC AND OTHER GPR
                     if line1.split(': ')[1] != line2.split('x')[1]:
