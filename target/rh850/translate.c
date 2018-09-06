@@ -402,7 +402,7 @@ static void gen_sub_CC(TCGv_i32 t0, TCGv_i32 t1)
     TCGv_i32 tmp;
     tcg_gen_sub_tl(cpu_SF, t0, t1);
     tcg_gen_mov_i32(cpu_ZF, cpu_SF);
-    tcg_gen_setcond_i32(TCG_COND_GEU, cpu_CYF, t1, t0);
+    tcg_gen_setcond_i32(TCG_COND_GTU, cpu_CYF, t1, t0);
     tcg_gen_xor_i32(cpu_OVF, cpu_SF, t0);
     tmp = tcg_temp_new_i32();
     tcg_gen_xor_i32(tmp, t0, t1);
