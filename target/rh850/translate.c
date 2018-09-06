@@ -1808,19 +1808,19 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0xff000000);
 			tcg_gen_shri_tl(tcg_temp, tcg_temp, 0x8);
-			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0x00ff0000);
+			tcg_gen_or_tl(tcg_r3, tcg_r3, tcg_temp);
 
 			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0x00ff0000);
 			tcg_gen_shli_tl(tcg_temp, tcg_temp, 0x8);
-			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0xff000000);
+			tcg_gen_or_tl(tcg_r3, tcg_r3, tcg_temp);
 
 			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0x0000ff00);
 			tcg_gen_shri_tl(tcg_temp, tcg_temp, 0x8);
-			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0x000000ff);
+			tcg_gen_or_tl(tcg_r3, tcg_r3, tcg_temp);
 
 			tcg_gen_andi_tl(tcg_temp, tcg_temp2, 0x000000ff);
 			tcg_gen_shli_tl(tcg_temp, tcg_temp, 0x8);
-			tcg_gen_ori_tl(tcg_r3, tcg_temp, 0x0000ff00);
+			tcg_gen_or_tl(tcg_r3, tcg_r3, tcg_temp);
 
 			gen_set_gpr(int_rs3, tcg_r3);
 
