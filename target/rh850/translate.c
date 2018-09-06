@@ -1831,7 +1831,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
 			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
 
-			tcg_gen_movi_i32(count_local, 0x1);
+			tcg_gen_movi_i32(count_local, 0x0);
 
 			gen_set_label(cont);////
 
@@ -1873,7 +1873,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
 			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
 
-			tcg_gen_movi_i32(count_local, 0x1);
+			tcg_gen_movi_i32(count_local, 0x0);
 
 			gen_set_label(cont);////
 
@@ -1999,7 +1999,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
 			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
 
-			tcg_gen_movi_i32(count_local, 0x1);
+			tcg_gen_movi_i32(count_local, 0x0);
 
 			gen_set_label(cont);////
 

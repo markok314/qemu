@@ -182,7 +182,8 @@ test_data_manipulation.s
 	
 	We used r6 as a temp and did not cleared it before?
 	---------------------------------
-	
+	FIXED (first check was mistakenly already shifted)	
+
 	ERROR IN BSH
 	MOV #1234ff00,R12
 	BSH R12,R2
