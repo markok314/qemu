@@ -47,6 +47,14 @@ void SignExtend(LONG & lDisp, uint8_t n)
 
 jstring Hex(LONG intValue, int numOfDigits)
 {
+	if(intValue<0){
+		intValue = intValue^0xffffffff;
+		intValue += 1;
+
+		intValue = 0xffffffff-intValue;
+		intValue++;
+	}
+
 	int remainder=0;
 	char hexStr[12]="";
 	char outStr[12]="";
@@ -622,7 +630,7 @@ jstring CDisassemblerNEC850::NecGetImm32(const u32 dwImm)
 {
 	jstring strImm;
 	//strImm = "#"+StrF(dwImm);
-	strImm = "#"+Hex(dwImm, 6);
+	strImm = "#"+Hex(dwImm, 8);
 	return strImm;
 }
 
