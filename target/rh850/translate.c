@@ -1618,8 +1618,8 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)		// 
 		case OPC_RH850_ANDI_imm16_reg1_reg2:
 			imm_32 = extract32(ctx->opcode, 16, 16);
 			tcg_gen_movi_tl(tcg_imm, imm_32);
-			tcg_gen_ext16u_tl(tcg_imm, tcg_imm);
-			tcg_gen_and_tl(r2, r1, tcg_imm);
+			tcg_gen_ext16u_i32(tcg_imm, tcg_imm);
+			tcg_gen_and_i32(r2, r1, tcg_imm);
 			gen_set_gpr(rs2, r2);
 			gen_logic_CC(r2);
 			break;
@@ -3134,7 +3134,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	break;
 
 	    case OPC_RH850_ANDI_imm16_reg1_reg2:
-	    	gen_logical(ctx, rs1, rs1, OPC_RH850_ANDI_imm16_reg1_reg2);
+	    	gen_logical(ctx, rs1, rs2, OPC_RH850_ANDI_imm16_reg1_reg2);
 	    	break;
 
 	    case OPC_RH850_MOVEA:
