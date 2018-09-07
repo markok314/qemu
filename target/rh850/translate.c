@@ -953,7 +953,7 @@ static void gen_mul_accumulate(DisasContext *ctx, int rs1, int rs2, int operatio
 			break;
 
 		case OPC_RH850_MACU_reg1_reg2_reg3_reg4:
-			tcg_gen_muls2_i32(resLo, resHi, r1, r2);
+			tcg_gen_mulu2_i32(resLo, resHi, r1, r2);
 			tcg_gen_add2_i32(destLo, destHi, resLo, resHi, addLo, addHi);
 
 			gen_set_gpr(rs4, destLo);
