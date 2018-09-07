@@ -1827,8 +1827,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			cont = gen_new_label();
 			end = gen_new_label();
 			set = gen_new_label();
-
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
+			tcg_gen_andi_i32(temp_local, r3_local, 0x0000ffff);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, temp_local, 0x0);
 			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
 
 			tcg_gen_movi_i32(count_local, 0x0);
@@ -1961,11 +1961,11 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 		case OPC_RH850_HSH_reg2_reg3:
 
 			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_set_gpr(int_rs3, tcg_r1);
+			gen_set_gpr(int_rs3, tcg_r2);
 
-			tcg_gen_shri_i32(cpu_SF, tcg_r1, 0x1f);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r1, 0x0);
-			tcg_gen_andi_i32(tcg_temp, tcg_r1, 0x0000ffff);
+			tcg_gen_shri_i32(cpu_SF, tcg_r2, 0x1f);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
+			tcg_gen_andi_i32(tcg_temp, tcg_r2, 0x0000ffff);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, tcg_temp, 0x0);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 
