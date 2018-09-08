@@ -59,7 +59,7 @@ var3:   .hword   0xcdef
 var4:   .hword   -10
 */
 #-----------------------------------ld.w-----------OK
-
+/*
         ld.w var1[r1], r2
         ld.w var2[r1], r3
         ld.w var3[r1], r4
@@ -69,4 +69,15 @@ var1:   .word   63
 var2:   .word   0x1234
 var3:   .word   0xcdef1111
 var4:   .word   -10
+*/
+#-----------------------------------ld.dw----------- Seems that v850 doesn't have ld.dw
 
+        ld.dw var1[r1], r2
+        ld.dw var2[r1], r3
+        ld.dw var3[r1], r4
+        ld.dw var4[r1], r5
+
+var1:   .quad   63
+var2:   .quad   0x1234
+var3:   .quad   0xcdef1111
+var4:   .quad   -10
