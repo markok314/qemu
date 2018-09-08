@@ -685,13 +685,14 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
 
     gen_get_gpr(t0, rs1);			//loading rs1 to t0
     tcg_gen_movi_i32(tcg_imm, imm);
-    //tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
-    //tcg_gen_add_tl(t0, t0, tcg_imm);	//adding displacement to t0
+    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+    tcg_gen_add_tl(t0, t0, tcg_imm);	//adding displacement to t0
 
     gen_get_gpr(dat, rs2);			//getting data from rs2
     //gen_set_gpr(11, tcg_imm);
     //gen_set_gpr(12, dat);
-    tcg_gen_qemu_st32(dat,tcg_imm,0);
+
+    tcg_gen_qemu_st_tl(dat, t0, ctx->mem_idx, memop);
     //tcg_gen_st32_tl(dat, ctx->mem_idx, 0);
 
     printf("gen_store: memop = %d \n", memop);
@@ -3112,7 +3113,7 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 
 	}
 	if(extract32(ctx->opcode, 5, 11) == 0x31){
-		gen_arithmetic(ctx, 0, rs2, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
+		gen_arithmetic(ctx, GET_IMM(ctx->opcode), rs2, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
@@ -3164,13 +3165,13 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	break;
 
 	    case OPC_RH850_LDH_LDW:		//
-	    	if ( extract32(ctx->opcode, 16, 1) == 0 ){	// LD.H
+	    	if ( extract32(ctx->opcode, 16, 1) == 0 ){
 	    		printf("ldh 32 \n");
-	    		gen_load(ctx, MO_TESW, rs2, rs1, ld_imm);
+	    		gen_load(ctx, MO_TESW, rs2, rs1, ld_imm);	// LD.H
 	    	}
 	    	else{
 	    		printf("ldw 32 \n");
-	    		gen_load(ctx, MO_TESL, rs2, rs1, ld_imm);		// LD.W
+	    		gen_load(ctx, MO_TESL, rs2, rs1, ld_imm & 0xfffe);	// LD.W
 	    	}
 	    	break;
 
@@ -3267,7 +3268,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 				} else {
 					//this is LD.HU
 					printf("ldhu 32 \n");
-					gen_load(ctx, MO_TEUW, rs2, rs1, ld_imm);
+					gen_load(ctx, MO_TEUW, rs2, rs1, ld_imm & 0xfffe);
 					break;
 				}
 			}
@@ -3581,7 +3582,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 			if (extract32(ctx->opcode, 11, 5) != 0){
 				//LD.BU
 				printf("ld.bu \n");
-				gen_load(ctx, MO_TEUW, rs2, rs1, (ld_imm));
+				gen_load(ctx, MO_UB, rs2, rs1, (ld_imm & 0xfffe) | extract32(ctx->opcode, 5, 1) );
+
 			}else{
 				if (extract32(ctx->opcode, 16, 3) == 0x3){
 					//PREPARE2
