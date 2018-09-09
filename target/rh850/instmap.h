@@ -78,7 +78,7 @@ enum {
 	/*FORMAT III */
 	OPC_RH850_BCOND = (0xB << 7), 	// different mask! (bits 10-7)
 
-	/* FORMAT IV */
+	/* FORMAT IV */					// different mask! (bits 10-7)
 	OPC_RH850_16bit_SLDB = (0x6 << 5),
 	OPC_RH850_16bit_SLDH = (0x8 << 5),
 	OPC_RH850_16bit_IV10 = (0xA << 5), 		// group with opcode 0xA (sld.w,sst.w)

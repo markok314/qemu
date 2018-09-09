@@ -3714,9 +3714,11 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			if(extract32(rs1,4,1)==1){
 				//SLD.HU
 				printf("sld.hu \n");
+				gen_load(ctx, MO_TEUW, rs2, 30, extract32(ctx->opcode, 0, 4) << 1);
 			}else{
 				//SLD.BU
 				printf("sld.bu \n");
+				gen_load(ctx, MO_UB, rs2, 30, extract32(ctx->opcode, 0, 4) );
 			}
 			break;
 		}
@@ -3789,9 +3791,11 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	switch(opIV){
 	case OPC_RH850_16bit_SLDB:
 		printf("sld.b \n");
+		gen_load(ctx, MO_SB, rs2, 30, extract32(ctx->opcode, 0, 7) );
 		break;
 	case OPC_RH850_16bit_SLDH:
 		printf("sld.h \n");
+		gen_load(ctx, MO_TESW, rs2, 30, extract32(ctx->opcode, 0, 7) << 1);
 		break;
 	case OPC_RH850_16bit_IV10:
 		if(extract32(rs1,0,1)==1){
@@ -3799,8 +3803,9 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 			printf("sst.w \n");
 		}
 		else{
-			//SLD.H
-			printf("sld.h \n");
+			//SLD.W
+			printf("sld.w \n");
+			gen_load(ctx, MO_TESL, rs2, 30, extract32(ctx->opcode, 1, 6) << 2);
 		}
 		break;
 	case OPC_RH850_16bit_SSTB:
