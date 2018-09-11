@@ -266,7 +266,7 @@ jstring CDisassemblerNEC850::NecGetCondCodeStr(const u32 dwCode)
 		case 0x2: strCode = "Z";  break;
 		case 0x3: strCode = "NH"; break;
 		case 0x4: strCode = "N";  break;
-		case 0x5: strCode = "T";  break;
+		case 0x5: strCode = "R";  break;
 		case 0x6: strCode = "LT"; break;
 		case 0x7: strCode = "LE"; break;
 		case 0x8: strCode = "NV"; break;
