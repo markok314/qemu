@@ -1,3 +1,4 @@
+.include "RH850G3M_insts.s"
 .text
 .include "gpr_init.s"
 
@@ -66,7 +67,28 @@
 
 #----------------------Testing the ROTL instruction-----
 
+	mov 0x80000000, r1
+	mov 0x7fffffff, r2
+	mov 0x00234567, r3
+	mov 0x02345678, r4
+	mov 0x1, r5
+	mov 0xa, r6
+
+	rotl r5, r1, r7		# 0th bit is 1; CY flag is set
+	rotl r5, r2, r8		# S flag is set
+	rotl r0, r1, r9		# S flag is set
+	rotl r0, r2, r10	# 0th bit is 1; CY flag is set
+	rotl r6, r3, r11	# S flag is set
+	rotl r6, r10, r12	# CY and S flags are set
+	rotl r6, r0, r13	# Z flag is set
+	rotl r6, r7, r14	# no flag is set
+
+	# also test the 'rotl imm5, r2, r3' instruction, once it is implemented in RH850G3M_insts.s
+
 #----------------------Testing the SAR instruction-----
+
+
+
 
 #----------------------Testing the SASF instruction-----
 
@@ -77,6 +99,6 @@
 #----------------------Testing the SHR instruction-----
 
 
-
+	ldsr r0, psw
 Lbl: br Lbl
 
