@@ -1,7 +1,8 @@
+
+
 .data
-lbl1: .word 57
-lbl2: .byte 89
-start = 0xfe000000
+lbl1: .word 0x41414141 
+lbl2: .byte 0x30
 
 # implement instructions missing in V850 (added for E3 - RH850) as macros
 .macro LDL_W r1:req, r3:req
@@ -14,15 +15,17 @@ start = 0xfe000000
 .equ R1, 1
 .equ R3, 3
 
+
 .text
 
    # prepare r20, 0
    mov     r6, r20
    movea   0x0014, r0, r7
 
-   # this works as expected
-   mov     start, r1
+   mov     0x44332211, r1
+   mov     hilo(data_start_addr), r1
    movea   lbl2 - .data, r1, r7
+   ld.w    0[r1], r6
 
    movea   lblX, r0, r7 # does not compile correctly with GCC, linker
                         # adds imm16 also to op code: 38 3e 18 00 instead 
@@ -33,3 +36,6 @@ lblX:
    mov     r7, r10
    LDL_W   R1, R3
 
+.bss
+LB_BSS_A: .byte 0x99
+LB_BSS_B: .byte 0x9a

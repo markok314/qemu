@@ -47,6 +47,7 @@ SECTIONS
 
     .data : AT (ADDR(.text) + SIZEOF(.text))
     {
+        data_start_addr = .;
         _sdata = .;
         *(vtable)
         *(.data*)
@@ -64,5 +65,4 @@ SECTIONS
     } > RAM
      
 }
-  
   
