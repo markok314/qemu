@@ -3114,7 +3114,7 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 
 	}
 	if(extract32(ctx->opcode, 5, 11) == 0x31){
-		gen_arithmetic(ctx, GET_IMM(ctx->opcode), rs2, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
+		gen_arithmetic(ctx, 0, rs2, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {

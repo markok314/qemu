@@ -1012,7 +1012,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
       case 0x0200: 
         {
           SET_STR(bQD, Instruction, "SASF"); SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 0, 4)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16))); 
-          if (0x5 != NecExtractBits(dwInst, 0, 4))
+          //if (0x5 != NecExtractBits(dwInst, 0, 4))
             //FlagConditional();
           return 4; // SASF
         }
@@ -1020,7 +1020,7 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
         {
           SET_STR(bQD, Instruction, "SETF"); 
           SET_STR(bQD, Operand, NecGetCondCodeStr(NecExtractBits(dwInst, 0, 4)) + "," + NecGetReg(NecExtractBits(dwInst, 11, 16))); 
-          if (0x5 != NecExtractBits(dwInst, 0, 4))
+          //if (0x5 != NecExtractBits(dwInst, 0, 4))
             //FlagConditional();
           return 4; // SETF
         }
