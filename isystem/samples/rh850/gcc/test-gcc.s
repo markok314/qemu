@@ -21,6 +21,11 @@ lbl2: .byte 0x30
    mov     0x44332211, r2
    mov     hilo(data_start_addr), r1
    st.w    r2, 0[r1]
+
+   mov     0xcafe, r5
+   mov     hilo(SELF), r6
+   jmp     r6
+   mov     0xbabe, r5
 SELF:
    br      SELF
 

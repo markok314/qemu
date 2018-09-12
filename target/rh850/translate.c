@@ -142,22 +142,6 @@ static void generate_exception(DisasContext *ctx, int excp)
 
 */
 
-static void generate_exception_mbadaddr(DisasContext *ctx, int excp)
-{
-    tcg_gen_movi_tl(cpu_pc, ctx->pc);
-    tcg_gen_st_tl(cpu_pc, cpu_env, offsetof(CPURH850State, badaddr));
-    TCGv_i32 helper_tmp = tcg_const_i32(excp);
-    gen_helper_raise_exception(cpu_env, helper_tmp);
-    tcg_temp_free_i32(helper_tmp);
-    ctx->bstate = BS_BRANCH;
-}
-
-static void gen_exception_inst_addr_mis(DisasContext *ctx)
-{
-    generate_exception_mbadaddr(ctx, 0xc0);
-}
-
-
 
 static void gen_exception_debug(void)
 {
@@ -2902,42 +2886,30 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
     condTest = condition_satisfied(cond);
     tcg_gen_movi_i32(condOK, 0x1);
 
-
     tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
-
 
     gen_goto_tb(ctx, 1, ctx->next_pc);
     gen_set_label(l); /* branch taken */
-    if (!rh850_has_ext(env, 4) && ((ctx->pc + bimm) & 0x3)) {
-
-        /* misaligned */
-    	printf("Address was misaligned! (PC is %x) \n  This is first if cond: %x \n ", ctx->pc + bimm, rh850_has_ext(env, 2));
-        gen_exception_inst_addr_mis(ctx);
-    } else {
-    	printf("This is the new PC: %x \n  This is first if cond: %x \n", (ctx->pc+bimm), rh850_has_ext(env, 2));
-    	gen_goto_tb(ctx, 0, ctx->pc + bimm);
-
-    }
+ 	printf("This is the new PC: %x \n  This is first if cond: %x \n", (ctx->pc+bimm), rh850_has_ext(env, 2));
+   	gen_goto_tb(ctx, 0, ctx->pc + bimm);
     ctx->bstate = BS_BRANCH;
 }
 
 //this function is only for testing, it can be deleted
-static void gen_jmp(DisasContext *ctx, int rs1, int rs2, int operation){
+static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32){
 
-	TCGv dest = tcg_temp_new();
-	gen_get_gpr(dest, rs1);
+	TCGv dest_addr = tcg_temp_new();
+	gen_get_gpr(dest_addr, rs1);
 
-	switch(operation){
-	case 0:
-
-		//tcg_gen_mov_i32(cpu_pc, dest);
-		//ctx->next_pc = ctx->pc + 6;
-
-		//gen_goto_tb(ctx, 0, dest);
-
-		break;
+	if (disp32) {
+		tcg_gen_addi_tl(dest_addr, dest_addr, disp32);
 	}
 
+	tcg_gen_mov_i32(cpu_pc, dest_addr);
+	// ctx->next_pc can't be set here, the value is known only at runtime
+	// It will be set when new translation block compilation starts.
+	tcg_gen_exit_tb(0); // AFAIK this exits native code and returns to QEMU
+	                    // execution control loop
 };
 
 //static void gen_loop(DisasContext *ctx, int rs1, int rs2, int operation){}
@@ -3606,6 +3578,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	uint32_t op;
 	uint32_t subOpCheck;
 	uint32_t imm;
+	uint32_t disp32 = 0;
 
 	op = MASK_OP_MAJOR(ctx->opcode);
 	rs1 = GET_RS1(ctx->opcode);			// rs1 at bits b0-b4;
@@ -3705,10 +3678,13 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_NOT_reg1_reg2:
 		gen_logical(ctx, rs1, rs2, OPC_RH850_NOT_reg1_reg2);
 		break;
+		// decode properly (handle also case when rs2 != 0), then uncomment
+//	case OPC_RH850_JMP_DISP:
+		// JMP opcode: DDDD DDDD DDDD DDDD dddd dddd dddd ddd0 0000 0110 111R RRRR
+//		disp32 = ctx->opcode >> 16;
 	case OPC_RH850_16bit_3:
-		if (rs2 == 0){
-			gen_jmp(ctx, rs1, rs2, 0);
-			//JMP
+		if (rs2 == 0) {  			// JMP
+			gen_jmp(ctx, rs1, disp32);
 			break;
 		} else {
 			if(extract32(rs1,4,1)==1){
