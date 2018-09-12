@@ -18,11 +18,16 @@ lbl2: .byte 0x30
 
 .text
 
+   mov     0x44332211, r2
+   mov     hilo(data_start_addr), r1
+   st.w    r2, 0[r1]
+SELF:
+   br      SELF
+
    # prepare r20, 0
    mov     r6, r20
    movea   0x0014, r0, r7
 
-   mov     0x44332211, r1
    mov     hilo(data_start_addr), r1
    movea   lbl2 - .data, r1, r7
    ld.w    0[r1], r6
