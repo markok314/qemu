@@ -1,7 +1,7 @@
 /*
  * RH850 emulation for qemu: main translation routines.
  *
- * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
+ * Copyright (c) 2018 iSYSTEM Labs d.o.o.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -68,24 +68,30 @@ enum{
 
 #include "exec/gen-icount.h"
 
+/** Const, RH850 does not have MMU. */
+const int MEM_IDX = 0;
+
+/**
+ * This structure contains data, which is needed to translate a
+ * sequence of instructions, usually  inside one translation
+ * block. The most important member is therefore 'pc', which
+ * points to the instruction to be translated. This variable stores
+ * PC during compile time (guest instructions to TCG instructions).
+ * We must increment this variable manually during translation
+ * according to instruction size.
+ * Note: Consider renaming to TranslationContext, instead of DisasContext,
+ * because it contains information for translation, not disassembler.
+ */
 typedef struct DisasContext {
     struct TranslationBlock *tb;
-    target_ulong pc;
-    target_ulong next_pc;
+    target_ulong pc;  // pointer to instruction being translated, use
+    target_ulong next_pc; // pointer to next instruction
     uint32_t opcode;
-    uint32_t opcode1;
+    uint32_t opcode1;  // used for 48 bit instructions
     uint32_t flags;
-    uint32_t mem_idx;
-
 
     int singlestep_enabled;
     int bstate;
-    /* Remember the rounding mode encoded in the previous fp instruction,
-       which we have already installed into env->fp_status.  Or -1 for
-       no previous fp instruction.  Note 32that we exit the TB when writing
-       to any system register, which includes CSR_FRM, so we do not have
-       to reset this known value.  */
-    int frm;
 } DisasContext;
 
 enum {
@@ -156,34 +162,16 @@ static void gen_exception_illegal(DisasContext *ctx)
 }
 */
 
-static inline bool use_goto_tb(DisasContext *ctx, target_ulong dest)
-{
-    if (unlikely(ctx->singlestep_enabled)) {
-        //return false;
-    	return true; // set true for testing purposes
-    }
-
-#ifndef CONFIG_USER_ONLY
-    return (ctx->tb->pc & TARGET_PAGE_MASK) == (dest & TARGET_PAGE_MASK);
-#else
-    return true;
-#endif
-}
 
 static void gen_goto_tb(DisasContext *ctx, int n, target_ulong dest)
 {
-    if (use_goto_tb(ctx, dest)) {
-        /* chaining is only allowed when the jump is to the same page */
+    if (unlikely(ctx->singlestep_enabled)) {
+        tcg_gen_movi_tl(cpu_pc, dest);
+        gen_exception_debug();
+    } else {
         tcg_gen_goto_tb(n);
         tcg_gen_movi_tl(cpu_pc, dest);
         tcg_gen_exit_tb((uintptr_t)ctx->tb + n);
-    } else {
-        tcg_gen_movi_tl(cpu_pc, dest);
-        if (ctx->singlestep_enabled) {
-            gen_exception_debug();
-        } else {
-            tcg_gen_exit_tb(0);
-        }
     }
 }
 
@@ -643,7 +631,7 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
 
     ///tcg_gen_addi_tl(t0, t0, imm);
 
-    tcg_gen_qemu_ld_tl(t1, t0, ctx->mem_idx, memop);
+    tcg_gen_qemu_ld_tl(t1, t0, MEM_IDX, memop);
 
     //tcg_gen_qemu_ld_tl(t1, tcg_imm, 0, MO_TESW);
     //tcg_gen_qemu_ld32u(t1, tcg_imm, 0);
@@ -676,7 +664,7 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     //gen_set_gpr(11, tcg_imm);
     //gen_set_gpr(12, dat);
 
-    tcg_gen_qemu_st_tl(dat, t0, ctx->mem_idx, memop);
+    tcg_gen_qemu_st_tl(dat, t0, MEM_IDX, memop);
     //tcg_gen_st32_tl(dat, ctx->mem_idx, 0);
 
     printf("gen_store: memop = %d \n", memop);
@@ -2888,10 +2876,10 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
 
     tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
 
-    gen_goto_tb(ctx, 1, ctx->next_pc);
+    gen_goto_tb(ctx, 1, ctx->next_pc); // no jump, continue with next instr.
     gen_set_label(l); /* branch taken */
  	printf("This is the new PC: %x \n  This is first if cond: %x \n", (ctx->pc+bimm), rh850_has_ext(env, 2));
-   	gen_goto_tb(ctx, 0, ctx->pc + bimm);
+   	gen_goto_tb(ctx, 0, ctx->pc + bimm);  // jump
     ctx->bstate = BS_BRANCH;
 }
 
@@ -3793,6 +3781,14 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	}
 }
 
+/**
+ * This function translates one translation block (translation block
+ * is a sequence of instructions without jumps). Translation block
+ * is the longest translated sequence of instructions. The sequence
+ * may be shorter, if we are in singlestep mode (1 instruction), if
+ * breakpoint is detected, ... - see if statements, which break
+ * while loop below.
+ */
 void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 {
     CPURH850State *env = cs->env_ptr;
@@ -3814,8 +3810,6 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     ctx.tb = tb;
     ctx.bstate = BS_NONE;
     ctx.flags = tb->flags;
-    ctx.mem_idx = 0;
-    ctx.frm = -1;  /* unknown rounding mode */
 
     num_insns = 0;
     max_insns = tb->cflags & CF_COUNT_MASK;
