@@ -207,3 +207,6 @@ trace-dtrace-root.dtrace
 trace-ust-all.h
 trace-ust-all.c
 /build/
+/roms/seabios/*
+/roms/vgabios/*
+
