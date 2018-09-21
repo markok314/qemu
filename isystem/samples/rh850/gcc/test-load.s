@@ -146,7 +146,7 @@ var4:   .hword   -10
 */
 
 #-----------------------------------sld.w--------- OK
-
+/*
 		mov r1, r30
 
         sld.w var1[r30], r2
@@ -159,3 +159,5 @@ var1:   .word   63
 var2:   .word   0x1234
 var3:   .word   0xabcdef
 var4:   .word   -10
+*/
+

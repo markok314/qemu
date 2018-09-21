@@ -3052,38 +3052,42 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
 	//uint32_t op;
 	//int sub_opcode;
-	int rs2;
+	int rs1, rs3;
 	uint64_t opcode48;
 
 	//op = MASK_OP_MAJOR(ctx->opcode);	// opcode is at b5-b10
 	//sub_opcode = GET_RS2(ctx->opcode);
-	rs2 = GET_RS1(ctx->opcode);
+	rs1 = GET_RS1(ctx->opcode);
+	rs3 = extract32(ctx->opcode, 27, 5);
 
 	opcode48 = (ctx->opcode1);
 	opcode48 = (ctx->opcode) | (opcode48  << 0x20);
 	uint32_t opcode20 = extract32(opcode48,0,20) & 0xfffe0;
 
-	switch(opcode20){
+	uint32_t disp23 = (ctx->opcode1 << 7) | (extract32(ctx->opcode, 21, 6) << 1);
+
+	switch(opcode20) {
 		case OPC_RH850_LDDW:
 			printf("ld.dw \n");
-	        gen_load(ctx, MO_TEQ, rs2, extract32(ctx->opcode, 27, 5), (ctx->opcode1 << 7) | (extract32(ctx->opcode, 21, 6) << 6));
+	        gen_load(ctx, MO_TEQ, rs1, rs3, disp23);
 			break;
 		case OPC_RH850_STDW:
 			printf("st.dw \n");
+	    	gen_store(ctx, MO_TEQ, rs1, rs3, disp23);
 		break;
-
 	}
-	if(extract32(ctx->opcode, 5, 11) == 0x31){
-		gen_arithmetic(ctx, 0, rs2, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
+
+	if (extract32(ctx->opcode, 5, 11) == 0x31) {
+		gen_arithmetic(ctx, 0, rs1, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
 		// this is JMP2 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
-		if (rs2 == 0x0){
-			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JR_imm32); change this to call
+		if (rs1 == 0x0){
+			//gen_branch(ctx, 0, 0, rs1, OPC_RH850_JR_imm32); change this to call
 			// this is JR2 (48bit inst)
 
 		} else {
-			//gen_branch(ctx, 0, 0, rs2, OPC_RH850_JARL_disp32_reg1); change this call
+			//gen_branch(ctx, 0, 0, rs1, OPC_RH850_JARL_disp32_reg1); change this call
 			// this is JARL2 (48bit inst)
 		}
 	}
@@ -3121,34 +3125,34 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	switch(op){
 
 		case OPC_RH850_LDB:			// LD.B
-			printf("ldb 32 \n");
+			printf("ld.b 32 \n");
 	        gen_load(ctx, MO_SB, rs2, rs1, ld_imm);
 	    	break;
 
 	    case OPC_RH850_LDH_LDW:		//
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 ){
-	    		printf("ldh 32 \n");
+	    		printf("ld.h 32 \n");
 	    		gen_load(ctx, MO_TESW, rs2, rs1, ld_imm);	// LD.H
 	    	}
 	    	else{
-	    		printf("ldw 32 \n");
+	    		printf("ld.w 32 \n");
 	    		gen_load(ctx, MO_TESL, rs2, rs1, ld_imm & 0xfffe);	// LD.W
 	    	}
 	    	break;
 
 	    case OPC_RH850_STB:			//this opcode is unique
-	    	printf("stb 32\n");
+	    	printf("st.b 32\n");
 	    	gen_store(ctx, MO_SB, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
 	    	break;
 
 	    case OPC_RH850_STH_STW:		//only two instructions share this opcode
 	    	if ( extract32(ctx->opcode, 16, 1)==1 ) {
-	    		printf("stw 32\n");
+	    		printf("st.w 32\n");
 	    		gen_store(ctx, MO_TESL, rs1, rs2, ((extract32(ctx->opcode, 17, 15)))<<1);
 	    		//this is STORE WORD
 	    		break;
 	    	}
-	    	printf("sth 32\n");
+	    	printf("st.h 32\n");
 	    	gen_store(ctx, MO_TESW, rs1, rs2, ((extract32(ctx->opcode, 17, 15)))<<1);
 	    	//this is STORE HALFWORD
 	    	break;
@@ -3762,9 +3766,11 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		gen_load(ctx, MO_TESW, rs2, 30, extract32(ctx->opcode, 0, 7) << 1);
 		break;
 	case OPC_RH850_16bit_IV10:
-		if(extract32(rs1,0,1)==1){
+		if ( extract32(rs1,0,1) == 1 ) {
 			//SST.W
 			printf("sst.w \n");
+	    	gen_store(ctx, MO_TEUL, 30, rs2, (extract32(ctx->opcode, 1, 6)) << 2 );
+			/// Note An MAE or MDP exception might occur depending on the result of address calculation.
 		}
 		else{
 			//SLD.W
@@ -3774,9 +3780,13 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_SSTB:
 		printf("sst.b \n");
+    	gen_store(ctx, MO_UB, 30, rs2, (extract32(ctx->opcode, 0, 7)));
+    	/// Note An MDP exception might occur depending on the result of address calculation.
 		break;
 	case OPC_RH850_16bit_SSTH:
 		printf("sst.h \n");
+    	gen_store(ctx, MO_TEUW, 30, rs2, (extract32(ctx->opcode, 0, 7)) << 1 );
+    	/// Note An MAE or MDP exception might occur depending on the result of address calculation.
 		break;
 	}
 }
