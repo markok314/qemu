@@ -3754,7 +3754,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	}
 
 	//Format IV ; dividing on code bits b7-b10
-	uint32_t opIV = op>>2;
+	uint32_t opIV = (op >> 7);
+	opIV = opIV << 5;
 
 	switch(opIV){
 	case OPC_RH850_16bit_SLDB:
