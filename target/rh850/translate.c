@@ -2883,11 +2883,35 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
     ctx->bstate = BS_BRANCH;
 }
 
-//this function is only for testing, it can be deleted
-static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32){
+static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation ){
 
+	int rs2, rs3;
+	TCGv link_addr = tcg_temp_new();
 	TCGv dest_addr = tcg_temp_new();
 	gen_get_gpr(dest_addr, rs1);
+
+	switch(operation){
+	case OPC_RH850_JR_imm22:
+	case OPC_RH850_JR_imm32:
+		tcg_gen_mov_i32(dest_addr, cpu_pc);
+		break;
+	case OPC_RH850_JARL_disp22_reg2:
+		tcg_gen_mov_i32(dest_addr, cpu_pc);
+		rs2 = extract32(ctx->opcode, 11, 5);
+		tcg_gen_addi_i32(link_addr, cpu_pc, 0x4);
+		gen_set_gpr(rs2, link_addr);
+		break;
+	case OPC_RH850_JARL_disp32_reg1:
+		tcg_gen_mov_i32(dest_addr, cpu_pc);
+		tcg_gen_addi_i32(link_addr, cpu_pc, 0x6);
+		gen_set_gpr(rs1, link_addr);
+		break;
+	case OPC_RH850_JARL_reg1_reg3:
+		rs3 = extract32(ctx->opcode, 27, 5);
+		tcg_gen_addi_i32(link_addr, cpu_pc, 0x4);
+		gen_set_gpr(rs3, link_addr);
+		break;
+	}
 
 	if (disp32) {
 		tcg_gen_addi_tl(dest_addr, dest_addr, disp32);
@@ -3065,6 +3089,7 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 	uint32_t opcode20 = extract32(opcode48,0,20) & 0xfffe0;
 
 	uint32_t disp23 = (ctx->opcode1 << 7) | (extract32(ctx->opcode, 21, 6) << 1);
+	uint32_t disp32 = (opcode48 >> 16);
 
 	switch(opcode20) {
 		case OPC_RH850_LDDW:
@@ -3080,15 +3105,13 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 	if (extract32(ctx->opcode, 5, 11) == 0x31) {
 		gen_arithmetic(ctx, 0, rs1, OPC_RH850_MOV_imm32_reg1);		// this is MOV3 (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 12) == 0x37) {
-		// this is JMP2 (48bit inst)
+		gen_jmp(ctx, rs1, disp32, OPC_RH850_JMP_disp32_reg1);									// this is JMP disp32[reg1] (48bit inst)
 	} else if (extract32(ctx->opcode, 5, 11) == 0x17) {
 		if (rs1 == 0x0){
-			//gen_branch(ctx, 0, 0, rs1, OPC_RH850_JR_imm32); change this to call
-			// this is JR2 (48bit inst)
+			gen_jmp(ctx, 0, disp32, OPC_RH850_JR_imm32);			// this is JR disp32 (48bit inst)
 
 		} else {
-			//gen_branch(ctx, 0, 0, rs1, OPC_RH850_JARL_disp32_reg1); change this call
-			// this is JARL2 (48bit inst)
+			gen_jmp(ctx, rs1, disp32, OPC_RH850_JARL_disp32_reg1);	// this is JARL disp32 reg1 (48bit inst)
 		}
 	}
 }
@@ -3372,7 +3395,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							gen_special(ctx, rs1, rs2, OPC_RH850_HALT);
 							break;
 						case OPC_RH850_JARL3:
-							//gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_reg1_reg3);
+							gen_jmp(ctx, rs1, 0, OPC_RH850_JARL_reg1_reg3);
+
 							break;
 						case OPC_RH850_SNOOZE:
 							gen_special(ctx, rs1, rs2, OPC_RH850_SNOOZE);
@@ -3533,13 +3557,15 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	if (MASK_OP_FORMAT_V_FORMAT_XIII(ctx->opcode) == OPC_RH850_FORMAT_V_XIII){
 
 		if(extract32(ctx->opcode, 16, 1) == 0){
+		    uint32_t disp22 = extract32(ctx->opcode, 16, 16) | (extract32(ctx->opcode, 0, 6) << 16 );
+		    if( (disp22 & 0x200000) == 0x200000){
+		    	disp22 = disp22 | (0x3ff << 22);
+		    }
 
 			if (extract32(ctx->opcode, 11, 5) == 0){
-				//gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JR_imm22);
-				//JR
+				gen_jmp(ctx, 0, disp22, OPC_RH850_JR_imm22);	//JR disp22
 			} else {
-				//gen_branch(ctx, 0, rs1, rs2, OPC_RH850_JARL_disp22_reg2);
-				//JARL1
+				gen_jmp(ctx, 0, disp22, OPC_RH850_JARL_disp22_reg2);
 
 
 			}
@@ -3674,9 +3700,13 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 //	case OPC_RH850_JMP_DISP:
 		// JMP opcode: DDDD DDDD DDDD DDDD dddd dddd dddd ddd0 0000 0110 111R RRRR
 //		disp32 = ctx->opcode >> 16;
+
+
+		// this case is already handled in decode_RH850_48()
+
 	case OPC_RH850_16bit_3:
 		if (rs2 == 0) {  			// JMP
-			gen_jmp(ctx, rs1, disp32);
+			gen_jmp(ctx, rs1, disp32, OPC_RH850_JMP_reg1);
 			break;
 		} else {
 			if(extract32(rs1,4,1)==1){

@@ -1,5 +1,7 @@
 .data
+
 # implement instructions missing in V850 (added for E3 - RH850) as macros
+
 .macro LDL_W r1:req, r3:req
     .byte 0xe0 | \r1
     .byte 0x07
@@ -7,33 +9,34 @@
     .byte 0x03 | (\r3 << 3)
 .endm
 
-# how to add rotl imm5, r2, r3 ?
-
-
-.macro ROTL r1:req, r2:req, r3:req
-    .byte 0xe0 | \r1
-    .byte 0x07 | (\r2 << 3)
-    .byte 0xc6
-    .byte 0x0 | (\r3 << 3)
-.endm
-
-/*
-.macro LD_DW disp23:req, r1:req, r3:req
-    .byte 0xa0 | \r1
-    .byte 0x07
-    .byte 0x09 | ((\disp23 & 0xe) << 4)
-    .byte 0x0  | ((\disp23 & 0x70) >> 4) | (\r3 << 3)
-    .byte 0x0  | ((\disp23 & 0x7f80) >> 7)
-    .byte 0x0  | ((\disp23 >> 15) & 0xff)
-.endm
-*/
-
 .macro LD_DW disp23:req, r1:req, r3:req
     .byte 0xa0 | \r1
     .byte 0x07
    	.hword lo((\disp23 & 0x7e) << 4) | 0x09 | (\r3 << 11)
    	.hword lo(\disp23 >> 7)
 .endm
+
+.macro ROTL_r r1:req, r2:req, r3:req
+    .byte 0xe0 | \r1
+    .byte 0x07 | (\r2 << 3)
+    .byte 0xc6
+    .byte 0x0 | (\r3 << 3)
+.endm
+
+.macro ROTL_i p:req, r2:req, r3:req
+    .byte 0xe0 | \p
+    .byte 0x07 | (\r2 << 3)
+    .byte 0xc4
+    .byte 0x0 | (\r3 << 3)
+.endm
+
+.macro JARL r1:req, r3:req
+    .byte 0xe0 | \r1
+    .byte 0xc7
+    .byte 0x60
+    .byte 0x01 | (\r3 << 3)
+.endm
+
 
 
 .equ R0, 0
@@ -51,19 +54,12 @@
 .equ R12, 12
 .equ R13, 13
 .equ R14, 14
+.equ R15, 15
+.equ R16, 16
+.equ R17, 17
+.equ R18, 18
+.equ R19, 19
+.equ R20, 20
 
-.equ r0, 0
-.equ r1, 1
-.equ r2, 2
-.equ r3, 3
-.equ r4, 4
-.equ r5, 5
-.equ r6, 6
-.equ r7, 7
-.equ r8, 8
-.equ r9, 9
-.equ r10, 10
-.equ r11, 11
-.equ r12, 12
-.equ r13, 13
-.equ r14, 14
+
+

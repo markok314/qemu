@@ -199,6 +199,9 @@ enum{ // magic numbers for branch opcodes
 	OPC_RH850_JARL_disp22_reg2	= 2,
 	OPC_RH850_JARL_disp32_reg1	= 3, //48-bit
 	OPC_RH850_JARL_reg1_reg3	= 4,
+	OPC_RH850_JMP_reg1			= 5,
+	OPC_RH850_JMP_disp32_reg1	= 6,
+
 };
 
 
