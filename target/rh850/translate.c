@@ -3068,11 +3068,11 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 
 	switch(opcode20) {
 		case OPC_RH850_LDDW:
-			printf("ld.dw \n");
+			printf("ld_dw \n");
 	        gen_load(ctx, MO_TEQ, rs1, rs3, disp23);
 			break;
 		case OPC_RH850_STDW:
-			printf("st.dw \n");
+			printf("st_dw \n");
 	    	gen_store(ctx, MO_TEQ, rs1, rs3, disp23);
 		break;
 	}

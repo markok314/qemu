@@ -17,7 +17,7 @@
     .byte 0x0 | (\r3 << 3)
 .endm
 
-/*
+
 .macro LD_DW disp23:req, r1:req, r3:req
     .byte 0xa0 | \r1
     .byte 0x07
@@ -25,14 +25,6 @@
     .byte 0x0  | ((\disp23 & 0x70) >> 4) | (\r3 << 3)
     .byte 0x0  | ((\disp23 & 0x7f80) >> 7)
     .byte 0x0  | ((\disp23 >> 15) & 0xff)
-.endm
-*/
-
-.macro LD_DW disp23:req, r1:req, r3:req
-    .byte 0xa0 | \r1
-    .byte 0x07
-   	.hword lo((\disp23 & 0x7e) << 4) | 0x09 | (\r3 << 11)
-   	.hword lo(\disp23 >> 7)
 .endm
 
 
