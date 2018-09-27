@@ -2934,6 +2934,8 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	TCGv temp = tcg_temp_new_i32();
 	TCGv adr = tcg_temp_new_i32();
 	TCGv r2 = tcg_temp_new();
+	TCGLabel *storeReg3;
+	TCGLabel *cont;
 	int regID;
 	int imm;
 
@@ -2941,9 +2943,12 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	case OPC_RH850_CALLT_imm6:
 
 		tcg_gen_addi_i32(cpu_sysRegs[CTPC_register], cpu_pc, 0x2);
+		//extracting PSW bits 0:4
 		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0xf);
 
+		//clearing CTPSW bits 0:4
 		tcg_gen_andi_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], 0xfffffff0);
+		//setting CPTSW bits 0:4
 		tcg_gen_or_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], temp);
 
 		imm = extract32(ctx->opcode, 0, 6);
@@ -2952,11 +2957,36 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		tcg_gen_ext8s_i32(adr, adr);
 		tcg_gen_add_i32(adr, cpu_sysRegs[CTBP_register], adr);
 
-		// TODO: Load and set the new PC, check for misaligned access
+		tcg_gen_qemu_ld16u(temp, adr, 0);
+		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[CTBP_register]);
+
+		tcg_gen_exit_tb(0);
 
 		break;
-	case OPC_RH850_CAXI_reg1_reg2_reg3:
+
+	case OPC_RH850_CAXI_reg1_reg2_reg3: {
+
+		storeReg3 = gen_new_label();
+		gen_get_gpr(adr, rs1);
+		gen_get_gpr(r2, rs2);
+		rs3 extract
+		gen_get_gpr(r3, rs3);
+		tcg_gen_qemu_ld32u(temp, adr, 0);
+		storeReg3 = gen_new_label();
+		cont = gen_new_label();
+
+		gen_sub_CC(r2, temp);			// check!
+
+		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_ZF, 0x0, storeReg3);
+		//store temp
+
+		gen_set_label(storeReg3);
+		//store r3
+		gen_set_label(cont);
+
+
 		break;
+	}
 	case OPC_RH850_CLL:
 
 		break;
