@@ -9,6 +9,13 @@
     .byte 0x03 | (\r3 << 3)
 .endm
 
+.macro LD_DW disp23:req, r1:req, r3:req
+    .byte 0xa0 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x09 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
 .macro ROTL_r r1:req, r2:req, r3:req
     .byte 0xe0 | \r1
     .byte 0x07 | (\r2 << 3)

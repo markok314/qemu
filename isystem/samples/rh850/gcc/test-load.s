@@ -1,3 +1,10 @@
+.include "../test/Hide\ tests/RH850G3M_insts.s"
+
+var1:   .quad   0x12345678
+var2:   .quad   0x0123456789abcdef
+var3:   .quad   0xcdef1111
+var4:   .quad   -10
+
 .text
 		movea .text, r0, r1
 
@@ -70,18 +77,16 @@ var2:   .word   0x1234
 var3:   .word   0xcdef1111
 var4:   .word   -10
 */
-#-----------------------------------ld.dw----------- Seems that v850 doesn't have ld.dw
-/*
-        ld.dw var1[r1], r2
-        ld.dw var2[r1], r3
-        ld.dw var3[r1], r4
-        ld.dw var4[r1], r5
+#-----------------------------------ld.dw -> macro LD_DW---------
 
-var1:   .quad   63
-var2:   .quad   0x1234
-var3:   .quad   0xcdef1111
-var4:   .quad   -10
-*/
+start = 0xfee00000
+		mov start, r1
+		movea 0, r1, r2
+
+        LD_DW 0, r2, r4
+        /*LD_DW 8, r2, r6
+        LD_DW 16, r2, r8
+        LD_DW 24, r2, r10*/
 
 
 #-----------------------------------sld.b--------- OK
@@ -160,4 +165,3 @@ var2:   .word   0x1234
 var3:   .word   0xabcdef
 var4:   .word   -10
 */
-
