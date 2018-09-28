@@ -2934,6 +2934,7 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	TCGv temp = tcg_temp_new_i32();
 	TCGv adr = tcg_temp_new_i32();
 	TCGv r2 = tcg_temp_new();
+	TCGv r3 = tcg_temp_new();
 	TCGLabel *storeReg3;
 	TCGLabel *cont;
 	int regID;
@@ -2969,7 +2970,7 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		storeReg3 = gen_new_label();
 		gen_get_gpr(adr, rs1);
 		gen_get_gpr(r2, rs2);
-		rs3 extract
+		int rs3 = extract32(ctx->opcode, 27, 5);
 		gen_get_gpr(r3, rs3);
 		tcg_gen_qemu_ld32u(temp, adr, 0);
 		storeReg3 = gen_new_label();
