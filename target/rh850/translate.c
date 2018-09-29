@@ -2976,15 +2976,27 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		storeReg3 = gen_new_label();
 		cont = gen_new_label();
 
-		gen_sub_CC(r2, temp);			// check!
+		TCGv local_adr = tcg_temp_local_new_i32();
+		TCGv local_r2 = tcg_temp_local_new_i32();
+		TCGv local_r3 = tcg_temp_local_new_i32();
+		TCGv local_temp = tcg_temp_local_new_i32();
 
-		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_ZF, 0x0, storeReg3);
-		//store temp
+		tcg_gen_mov_i32(local_adr, adr);
+		tcg_gen_mov_i32(local_r2, r2);
+		tcg_gen_mov_i32(local_r3, r3);
+		tcg_gen_mov_i32(local_temp, temp);
+
+		gen_sub_CC(local_r2, local_temp);
+
+		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_ZF, 0x1, storeReg3);
+		tcg_gen_qemu_st_tl(local_temp, local_adr, MEM_IDX, MO_TESL);
+		tcg_gen_br(cont);
 
 		gen_set_label(storeReg3);
-		//store r3
-		gen_set_label(cont);
+		tcg_gen_qemu_st_tl(local_r3, local_adr, MEM_IDX, MO_TESL);
 
+		gen_set_label(cont);
+		gen_set_gpr(rs3, local_temp);
 
 		break;
 	}
@@ -2993,14 +3005,13 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		break;
 
 	case OPC_RH850_CTRET:
-
-		// TODO: Load and set the new PC, check for misaligned access
-
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[CTPC_register]);
 		tcg_gen_andi_i32(temp, cpu_sysRegs[CTPSW_register], 0x1f);
-		gen_set_gpr(25, temp);
 		tcg_gen_andi_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], 0xffffffe0);
 		tcg_gen_or_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], temp);
+
+		tcg_gen_exit_tb(0);
+
 		break;
 
 	case OPC_RH850_DI:
@@ -3017,13 +3028,15 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	case OPC_RH850_EI:
 		tcg_gen_movi_i32(cpu_ID, 0x0);
 		break;
-	case OPC_RH850_EIRET:			// TODO: Load and set the new PC, check for misaligned access
+	case OPC_RH850_EIRET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[EIPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[EIPSW_register]);
+		tcg_gen_exit_tb(0);
 		break;
-	case OPC_RH850_FERET:			// TODO: Load and set the new PC, check for misaligned access
+	case OPC_RH850_FERET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
+		tcg_gen_exit_tb(0);
 		break;
 
 	case OPC_RH850_FETRAP_vector4:
@@ -3091,6 +3104,11 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		break;
 
 	// SYNC instructions will not be implemented
+	case OPC_RH850_SYNCE:
+	case OPC_RH850_SYNCI:
+	case OPC_RH850_SYNCM:
+	case OPC_RH850_SYNCP:
+		break;
 
 	case OPC_RH850_TRAP:
 		tcg_gen_addi_i32(cpu_sysRegs[EIPC_register], cpu_pc, 0x4);
