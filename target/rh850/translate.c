@@ -2937,12 +2937,14 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	TCGv r3 = tcg_temp_new();
 	TCGLabel *storeReg3;
 	TCGLabel *cont;
+	TCGLabel *excFromEbase;
 	int regID;
 	int imm;
 
 	switch(operation){
 	case OPC_RH850_CALLT_imm6:
 
+		//setting CTPC to PC+2
 		tcg_gen_addi_i32(cpu_sysRegs[CTPC_register], cpu_pc, 0x2);
 		//extracting PSW bits 0:4
 		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0xf);
@@ -3005,9 +3007,13 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		break;
 
 	case OPC_RH850_CTRET:
+
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[CTPC_register]);
 		tcg_gen_andi_i32(temp, cpu_sysRegs[CTPSW_register], 0x1f);
+
+		//clearing lower 5 bits of PSW
 		tcg_gen_andi_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], 0xffffffe0);
+		//setting lower 5 bits of PSW
 		tcg_gen_or_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], temp);
 
 		tcg_gen_exit_tb(0);
@@ -3039,22 +3045,38 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		tcg_gen_exit_tb(0);
 		break;
 
-	case OPC_RH850_FETRAP_vector4:
+	case OPC_RH850_FETRAP_vector4: {
 
+		cont = gen_new_label();
+		excFromEbase = gen_new_label();
+		int vector = extract32(ctx->opcode, 11, 4);
 		tcg_gen_addi_i32(cpu_sysRegs[FEPC_register], cpu_pc, 0x2);
 		tcg_gen_mov_i32(cpu_sysRegs[FEPSW_register], cpu_sysRegs[PSW_register]);
-		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], 0x0); // TODO: Write the correct except. cause code
+
+		//writing the exception cause code
+		vector += 0x30;
+		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], vector);
 		tcg_gen_movi_i32(cpu_UM, 0x0);
 		tcg_gen_movi_i32(cpu_NP, 0x1);
 		tcg_gen_movi_i32(cpu_EP, 0x1);
 		tcg_gen_movi_i32(cpu_ID, 0x1);
-		// TODO: Write the correct except. handler address to PC
 
-		break;
+		//writing the except. handler address based on PSW.EBV
+		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[rbase_idx], 0x30);	//RBASE + 0x30
+		tcg_gen_br(cont);
+
+		gen_set_label(excFromEbase);
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[ebase_idx], 0x30); //EBASE + 0x30
+
+		gen_set_label(cont);
+		//branch to exception handler
+		tcg_gen_exit_tb(0);
+
+	}	break;
 
 	case OPC_RH850_HALT:
 		break;
-
 
 	case OPC_RH850_LDSR_reg2_regID_selID:
 		regID=rs2;
@@ -3066,23 +3088,37 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		break;
 
 	//case OPC_RH850_LDLW:
-	//	break;
+		//break;
 
 	//case OPC_RH850_NOP:
-	//	break;
+		//break;
 
-	case OPC_RH850_RIE:
+	case OPC_RH850_RIE: {
 
-		tcg_gen_addi_i32(cpu_sysRegs[FEPC_register], cpu_pc, 0x2);
+		cont = gen_new_label();
+		excFromEbase = gen_new_label();
+
+		tcg_gen_mov_i32(cpu_sysRegs[FEPC_register], cpu_pc);
 		tcg_gen_mov_i32(cpu_sysRegs[FEPSW_register], cpu_sysRegs[PSW_register]);
-		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], 0x0); // TODO: Write the correct except. cause code
+		//writing exception cause code
+		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], 0x60);
 		tcg_gen_movi_i32(cpu_UM, 0x0);
 		tcg_gen_movi_i32(cpu_NP, 0x1);
 		tcg_gen_movi_i32(cpu_EP, 0x1);
 		tcg_gen_movi_i32(cpu_ID, 0x1);
-		// TODO: Write the correct except. handler address to PC
 
-		break;
+		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[rbase_idx], 0x60);	//RBASE + 0x60
+		tcg_gen_br(cont);
+
+		gen_set_label(excFromEbase);
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[ebase_idx], 0x60);	//EBASE + 0x60
+
+		gen_set_label(cont);
+		//branch to exception handler
+		tcg_gen_exit_tb(0);
+
+	}	break;
 
 	case OPC_RH850_SNOOZE:
 		break;
@@ -3090,17 +3126,25 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	//case OPC_RH850_STCW:
 	//	break;
 
-	case OPC_RH850_STSR_regID_reg2_selID:
+	case OPC_RH850_STSR_regID_reg2_selID: // TODO: selID implementation
 		regID=rs1;
 		gen_get_sysreg(r2, regID);
 		gen_set_gpr(rs2, r2);
 		break;
 
-	case OPC_RH850_SWITCH_reg1: // TODO: Load and set the new PC, check for misaligned access
+	case OPC_RH850_SWITCH_reg1:
+
 		gen_get_gpr(adr, rs1);
 		tcg_gen_shli_i32(adr, adr, 0x1);
 		tcg_gen_add_i32(adr, adr, cpu_pc);
 		tcg_gen_addi_i32(adr, adr, 0x2);
+
+		tcg_gen_addi_i32(cpu_pc, cpu_pc, 0x2);
+		tcg_gen_qemu_ld16s(temp, adr, MEM_IDX);
+		tcg_gen_ext16s_i32(temp, temp);
+		tcg_gen_shli_i32(temp, temp, 0x1);
+		tcg_gen_add_i32(cpu_pc, cpu_pc, temp);
+		tcg_gen_exit_tb(0);
 		break;
 
 	// SYNC instructions will not be implemented
