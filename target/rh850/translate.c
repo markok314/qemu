@@ -2941,6 +2941,9 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	int regID;
 	int imm;
 
+	//array with register indices, corresponding to assembled 12-bit list
+	int list [32] = {30, 31, 29, 28, 23, 22, 21, 20, 27, 26, 25, 24};
+
 	switch(operation){
 	case OPC_RH850_CALLT_imm6:
 
@@ -3078,7 +3081,7 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 	case OPC_RH850_HALT:
 		break;
 
-	case OPC_RH850_LDSR_reg2_regID_selID:
+	case OPC_RH850_LDSR_reg2_regID_selID:  // TODO: implement selID
 		regID=rs2;
 		if(regID==PSW_register){
 			gen_reset_flags(ctx);
@@ -3092,6 +3095,32 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	//case OPC_RH850_NOP:
 		//break;
+
+	//case OPC_RH850_POPSP
+
+	case OPC_RH850_PREPARE_list12_imm5:{
+
+		int list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
+		int test = 0x1;
+		gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
+		TCGv regToStore = tcg_temp_new_i32();
+
+		for(int i=0; i<sizeof(list); i++){
+			tcg_gen_subi_i32(temp, temp, 0x4);
+			tcg_gen_andi_i32(adr, temp, 0xfffffffc);
+			if( !((list12 & test)==0x0) ){
+				gen_get_gpr(regToStore, list[i]);
+				tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
+			}
+
+		}
+
+		tcg_gen_subi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
+
+		gen_set_gpr(3, temp);
+
+
+	}	break;
 
 	case OPC_RH850_RIE: {
 
@@ -3328,9 +3357,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	} else {
 	    		gen_multiply(ctx, rs1, rs2, OPC_RH850_MULHI_imm16_reg1_reg2);
 	    	}
-
 	    	break;
-	    case OPC_RH850_CLR:
+	    //case OPC_RH850_CLR1:
 	    		//clr
 	    	break;
 		case OPC_RH850_32bit_1:		/* case for opcode = 11111 ; formats IX, X, XI, XII */
@@ -3380,7 +3408,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						if (extract32(ctx->opcode, 20, 1) == 1){
 							//BINS0
 							gen_data_manipulation(ctx, rs1, rs2, 123456);
-							//printf("BINS0\n");
+							printf("BINS0\n");
 						}
 						else{
 							if (extract32(ctx->opcode, 17, 1) == 0){
@@ -3398,10 +3426,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						}
 						else{
 							if (extract32(ctx->opcode, 17, 1) == 0){
-								//SAR format IX
 								gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2);
 							}else{
-								//SAR format XI
 								gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SAR_reg1_reg2_reg3);
 							}
 						}
@@ -3456,6 +3482,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						break;
 					}
 					break;
+
+
 				case OPC_RH850_FORMAT_X:		//format X instructions
 												//(+JARL3 - added due to MASK_OP_FORMAT_X matching)
 					formXop = MASK_OP_FORMAT_X(ctx->opcode);
@@ -3549,10 +3577,12 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 
 						case OPC_RH850_DIVQ:
-							//DIVQ
+							gen_divide(ctx, rs1, rs2, OPC_RH850_DIV_reg1_reg2_reg3);
+							//DIVQ => using DIV implementation, will be changed if needed
 							break;
 						case OPC_RH850_DIVQU:
-							//DIVQU
+							gen_divide(ctx, rs1, rs2, OPC_RH850_DIVU_reg1_reg2_reg3);
+							//DIVQU => using DIVU implementation, will be changed if needed
 							break;
 						case OPC_RH850_DIVU_reg1_reg2_reg3:
 							gen_divide(ctx, rs1, rs2, OPC_RH850_DIVU_reg1_reg2_reg3);
