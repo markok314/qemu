@@ -615,37 +615,42 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
 	MO_TEUL => 32 unsigned
 	MO_TESL => 32 signed
 	MO_TEQ => 64
-
 */
+
 static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
 {
-    TCGv t0 = tcg_temp_local_new();
-    TCGv t1 = tcg_temp_local_new();
-    TCGv tcg_imm = tcg_temp_local_new();
+    TCGv t0 = tcg_temp_new();
+    TCGv t1 = tcg_temp_new();
+    TCGv tcg_imm = tcg_temp_new();
+    TCGv_i64 t1_64 = tcg_temp_new_i64();
+    TCGv t1_high = tcg_temp_new();
 
     gen_get_gpr(t0, rs1);
-
     tcg_gen_movi_i32(tcg_imm, imm);
     tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
     tcg_gen_add_tl(t0, t0, tcg_imm);
 
-    ///tcg_gen_addi_tl(t0, t0, imm);
+    if (memop == MO_TEQ) {
+        tcg_gen_qemu_ld_i64(t1_64, t0, MEM_IDX, memop);
+        tcg_gen_extrl_i64_i32(t1, t1_64);
+        tcg_gen_extrh_i64_i32(t1_high, t1_64);
+        gen_set_gpr(rd, t1);
+        gen_set_gpr(rd+1, t1_high);
+    }
+    else {
+    	tcg_gen_qemu_ld_tl(t1, t0, MEM_IDX, memop);
+        gen_set_gpr(rd, t1);
+    }
 
-    tcg_gen_qemu_ld_tl(t1, t0, MEM_IDX, memop);
-
-    //tcg_gen_qemu_ld_tl(t1, tcg_imm, 0, MO_TESW);
-    //tcg_gen_qemu_ld32u(t1, tcg_imm, 0);
-    //tcg_gen_ext16s_i32(t1, t1);
-
-    gen_set_gpr(rd, t1);
-
-	printf("gen_load: memop = %d \n",memop);
+	/*printf("gen_load: memop = %d \n",memop);
 	printf("source register: r%d, offset: %x \n", rs1, imm);
-	printf("target register: r%d \n", rd);
+	printf("target register: r%d \n", rd);*/
 
     tcg_temp_free(t0);
     tcg_temp_free(t1);
     tcg_temp_free(tcg_imm);
+    tcg_temp_free_i64(t1_64);
+    tcg_temp_free(t1_high);
 }
 
 static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
@@ -654,18 +659,23 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     TCGv t0 = tcg_temp_local_new();
     TCGv dat = tcg_temp_local_new();
     TCGv tcg_imm = tcg_temp_local_new();
+    TCGv dat_high = tcg_temp_new();
+    TCGv_i64 dat64 = tcg_temp_new_i64();
 
-    gen_get_gpr(t0, rs1);			//loading rs1 to t0
+    gen_get_gpr(t0, rs1);				// loading rs1 to t0
     tcg_gen_movi_i32(tcg_imm, imm);
     tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
-    tcg_gen_add_tl(t0, t0, tcg_imm);	//adding displacement to t0
+    tcg_gen_add_tl(t0, t0, tcg_imm);	// adding displacement to t0
 
-    gen_get_gpr(dat, rs2);			//getting data from rs2
-    //gen_set_gpr(11, tcg_imm);
-    //gen_set_gpr(12, dat);
+    gen_get_gpr(dat, rs2);				// getting data from rs2
 
-    tcg_gen_qemu_st_tl(dat, t0, MEM_IDX, memop);
-    //tcg_gen_st32_tl(dat, ctx->mem_idx, 0);
+    if (memop == MO_TEQ) {
+        gen_get_gpr(dat_high, rs2+1);
+        tcg_gen_concat_i32_i64(dat64, dat, dat_high);
+    	tcg_gen_qemu_st_i64(dat64, t0, MEM_IDX, memop);
+    }
+    else
+    	tcg_gen_qemu_st_tl(dat, t0, MEM_IDX, memop);
 
     printf("gen_store: memop = %d \n", memop);
     printf("source register: r%d \n", rs2);
@@ -674,6 +684,8 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     tcg_temp_free(t0);
     tcg_temp_free(dat);
     tcg_temp_free(tcg_imm);
+    tcg_temp_free_i64(dat64);
+    tcg_temp_free(dat_high);
 }
 /*
 static void decode_load_store_0(CPURH850State *env, DisasContext *ctx)
@@ -3094,7 +3106,7 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 	switch(opcode20) {
 		case OPC_RH850_LDDW:
 			printf("ld_dw \n");
-	        gen_load(ctx, MO_TEQ, rs1, rs3, disp23);
+	        gen_load(ctx, MO_TEQ, rs3, rs1, disp23);
 			break;
 		case OPC_RH850_STDW:
 			printf("st_dw \n");
