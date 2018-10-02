@@ -2950,8 +2950,15 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	TCGLabel *storeReg3;
 	TCGLabel *cont;
 	TCGLabel *excFromEbase;
+	TCGLabel * add_scbp;
 	int regID;
 	int imm;
+
+
+	//using for load
+	TCGv t0 = tcg_temp_local_new();
+	TCGv t1 = tcg_temp_local_new();
+
 
 	//array with register indices, corresponding to assembled 12-bit list
 	int list [32] = {30, 31, 29, 28, 23, 22, 21, 20, 27, 26, 25, 24};
@@ -3263,6 +3270,50 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_movi_i32(cpu_EP, 0x1);
 		tcg_gen_movi_i32(cpu_ID, 0x1);
 		break;
+
+	case OPC_RH850_SYSCALL:
+		{
+			cont = gen_new_label();
+			add_scbp = gen_new_label();
+
+			int vector = extract32(ctx->opcode, 0, 5) | ( (extract32(ctx->opcode,27, 3)) << 5);
+
+			tcg_gen_addi_i32(cpu_sysRegs[EIPC_register], cpu_pc, 0x4);
+			tcg_gen_mov_i32(cpu_sysRegs[EIPSW_register], cpu_sysRegs[PSW_register]);
+			int exception_code = vector + 0x8000;
+
+			tcg_gen_movi_i32(cpu_sysRegs[EIPC_register], exception_code);
+			tcg_gen_movi_i32(cpu_UM, 0x0);
+			tcg_gen_movi_i32(cpu_EP, 0x1);
+			tcg_gen_movi_i32(cpu_ID, 0x1);
+
+			TCGv local_vector = tcg_temp_local_new_i32();
+			tcg_gen_movi_i32(local_vector, vector);
+
+			TCGv local_SCCFG_SIZE = tcg_temp_local_new_i32();
+			tcg_gen_mov_i32(local_SCCFG_SIZE, cpu_sysRegs[SCCFG_register]);
+			tcg_gen_andi_tl(local_SCCFG_SIZE, local_SCCFG_SIZE, 0x7F);
+			//WHERE ARE BITS OF SCCFG_SIZE (BITS 7 TO 0 OF SCCFG)  SETED/RESETED?
+
+			tcg_gen_brcond_i32(TCG_COND_LEU, local_vector, local_SCCFG_SIZE, add_scbp);
+			tcg_gen_add_i32(t0, local_vector,cpu_sysRegs[SCBP_register]);
+			tcg_gen_br(cont);
+
+			gen_set_label(add_scbp);
+			tcg_gen_shli_tl(t0, local_vector, 0x2);
+			tcg_gen_ext8u_tl(local_vector, local_vector);
+			tcg_gen_add_i32(t0, local_vector,cpu_sysRegs[SCBP_register]);
+
+			gen_set_label(cont);
+
+			//currently loading unsigned word
+			tcg_gen_qemu_ld_tl(t1, t0, MO_TEUL,0);
+			tcg_gen_add_i32(t1,t1,cpu_sysRegs[SCBP_register]);
+
+			tcg_gen_mov_i32(cpu_pc, t1);
+			tcg_gen_exit_tb(0);
+			break;
+		}
 	}
 }
 
