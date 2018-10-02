@@ -54,7 +54,7 @@ start = 0xfee00000
         ld.hu 0[r2], r7
 */
 #----------------------------------st.w(1)--disp16---OK
-/*
+
         mov 12, r3
         movea var1 - .data, r1, r2
         st.w r3, 0[r2]
@@ -74,7 +74,7 @@ start = 0xfee00000
         movea var4 - .data, r1, r2
         st.w r3, 0[r2]
         ld.w 0[r2], r7
-*/
+
 #----------------------------------st.dw(1)--disp16--- v850 doesn't have st.dw
 
 
