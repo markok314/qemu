@@ -2941,7 +2941,7 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation )
 //static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){}
 // NEED LOAD TO WORK
 
-static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
+static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2, int operation){
 
 	TCGv temp = tcg_temp_new_i32();
 	TCGv adr = tcg_temp_new_i32();
@@ -3123,7 +3123,9 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 			if( !((list12 & test)==0x0) ){
 				gen_get_gpr(regToStore, list[i]);
 				tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
+				gen_set_gpr(i, regToStore);
 			}
+			test = test << 1;
 
 		}
 
@@ -3133,6 +3135,64 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 
 
 	}	break;
+
+	case OPC_RH850_PREPARE_list12_imm5_sp:{
+
+			uint32_t imm;
+			uint32_t list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
+			int test = 0x1;
+			int ff = extract32(ctx->opcode, 19, 2);
+			gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
+			TCGv regToStore = tcg_temp_new_i32();
+
+			for(int i=0; i<sizeof(list); i++){
+				tcg_gen_subi_i32(temp, temp, 0x4);
+				tcg_gen_andi_i32(adr, temp, 0xfffffffc);
+				if( !((list12 & test)==0x0) ){
+					gen_get_gpr(regToStore, list[i]);
+					tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
+				}
+
+			}
+
+			tcg_gen_subi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
+
+			gen_set_gpr(3, temp);
+
+			switch(ff){
+
+			case 0x0:
+				gen_set_gpr(30, temp); //moving sp to ep (element pointer is at cpu_gpr[30])
+				break;
+
+			case 0x1:
+				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 16bits from memory
+				tcg_gen_movi_i32(temp, imm);
+				tcg_gen_ext16s_i32(temp, temp);
+				gen_set_gpr(30, temp);
+				ctx->next_pc+=2;						// increasing pc due to additional fetch
+				break;
+
+			case 0x2:
+				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 16bits from memory
+				tcg_gen_movi_i32(temp, imm);
+				tcg_gen_shli_i32(temp, 0x10);
+				gen_set_gpr(30, temp);
+				ctx->next_pc+=2;
+				break;
+
+			case 0x3:
+				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 32bits from memory
+				tcg_gen_movi_i32(temp, imm);
+				tcg_gen_shli_i32(temp, 0x10);
+				gen_set_gpr(30, temp);
+				ctx->next_pc+=2;
+				break;
+			}
+
+
+		}	break;
+
 
 	case OPC_RH850_RIE: {
 
@@ -3336,9 +3396,9 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    		gen_arithmetic(ctx, rs1, rs2, OPC_RH850_MOVHI_imm16_reg1_reg2);
 	    	} else {
 	    		if(extract32(ctx->opcode, 16, 5)==0x0){
-	    			gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12);
+	    			gen_special(ctx, env, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12);
 	    		} else {
-	    			gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12_reg1);
+	    			gen_special(ctx, env, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12_reg1);
 	    		}
 	    	}
 	    	break;
@@ -3352,9 +3412,9 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    		gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATSUBI_imm16_reg1_reg2);
 			} else {
 				if(extract32(ctx->opcode, 16, 5)==0x0){
-					gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12);
+					gen_special(ctx, env, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12);
 				} else {
-					gen_special(ctx, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12_reg1);
+					gen_special(ctx, env, rs1, rs2, OPC_RH850_DISPOSE_imm5_list12_reg1);
 				}
 			}
 
@@ -3400,16 +3460,16 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					switch(check32bitZERO){
 					case 0:
 						if(extract32(ctx->opcode, 4, 1)==1){
-							gen_special(ctx, rs1, rs2, OPC_RH850_RIE);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_RIE);
 						} else {
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_SETF_cccc_reg2);
 						}
 						break;
 					case OPC_RH850_LDSR_reg2_regID_selID:
-						gen_special(ctx, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
+						gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
 						break;
 					case OPC_RH850_STSR_regID_reg2_selID:
-						gen_special(ctx, rs1, rs2, OPC_RH850_STSR_regID_reg2_selID);
+						gen_special(ctx, env, rs1, rs2, OPC_RH850_STSR_regID_reg2_selID);
 						break;
 					}
 					break;
@@ -3488,7 +3548,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							if (extract32(ctx->opcode, 19, 1) == 0){
 								//TST1
 							} else {
-								gen_special(ctx, rs1, rs2, OPC_RH850_CAXI_reg1_reg2_reg3);
+								gen_special(ctx, env, rs1, rs2, OPC_RH850_CAXI_reg1_reg2_reg3);
 							}
 						}
 						break;
@@ -3510,35 +3570,35 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							}
 							break;
 						case OPC_RH850_CTRET:
-							gen_special(ctx, rs1, rs2, OPC_RH850_CTRET);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_CTRET);
 							break;
 						case OPC_RH850_DI:
-							gen_special(ctx, rs1, rs2, OPC_RH850_DI);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_DI);
 							break;
 						case OPC_RH850_EI:
-							gen_special(ctx, rs1, rs2, OPC_RH850_EI);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_EI);
 							break;
 						case OPC_RH850_EIRET:
-							gen_special(ctx, rs1, rs2, OPC_RH850_EIRET);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_EIRET);
 							break;
 						case OPC_RH850_FERET:
-							gen_special(ctx, rs1, rs2, OPC_RH850_FERET);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_FERET);
 							break;
 						case OPC_RH850_HALT:
-							gen_special(ctx, rs1, rs2, OPC_RH850_HALT);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_HALT);
 							break;
 						case OPC_RH850_JARL3:
 							gen_jmp(ctx, rs1, 0, OPC_RH850_JARL_reg1_reg3);
 
 							break;
 						case OPC_RH850_SNOOZE:
-							gen_special(ctx, rs1, rs2, OPC_RH850_SNOOZE);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_SNOOZE);
 							break;
 						case OPC_RH850_SYSCALL:
-							gen_special(ctx, rs1, rs2, OPC_RH850_SYSCALL);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_SYSCALL);
 							break;
 						case OPC_RH850_TRAP:
-							gen_special(ctx, rs1, rs2, OPC_RH850_TRAP);
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_TRAP);
 							break;
 						case OPC_RH850_PREF:
 							break;
@@ -3712,9 +3772,11 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 			}else{
 				if (extract32(ctx->opcode, 16, 3) == 0x3){
+					gen_special(ctx, env, rs1, rs2, OPC_RH850_PREPARE_list12_imm5_sp);
 					//PREPARE2
 				}
 				 else if (extract32(ctx->opcode, 16, 3) == 0x1){
+					 gen_special(ctx, env, rs1, rs2, OPC_RH850_PREPARE_list12_imm5);
 					 //PREPARE1
 				 }
 			}
@@ -3775,15 +3837,15 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	case OPC_RH850_16bit_2:
 		if (rs2 == 0){
 			if (rs1 == 0){
-				gen_special(ctx, rs1, rs2, OPC_RH850_RIE);
+				gen_special(ctx, env, rs1, rs2, OPC_RH850_RIE);
 				break;
 			} else {
-				gen_special(ctx, rs1, rs2, OPC_RH850_SWITCH_reg1);
+				gen_special(ctx, env, rs1, rs2, OPC_RH850_SWITCH_reg1);
 				break;
 			}
 		} else {
 			if (rs1 == 0){
-				gen_special(ctx, rs1, rs2, OPC_RH850_FETRAP_vector4);
+				gen_special(ctx, env, rs1, rs2, OPC_RH850_FETRAP_vector4);
 				break;
 			} else {
 				gen_divide(ctx, rs1, rs2, OPC_RH850_DIVH_reg1_reg2);
@@ -3882,7 +3944,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_16:
 		if (rs2 == 0){
-			gen_special(ctx, rs1, rs2, OPC_RH850_CALLT_imm6);
+			gen_special(ctx, env, rs1, rs2, OPC_RH850_CALLT_imm6);
 			break;
 		} else {
 			gen_arithmetic(ctx, imm, rs2, OPC_RH850_MOV_imm5_reg2);
@@ -3891,7 +3953,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_17:
 		if (rs2 == 0){
-			gen_special(ctx, rs1, rs2, OPC_RH850_CALLT_imm6);
+			gen_special(ctx, env, rs1, rs2, OPC_RH850_CALLT_imm6);
 			break;
 		} else {
 			gen_sat_op(ctx, rs1, rs2, OPC_RH850_SATADD_imm5_reg2);
