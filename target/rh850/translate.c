@@ -31,7 +31,7 @@
 #include "instmap.h"
 
 /* global register indices */
-static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[30], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56],
+static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[31], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56],
 			cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1];
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv load_res;
@@ -48,22 +48,33 @@ enum{
 	EIPSW_register 	= 1,
 	FEPC_register 	= 2,
 	FEPSW_register 	= 3,
-	PSW_register 	= 5,
-	FPSR_register	= 6,
-	FPEPC_register	= 7,
-	FPST_register 	= 8,
-	FPCC_register	= 9,
-	FPCFG_register	= 10,
-	FPEC_register	= 11,
-	EIIC_register	= 13,
-	FEIC_register 	= 14,
-	CTPC_register	= 16,
-	CTPSW_register	= 17,
-	CTBP_register	= 20,
-	EIWR_register	= 28,
-	FEWR_register	= 29,
-	BSEL_register	= 31,
-
+	PSW_register 	= 4,
+	FPSR_register	= 5,
+	FPEPC_register	= 6,
+	FPST_register 	= 7,
+	FPCC_register	= 8,
+	FPCFG_register	= 9,
+	FPEC_register	= 10,
+	EIIC_register	= 11,
+	FEIC_register 	= 12,
+	CTPC_register	= 13,
+	CTPSW_register	= 14,
+	CTBP_register	= 15,
+	EIWR_register	= 16,
+	FEWR_register	= 17,
+	BSEL_register	= 18,
+	MCFG0_register	= 19,
+	RBASE_register	= 20,
+	EBASE_register	= 21,
+	INTBP_register	= 22,
+	MCTL_register	= 23,
+	PID_register	= 24,
+	SCCFG_register	= 25,
+	SCBP_register	= 26,
+	HTCFG0_register	= 27,
+	MEA_register	= 28,
+	ASID_register	= 29,
+	MEI_register	= 30,
 };
 
 #include "exec/gen-icount.h"
@@ -185,6 +196,7 @@ static inline void gen_get_gpr(TCGv t, int reg_num)
     } else {
         tcg_gen_mov_tl(t, cpu_gpr[reg_num]);
     }
+
 }
 
 
@@ -3066,11 +3078,11 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 
 		//writing the except. handler address based on PSW.EBV
 		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[rbase_idx], 0x30);	//RBASE + 0x30
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[RBASE_register], 0x30);	//RBASE + 0x30
 		tcg_gen_br(cont);
 
 		gen_set_label(excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[ebase_idx], 0x30); //EBASE + 0x30
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[EBASE_register], 0x30); //EBASE + 0x30
 
 		gen_set_label(cont);
 		//branch to exception handler
@@ -3137,11 +3149,11 @@ static void gen_special(DisasContext *ctx, int rs1, int rs2, int operation){
 		tcg_gen_movi_i32(cpu_ID, 0x1);
 
 		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[rbase_idx], 0x60);	//RBASE + 0x60
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[RBASE_register], 0x60);	//RBASE + 0x60
 		tcg_gen_br(cont);
 
 		gen_set_label(excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[ebase_idx], 0x60);	//EBASE + 0x60
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[EBASE_register], 0x60);	//EBASE + 0x60
 
 		gen_set_label(cont);
 		//branch to exception handler
