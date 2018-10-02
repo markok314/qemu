@@ -3117,8 +3117,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 	//case OPC_RH850_POPSP
 
-	case OPC_RH850_PREPARE_list12_imm5:{
+	case OPC_RH850_PREPARE_list12_imm5:{ // how to manually affect ff field?
 
+		printf("This is 32bit regular PREPARE\n");
 		int list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
 		int test = 0x1;
 		gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
@@ -3130,7 +3131,8 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			if( !((list12 & test)==0x0) ){
 				gen_get_gpr(regToStore, list[i]);
 				tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
-				gen_set_gpr(i, regToStore);
+				gen_set_gpr(list[i], regToStore);
+				//gen_set_gpr(list[i], testni);
 			}
 			test = test << 1;
 
@@ -3145,28 +3147,33 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 	case OPC_RH850_PREPARE_list12_imm5_sp:{
 
-			uint32_t imm;
-			uint32_t list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
-			int test = 0x1;
-			int ff = extract32(ctx->opcode, 19, 2);
-			gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
-			TCGv regToStore = tcg_temp_new_i32();
+		printf("This is PREPARE that can be 32, 48 or 64bit \n");
+		uint32_t imm = 0x0;
+		uint32_t list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
+		int test = 0x1;
+		int ff = extract32(ctx->opcode, 19, 2);
+		gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
+		TCGv regToStore = tcg_temp_new_i32();
 
-			for(int i=0; i<sizeof(list); i++){
-				tcg_gen_subi_i32(temp, temp, 0x4);
-				tcg_gen_andi_i32(adr, temp, 0xfffffffc);
-				if( !((list12 & test)==0x0) ){
-					gen_get_gpr(regToStore, list[i]);
-					tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
-				}
-
+		for(int i=0; i<sizeof(list); i++){
+			tcg_gen_subi_i32(temp, temp, 0x4);
+			tcg_gen_andi_i32(adr, temp, 0xfffffffc);
+			if( !((list12 & test)==0x0) ){
+				gen_get_gpr(regToStore, list[i]);
+				tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
+				gen_set_gpr(list[i], regToStore);
 			}
+			test = test << 1;
+		}
 
-			tcg_gen_subi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
+		tcg_gen_subi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
 
-			gen_set_gpr(3, temp);
+		gen_set_gpr(3, temp);
 
-			switch(ff){
+		printf("this is ff or sp: %x \n", ff);
+		printf("this is imm: %x \n", imm);
+		printf("------------------\n");
+		switch(ff){
 
 			case 0x0:
 				gen_set_gpr(30, temp); //moving sp to ep (element pointer is at cpu_gpr[30])
@@ -3177,25 +3184,28 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				tcg_gen_movi_i32(temp, imm);
 				tcg_gen_ext16s_i32(temp, temp);
 				gen_set_gpr(30, temp);
-				ctx->next_pc+=2;						// increasing pc due to additional fetch
+				ctx->next_pc+=2;						// increasing PC due to additional fetch
 				break;
 
 			case 0x2:
+				printf("SUCCESS!!!\n");
 				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 16bits from memory
 				tcg_gen_movi_i32(temp, imm);
-				tcg_gen_shli_i32(temp, 0x10);
+				tcg_gen_shli_i32(temp, temp, 0x10);
 				gen_set_gpr(30, temp);
 				ctx->next_pc+=2;
 				break;
 
 			case 0x3:
-				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 32bits from memory
+				imm = cpu_lduw_code(env, ctx->next_pc) |
+				(cpu_lduw_code(env, ctx->next_pc+2) << 0x10);
+				// fetching additional 32bits from memory
+
 				tcg_gen_movi_i32(temp, imm);
-				tcg_gen_shli_i32(temp, 0x10);
 				gen_set_gpr(30, temp);
-				ctx->next_pc+=2;
+				ctx->next_pc = ctx->next_pc + 4;
 				break;
-			}
+		}
 
 
 		}	break;
@@ -3801,7 +3811,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	}
 
 	if (MASK_OP_FORMAT_V_FORMAT_XIII(ctx->opcode) == OPC_RH850_FORMAT_V_XIII){
-
 		if(extract32(ctx->opcode, 16, 1) == 0){
 		    uint32_t disp22 = extract32(ctx->opcode, 16, 16) | (extract32(ctx->opcode, 0, 6) << 16 );
 		    if( (disp22 & 0x200000) == 0x200000){
@@ -4137,7 +4146,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 			decode_RH850_16(env, &ctx);		//this function includes JR and JARL (32-bit FORMAT VI)
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
-        	if ( (extract32(ctx.opcode, 6, 11) == 0x41e) ||	// 48 bit instructions
+        	if ( ((extract32(ctx.opcode, 6, 11) == 0x41e) && (extract32(ctx.opcode, 17, 2) > 0x1)) ||	// 48 bit instructions
 			(extract32(ctx.opcode, 5, 11) == 0x31) ||	// MOVE3
 			(extract32(ctx.opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
 			(extract32(ctx.opcode, 5, 11) == 0x17) ) { //this is for 48bit JARL and JR (format VI)

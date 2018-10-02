@@ -2980,8 +2980,23 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
     status = (*info->read_memory_func)(memaddr, packet, 3, info);
     inst |= ((rv_inst) bfd_getl32(packet));
 
-	if ( ((inst >> 6) & 0x7ff) == 0x41e  || ((inst >> 5) & 0x7FF) == 0x31 || ((inst >> 5) & 0x7FF) == 0x37  ){
-		len = 6;
+	if (  (((inst >> 6) & 0x7ff) == 0x41e)  || ((inst >> 5) & 0x7FF) == 0x31 || ((inst >> 5) & 0x7FF) == 0x37  ){
+
+		if ((((inst >> 6) & 0x7ff) == 0x41e) && (((inst >> 17) & 0x3) < 0x2)) {
+			//prepare instruction can be 32bit, 48bit and 64bit
+			switch ( (inst >> 19) & 0x3 )
+				{
+					case 0x0:	len = 4; break;
+					case 0x1:	len = 6; break;
+					case 0x2:	len = 6; break;
+					case 0x3:	len = 8; break;
+					default:             break;
+				}
+
+		} else {
+			len = 6;
+		}
+
 		//this is a 48-bit instruction
 		//add JRL and JR, both have opcode 0x17
 	} else if ( ((inst >> 9) & (0x3)) == 0x3 ){
@@ -3027,6 +3042,9 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 		break;
 	case 6:
 		(*info->fprintf_func)(info->stream,  "%012lx  %s",   instVal, buf);
+		break;
+	case 8:
+		(*info->fprintf_func)(info->stream,"%016lx  %s",   instVal, buf);
 	}
 
 
