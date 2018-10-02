@@ -113,7 +113,7 @@ enum {
 
 	/* FORMAT VIII */
 
-	OPC_RH850_CLR	=	(0x3E << 5),
+	OPC_RH850_CLR1_bit3_disp16_reg1	=	(0x3E << 5),
 
 	OPC_RH850_FORMAT_V_XIII = (0x1E << 6),
 
@@ -183,6 +183,8 @@ enum{
 	OPC_RH850_STSR_regID_reg2_selID = 2,
 
 	//check for unintentional matching
+	OPC_RH850_PREPARE_list12_imm5	= 12,
+	OPC_RH850_PREPARE_list12_imm5_sp	= 13,
 	OPC_RH850_RIE 					= 3,
 	OPC_RH850_CALLT_imm6			= 4,
 	OPC_RH850_CAXI_reg1_reg2_reg3	= 5,
