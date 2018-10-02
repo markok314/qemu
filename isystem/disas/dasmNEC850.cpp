@@ -830,7 +830,6 @@ jstring CDisassemblerNEC850::GetPrefetchStr(const u32 dwInst)
 jstring CDisassemblerNEC850::GetCacheOpInst(const u32 dwInst)
 {
   jstring strOp;
-
   switch(dwInst)
   {
   case 0x00: strOp = "CHBII"; break;
@@ -847,6 +846,7 @@ jstring CDisassemblerNEC850::GetCacheOpInst(const u32 dwInst)
   case 0x44: strOp = "CFALD"; break;
   case 0x64: strOp = "CISTD"; break;
   case 0x65: strOp = "CILDD"; break;
+  case 0x7e: strOp = "CLL"; break;
   default: strOp = "??";
   }
 
