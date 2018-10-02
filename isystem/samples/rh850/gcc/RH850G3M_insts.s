@@ -27,6 +27,12 @@
     .byte 0x0  | ((\disp23 >> 15) & 0xff)
 .endm
 
+.macro CACHE cacheop:req,r1:req
+   .byte 0xe0 | \r1
+   .byte 0xe7 | ((\cacheop >> 0x5) << 3)
+   .byte 0x60
+   .byte 0x01 | ((\cacheop & 0x1f) << 3)
+.endm
 
 .equ R0, 0
 .equ R1, 1

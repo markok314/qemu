@@ -3316,6 +3316,19 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		}
 	}
 }
+static void gen_cache(DisasContext *ctx, int rs1, int rs2, int operation){
+	printf("cache");
+	switch(operation){
+		case OPC_RH850_CLL_CACHE:
+			printf("cache");
+			int cacheop = extract32(ctx->opcode, 27, 5) | ( (extract32(ctx->opcode,11, 2)) << 5);
+			printf("Cache op %d",cacheop);
+
+
+		break;
+	}
+
+}
 
 static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 {
@@ -3363,6 +3376,8 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 
 static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 {
+	printf("cll_cache_32");
+
 	int rs1;
 	int rs2;
 	int cond;
@@ -3612,12 +3627,14 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					formXop = MASK_OP_FORMAT_X(ctx->opcode);
 					switch(formXop){
 						case OPC_RH850_CLL_CACHE:
+							printf("cll_cache");
 							if ((extract32(ctx->opcode, 27, 5) == 0x1E) &&
 									(extract32(ctx->opcode, 0, 5) == 0x1F)){
 								//CLL
 							} else {
 								//CACHE; if cacheop bits are 1111110, opcode matches CLL ins,
 								//then they are THE SAME instruction, so this should be correct
+								gen_cache(ctx,rs1,rs2, OPC_RH850_CLL_CACHE);
 							}
 							break;
 						case OPC_RH850_CTRET:
