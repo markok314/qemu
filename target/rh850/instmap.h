@@ -259,7 +259,6 @@ enum {
 
 #define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))	//0010 on b26-b23
 enum {
-	OPC_RH850_CLL_CACHE = 	(0xB07 << 13), //shifted to 13th bit!
 	OPC_RH850_CTRET		= 	(0x880 << 11),
 	OPC_RH850_DI		= 	(0xC00 << 11),
 	OPC_RH850_EI		= 	(0XC10 << 11),
