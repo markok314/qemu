@@ -3092,7 +3092,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 	TCGv adr = tcg_temp_new_i32();
 	uint32_t disp16 = extract32(ctx->opcode, 16, 16);
 
-
+	int bit;
 
 
 	switch(operation){
@@ -3102,12 +3102,11 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			gen_get_gpr(r2, rs2);
 			tcg_gen_movi_i32(one, 0x1);
 
-			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB); // temp & (0x1 << bit)
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB);
 
 			tcg_gen_shl_i32(r2, one, r2);
 
 			tcg_gen_and_i32(test, temp, r2);
-			gen_set_gpr(11, test);
 			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
 
 			tcg_gen_or_i32(temp, temp, r2);
@@ -3122,12 +3121,11 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_ext16s_i32(tcg_disp, tcg_disp);
 			tcg_gen_add_i32(adr, r1, tcg_disp);
 
-			int bit = extract32(ctx->opcode, 11, 3);
+			bit = extract32(ctx->opcode, 11, 3);
 
 			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB); // temp & (0x1 << bit)
 
 			tcg_gen_andi_i32(test, temp, (0x1 << bit));
-			gen_set_gpr(11, test);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
 
 			tcg_gen_ori_i32(temp, temp, (0x1 << bit));
@@ -3144,8 +3142,45 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			break;
 
 		case OPC_RH850_CLR1_reg2_reg1:
+
+			gen_get_gpr(adr, rs1);
+			gen_get_gpr(r2, rs2);
+			tcg_gen_movi_i32(one, 0x1);
+
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB);
+
+			tcg_gen_shl_i32(r2, one, r2);
+
+			tcg_gen_and_i32(test, temp, r2);
+			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+
+			tcg_gen_not_i32(r2, r2);
+			tcg_gen_and_i32(temp, temp, r2);
+
+			tcg_gen_qemu_st_i32(temp, adr, MEM_IDX, MO_UB);
+
 			break;
+
 		case OPC_RH850_CLR1_bit3_disp16_reg1:
+
+			gen_get_gpr(r1, rs1);
+			tcg_gen_movi_i32(tcg_disp, disp16);
+			tcg_gen_ext16s_i32(tcg_disp, tcg_disp);
+			tcg_gen_add_i32(adr, r1, tcg_disp);
+
+			bit = extract32(ctx->opcode, 11, 3);
+
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB); // temp & (0x1 << bit)
+
+			tcg_gen_movi_i32(test, (0x1 << bit));
+			tcg_gen_andi_i32(test, temp, (0x1 << bit));
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
+
+			tcg_gen_movi_i32(test, (0x1 << bit));
+			tcg_gen_not_i32(test, test);
+			tcg_gen_and_i32(temp, temp, test);
+
+			tcg_gen_qemu_st_i32(temp, adr, MEM_IDX, MO_UB);
 			break;
 
 		case OPC_RH850_TST1_reg2_reg1:
