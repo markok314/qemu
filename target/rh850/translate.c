@@ -183,6 +183,126 @@ static void gen_exception_illegal(DisasContext *ctx)
 }
 */
 
+static int decode_register(int regID,int selLID){
+	/*
+	 *
+	This functions take regID and sellID and output single number for specific register,
+	beacuse here we use only 1D table to store all system registers
+	*
+	*/
+	int value = -1;
+
+	switch(selLID){
+		case 0:
+				switch(regID){
+				case 0:
+					value = 0;
+					break;
+				case 1:
+					value = 1;
+					break;
+				case 2:
+					value = 2;
+					break;
+				case 3:
+					value = 3;
+					break;
+				case 5:
+					value = 4;
+					break;
+				case 6:
+					value = 5;
+					break;
+				case 7:
+					value = 6;
+					break;
+				case 8:
+					value = 7;
+					break;
+				case 9:
+					value = 8;
+					break;
+				case 10:
+					value = 9;
+					break;
+				case 11:
+					value = 10;
+					break;
+				case 13:
+					value = 11;
+					break;
+				case 14:
+					value = 12;
+					break;
+				case 16:
+					value = 13;
+					break;
+				case 17:
+					value = 14;
+					break;
+				case 20:
+					value = 15;
+					break;
+				case 28:
+					value = 16;
+					break;
+				case 29:
+					value = 17;
+					break;
+				case 31:
+					value = 18;
+					break;
+				}
+			break;
+		case 1:
+			switch(regID){
+				case 0:
+					value = 19;
+					break;
+				case 2:
+					value = 20;
+					break;
+				case 3:
+					value = 21;
+					break;
+				case 4:
+					value = 22;
+					break;
+				case 5:
+					value = 23;
+					break;
+				case 6:
+					value = 24;
+					break;
+				case 11:
+					value = 25;
+					break;
+				case 12:
+					value = 26;
+					break;
+			}
+			break;
+		case 2:
+			switch(regID){
+				case 0:
+					value = 27;
+					break;
+				case 6:
+					value = 28;
+					break;
+				case 7:
+					value = 29;
+					break;
+				case 8:
+					value = 30;
+					break;
+			}
+			break;
+	}
+
+	return value;
+}
+
 
 static void gen_goto_tb(DisasContext *ctx, int n, target_ulong dest)
 {
@@ -2974,6 +3094,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	TCGLabel *excFromEbase;
 	TCGLabel * add_scbp;
 	int regID;
+	int selID;
 	int imm;
 
 
@@ -3388,9 +3509,11 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	//case OPC_RH850_STCW:
 	//	break;
 
-	case OPC_RH850_STSR_regID_reg2_selID: // TODO: selID implementation
+	case OPC_RH850_STSR_regID_reg2_selID:
 		regID=rs1;
-		gen_get_sysreg(r2, regID);
+		selID = extract32(ctx->opcode, 27, 5);
+		int value =  decode_register(regID,selID);
+		gen_get_sysreg(r2, value);
 		gen_set_gpr(rs2, r2);
 		break;
 

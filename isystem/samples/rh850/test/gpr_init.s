@@ -65,6 +65,13 @@
 	.byte 0x01 | (\rt << 3)
 .endm
 
+.macro STSR_ID regid:req, r1:req, selid:req
+   .byte 0xe0 | \regid
+   .byte 0x07 | ((\r1) << 3)
+   .byte 0x40 
+   .byte 0x00 | ((\selid) << 3)
+.endm
+
 
 .equ R0, 0
 .equ R1, 1
