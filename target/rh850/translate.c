@@ -3083,7 +3083,9 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation )
 static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){
 
 	TCGv r1 = tcg_temp_new_i32();
+	TCGv r2 = tcg_temp_new_i32();
 	TCGv tcg_disp = tcg_temp_new_i32();
+	TCGv one = tcg_temp_new_i32();
 
 	TCGv temp = tcg_temp_new_i32();
 	TCGv test = tcg_temp_new_i32();
@@ -3095,10 +3097,25 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 
 	switch(operation){
 		case OPC_RH850_SET1_reg2_reg1:
-			printf(" SET1 1 \n");
+
+			gen_get_gpr(adr, rs1);
+			gen_get_gpr(r2, rs2);
+			tcg_gen_movi_i32(one, 0x1);
+
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB); // temp & (0x1 << bit)
+
+			tcg_gen_shl_i32(r2, one, r2);
+
+			tcg_gen_and_i32(test, temp, r2);
+			gen_set_gpr(11, test);
+			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+
+			tcg_gen_or_i32(temp, temp, r2);
+
+			tcg_gen_qemu_st_i32(temp, adr, MEM_IDX, MO_UB);
+
 			break;
 		case OPC_RH850_SET1_bit3_disp16_reg1:
-			printf(" SET1 2 \n");
 
 			gen_get_gpr(r1, rs1);
 			tcg_gen_movi_i32(tcg_disp, disp16);
@@ -3110,13 +3127,12 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB); // temp & (0x1 << bit)
 
 			tcg_gen_andi_i32(test, temp, (0x1 << bit));
-
+			gen_set_gpr(11, test);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
 
 			tcg_gen_ori_i32(temp, temp, (0x1 << bit));
 
 			tcg_gen_qemu_st_i32(temp, adr, MEM_IDX, MO_UB);
-
 
 			break;
 
