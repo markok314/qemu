@@ -3416,14 +3416,38 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_SYNCP:
 		break;
 
-	case OPC_RH850_TRAP:
+	case OPC_RH850_TRAP: {
+
+		cont = gen_new_label();
+		excFromEbase = gen_new_label();
+
+		uint32_t offset;
+		int vector5 = rs1;
 		tcg_gen_addi_i32(cpu_sysRegs[EIPC_register], cpu_pc, 0x4);
 		tcg_gen_mov_i32(cpu_sysRegs[EIPSW_register], cpu_sysRegs[PSW_register]);
-		tcg_gen_movi_i32(cpu_sysRegs[EIIC_register], 0x0); // TODO: Write the correct except. cause code
+		tcg_gen_movi_i32(cpu_sysRegs[EIIC_register], (0x40+vector5)); // TODO: Write the correct except. cause code
 		tcg_gen_movi_i32(cpu_UM, 0x0);
 		tcg_gen_movi_i32(cpu_EP, 0x1);
 		tcg_gen_movi_i32(cpu_ID, 0x1);
-		break;
+
+		if( vector5 > 0xf ){
+			offset = 0x50;
+		} else {
+			offset = 0x40;
+		}
+
+		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[RBASE_register], offset);	//RBASE + offset
+		tcg_gen_br(cont);
+
+		gen_set_label(excFromEbase);
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[EBASE_register], offset);	//EBASE + offset
+
+		gen_set_label(cont);
+
+		tcg_gen_exit_tb(0);
+
+	}	break;
 
 	case OPC_RH850_SYSCALL:
 		{

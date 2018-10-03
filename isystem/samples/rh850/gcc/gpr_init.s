@@ -49,17 +49,19 @@
     .byte ((\p & 0x3fc000) >> 14)
 .endm
 
-
-
-
-.macro BINS r1:req, p:req, w:req, r2:req
-    .byte 0xe0 | \r1
-    .byte 0x07 | (\r2 << 3)
-    .byte 0x0
-
+.macro PUSHSP rh:req, rt:req
+	.byte 0xe0 | \rh
+	.byte 0x47
+	.byte 0x60
+	.byte 0x01 | (\rt << 3)
 .endm
 
-
+.macro POPSP rh:req, rt:req
+	.byte 0xe0 | \rh
+	.byte 0x67
+	.byte 0x60
+	.byte 0x01 | (\rt << 3)
+.endm
 
 .equ R0, 0
 .equ R1, 1
@@ -82,6 +84,17 @@
 .equ R18, 18
 .equ R19, 19
 .equ R20, 20
+.equ R21, 21
+.equ R22, 22
+.equ R23, 23
+.equ R24, 24
+.equ R25, 25
+.equ R26, 26
+.equ R27, 27
+.equ R28, 28
+.equ R29, 29
+.equ R30, 30
+.equ R31, 31
 
 
 .text
