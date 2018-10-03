@@ -44,6 +44,12 @@
     .byte 0x01 | (\r3 << 3)
 .endm
 
+.macro LOOP r1:req, disp16:req
+    .byte 0xe0 | \r1
+    .byte 0x06
+   	.hword \disp16 | 0x1
+.endm
+
 .macro CACHE cacheop:req,r1:req
    .byte 0xe0 | \r1
    .byte 0xe7 | (((\cacheop & 0x60)) >> 2)
