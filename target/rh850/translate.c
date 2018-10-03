@@ -3135,10 +3135,62 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			break;
 
 		case OPC_RH850_NOT1_reg2_reg1:
-			printf(" NOT1 1 \n");
+
+			gen_get_gpr(adr, rs1);
+			gen_get_gpr(r2, rs2);
+			tcg_gen_movi_i32(one, 0x1);
+
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB);
+
+			tcg_gen_shl_i32(r2, one, r2); // r2 = mask
+
+			tcg_gen_and_i32(test, temp, r2);
+			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+
+			//test = temp & mask
+			tcg_gen_and_i32(test, temp, r2);
+			//test = not (test) & mask
+			tcg_gen_not_i32(test, test);
+			tcg_gen_and_i32(test, test, r2);
+			//temp = temp & not(mask)
+			tcg_gen_not_i32(r2, r2);
+			tcg_gen_and_i32(temp, temp, r2);
+			//temp = temp or test
+			tcg_gen_or_i32(temp, temp, test);
+
+			tcg_gen_qemu_st_i32(temp, adr, MEM_IDX, MO_UB);
+
 			break;
+
 		case OPC_RH850_NOT1_bit3_disp16_reg1:
-			printf(" NOT1 2 \n");
+
+			gen_get_gpr(r1, rs1);
+			tcg_gen_movi_i32(tcg_disp, disp16);
+			tcg_gen_ext16s_i32(tcg_disp, tcg_disp);
+			tcg_gen_add_i32(adr, r1, tcg_disp);
+
+			bit = extract32(ctx->opcode, 11, 3);
+
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB); // temp & (0x1 << bit)
+
+			tcg_gen_andi_i32(test, temp, (0x1 << bit));
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
+
+			tcg_gen_movi_i32(r2, (0x1 << bit)); // r2 = mask
+
+			//test = temp & mask
+			tcg_gen_and_i32(test, temp, r2);
+			//test = not (test) & mask
+			tcg_gen_not_i32(test, test);
+			tcg_gen_and_i32(test, test, r2);
+			//temp = temp & not(mask)
+			tcg_gen_not_i32(r2, r2);
+			tcg_gen_and_i32(temp, temp, r2);
+			//temp = temp or test
+			tcg_gen_or_i32(temp, temp, test);
+
+			tcg_gen_qemu_st_i32(temp, adr, MEM_IDX, MO_UB);
+
 			break;
 
 		case OPC_RH850_CLR1_reg2_reg1:
@@ -3184,11 +3236,45 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			break;
 
 		case OPC_RH850_TST1_reg2_reg1:
+
+			gen_get_gpr(adr, rs1);
+			gen_get_gpr(r2, rs2);
+			tcg_gen_movi_i32(one, 0x1);
+
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB);
+
+			tcg_gen_shl_i32(r2, one, r2);
+
+			tcg_gen_and_i32(test, temp, r2);
+			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+
 			break;
+
 		case OPC_RH850_TST1_bit3_disp16_reg1:
+
+			gen_get_gpr(r1, rs1);
+			tcg_gen_movi_i32(tcg_disp, disp16);
+			tcg_gen_ext16s_i32(tcg_disp, tcg_disp);
+			tcg_gen_add_i32(adr, r1, tcg_disp);
+
+			bit = extract32(ctx->opcode, 11, 3);
+
+			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB); // temp & (0x1 << bit)
+
+			tcg_gen_movi_i32(test, (0x1 << bit));
+			tcg_gen_andi_i32(test, temp, (0x1 << bit));
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
+
 			break;
 	}
 
+	tcg_temp_free_i32(r1);
+	tcg_temp_free_i32(r2);
+	tcg_temp_free_i32(tcg_disp);
+	tcg_temp_free_i32(one);
+	tcg_temp_free_i32(temp);
+	tcg_temp_free_i32(test);
+	tcg_temp_free_i32(adr);
 
 }
 
@@ -3303,7 +3389,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		int list [12] = {31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20};
 		int numOfListItems = sizeof(list) / sizeof(list[0]);
-		printf("This is DISPOSE \n");
 		int list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
 
 		int dispList = 	((list12 & 0x80) << 4) |
@@ -3319,11 +3404,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 						((list12 & 0x2) >> 1) |
 						((list12 & 0x1) << 1) ;
 
-		// TODO: address matching?
-		// what is happening with store and load addresses?
-		// check PREPARE and DISPOSE, write all 'adr' to regs to check!
-		// UPDATE: Addresses match perfectly; the problem may be in store/load instructions?
-
 		int test = 0x1;
 		gen_get_gpr(temp, 3); // stack pointer (sp) register is cpu_gpr[3]
 		tcg_gen_addi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
@@ -3332,10 +3412,8 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		for(int i=0; i<numOfListItems; i++){
 			tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
+
 			if( !((dispList & test)==0x0) ){
-
-				//gen_set_gpr(i+4, adr);			//for debuging purposes
-
 				tcg_gen_qemu_ld_i32(regToLoad, adr, MEM_IDX, MO_TESL);
 
 				gen_set_gpr(list[i], regToLoad);
@@ -3349,7 +3427,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		break;
 
 	case OPC_RH850_DISPOSE_imm5_list12_reg1:
-
+		//TODO: add dispose 2!!
 		break;
 
 	case OPC_RH850_EI:
@@ -3470,16 +3548,14 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		for(int i=0; i<numOfListItems; i++){
 			tcg_gen_subi_i32(temp, temp, 0x4);
 			tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
+
 			if( !((prepList & test)==0x0) ){
-				//gen_set_gpr((i+4), adr);	// for debuging purposes, writing addresses to reg4, reg5, reg6...
 				gen_get_gpr(regToStore, list[i]);
-				//gen_set_gpr(i+4, regToStore);  // for debuging purposes, writing registers that will be stored reg4, reg5, reg6...
 				tcg_gen_qemu_st_i32(regToStore, adr, MEM_IDX, MO_TESL);
 				gen_set_gpr(list[i], regToStore);
 			}
 			test = test << 1;
 		}
-
 		tcg_gen_subi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
 		gen_set_gpr(3, temp);
 
