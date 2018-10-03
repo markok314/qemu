@@ -3190,7 +3190,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		int numOfRegs = (rs3-rs1)+1;
 
 		gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
-		TCGv regToStore = tcg_temp_new_i32();
+		TCGv regToLoad = tcg_temp_new_i32();
 
 		if(rs1<=rs3){
 
@@ -3198,9 +3198,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 				tcg_gen_andi_i32(adr, temp, 0xfffffffc); // masking the lower two bits
 
-				gen_get_gpr(regToStore, rs3-i);
+				tcg_gen_qemu_ld_i32(regToLoad, adr, MEM_IDX, MO_TESL);
 
-				tcg_gen_qemu_ld_i32(regToStore, adr, MEM_IDX, MO_TESL);
+				gen_set_gpr(rs3-i, regToLoad);
 				tcg_gen_addi_i32(temp, temp, 0x4);
 
 				}
