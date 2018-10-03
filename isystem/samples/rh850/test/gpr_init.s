@@ -30,6 +30,41 @@
     .byte 0x01 | (\r3 << 3)
 .endm
 
+.macro LD_DW disp23:req, r1:req, r3:req
+    .byte 0xa0 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x09 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
+.macro ST_DW r3:req, disp23:req, r1:req
+    .byte 0xa0 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x0f | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
+.macro CACHE cacheop:req,r1:req
+   .byte 0xe0 | \r1
+   .byte 0xe7 | (((\cacheop & 0x60)) >> 2)
+   .byte 0x60
+   .byte 0x01 | ((\cacheop & 0x1f) << 3)
+.endm
+
+.macro PUSHSP rh:req, rt:req
+	.byte 0xe0 | \rh
+	.byte 0x47
+	.byte 0x60
+	.byte 0x01 | (\rt << 3)
+.endm
+
+.macro POPSP rh:req, rt:req
+	.byte 0xe0 | \rh
+	.byte 0x67
+	.byte 0x60
+	.byte 0x01 | (\rt << 3)
+.endm
+
 
 .equ R0, 0
 .equ R1, 1
@@ -52,6 +87,17 @@
 .equ R18, 18
 .equ R19, 19
 .equ R20, 20
+.equ R21, 21
+.equ R22, 22
+.equ R23, 23
+.equ R24, 24
+.equ R25, 25
+.equ R26, 26
+.equ R27, 27
+.equ R28, 28
+.equ R29, 29
+.equ R30, 30
+.equ R31, 31
 
 
 .text

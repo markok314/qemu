@@ -270,8 +270,8 @@ enum {
 	OPC_RH850_SYSCALL	= 	(0xC1A << 11),
 	OPC_RH850_TRAP		= 	(0x000 << 11),
 	OPC_RH850_PREF		= 	(0xC1B << 11),
-	OPC_RH850_POPSP		= 	(0xC0C << 11),
-	OPC_RH850_PUSHSP	= 	(0xC08 << 11),
+	OPC_RH850_POPSP_rh_rt	= 	(0xC0C << 11),
+	OPC_RH850_PUSHSP_rh_rt	= 	(0xC08 << 11),
 	//don't forget CACHE
 
 };
