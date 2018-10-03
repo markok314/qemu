@@ -3364,13 +3364,18 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_HALT:
 		break;
 
-	case OPC_RH850_LDSR_reg2_regID_selID:  // TODO: implement selID
+	case OPC_RH850_LDSR_reg2_regID_selID:
 		regID=rs2;
+		selID = extract32(ctx->opcode, 27, 5);
+
+		int valueldsr = decode_register(regID,selID);
+		printf("Reg id : %d, selid %d value %d \n",regID,selID,valueldsr);
+
 		if(regID==PSW_register){
 			gen_reset_flags(ctx);
 		}
 		gen_get_gpr(r2, rs1);
-		gen_set_sysreg(regID, r2);
+		gen_set_sysreg(valueldsr, r2);
 		break;
 
 	//case OPC_RH850_LDLW:

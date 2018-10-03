@@ -72,6 +72,12 @@
    .byte 0x00 | ((\selid) << 3)
 .endm
 
+.macro LDSR_ID r1:req, regid:req ,selid:req
+   .byte 0xe0 | \r1
+   .byte 0x07 | ((\regid) << 3)
+   .byte 0x20 
+   .byte 0x00 | ((\selid) << 3)
+.endm
 
 .equ R0, 0
 .equ R1, 1
