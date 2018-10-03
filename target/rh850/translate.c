@@ -3080,8 +3080,40 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation )
 
 //static void gen_loop(DisasContext *ctx, int rs1, int rs2, int operation){}
 
-//static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){}
-// NEED LOAD TO WORK
+static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){
+
+	TCGv temp = tcg_temp_new_i32();
+	uint32_t imm16 = extract32(ctx->opcode, 16, 16);
+
+	switch(operation){
+		case OPC_RH850_SET1_reg2_reg1:
+			printf(" SET1 1 \n");
+			break;
+		case OPC_RH850_SET1_bit3_disp16_reg1:
+			printf(" SET1 2 \n");
+			break;
+
+		case OPC_RH850_NOT1_reg2_reg1:
+			printf(" NOT1 1 \n");
+			break;
+		case OPC_RH850_NOT1_bit3_disp16_reg1:
+			printf(" NOT1 2 \n");
+			break;
+
+		case OPC_RH850_CLR1_reg2_reg1:
+			break;
+		case OPC_RH850_CLR1_bit3_disp16_reg1:
+			break;
+
+		case OPC_RH850_TST1_reg2_reg1:
+			break;
+		case OPC_RH850_TST1_bit3_disp16_reg1:
+			break;
+	}
+
+
+}
+
 
 static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2, int operation){
 
@@ -3361,8 +3393,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				//gen_set_gpr(i+4, regToStore);  // for debuging purposes, writing registers that will be stored reg4, reg5, reg6...
 				tcg_gen_qemu_st_i32(regToStore, adr, MEM_IDX, MO_TESL);
 				gen_set_gpr(list[i], regToStore);
-
-				//printf("this should be stored -> idx: %d reg: %d \n", i, list[i]);
 			}
 			test = test << 1;
 		}
@@ -3473,7 +3503,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				}
 			gen_set_gpr(3, temp);
 		}
-
 	}	break;
 
 	case OPC_RH850_RIE: {
@@ -3806,8 +3835,22 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    		gen_multiply(ctx, rs1, rs2, OPC_RH850_MULHI_imm16_reg1_reg2);
 	    	}
 	    	break;
-	    //case OPC_RH850_CLR1:
-	    		//clr
+	    case OPC_RH850_BITMAN2:
+
+	    	switch(extract32(ctx->opcode, 14, 2)){
+				case 0:
+					gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_SET1_bit3_disp16_reg1);
+					break;
+				case 1:
+					gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_NOT1_bit3_disp16_reg1);
+					break;
+				case 2:
+					gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_CLR1_bit3_disp16_reg1);
+					break;
+				case 3:
+					gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_TST1_bit3_disp16_reg1);
+					break;
+				}
 	    	break;
 		case OPC_RH850_32bit_1:		/* case for opcode = 11111 ; formats IX, X, XI, XII */
 			if (extract32(ctx->opcode, 16, 1) == 0x1 ) { //if bit 16=1 its either b.cond or ld.hu
@@ -3908,20 +3951,28 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							}
 						}
 						break;
-					case OPC_RH850_CLR1:
+					case OPC_RH850_BIT_MANIPULATION: // in format IX
 						check32bitZERO = extract32(ctx->opcode, 16, 3);
+						printf("its cool \n");
 						switch(check32bitZERO){
-						case 0:
+						case OPC_RH850_SET1_reg2_reg1:
+							printf(" SET1 \n");
+							gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_SET1_reg2_reg1);
 							//SET
 							break;
-						case 2:
+						case OPC_RH850_NOT1_reg2_reg1:
+							printf(" NOT1 \n");
+							gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_NOT1_reg2_reg1);
 							//NOT1
 							break;
-						case 4:
-							//CLR1
+						case OPC_RH850_CLR1_reg2_reg1:
+							printf(" CLR1 \n");
+							gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_CLR1_reg2_reg1);
 							break;
-						case 6:
+						case OPC_RH850_TST1_reg2_reg1:
 							if (extract32(ctx->opcode, 19, 1) == 0){
+								printf(" TST1 \n");
+								gen_bit_manipulation(ctx, rs1, rs2, OPC_RH850_TST1_reg2_reg1);
 								//TST1
 							} else {
 								gen_special(ctx, env, rs1, rs2, OPC_RH850_CAXI_reg1_reg2_reg3);

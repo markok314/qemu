@@ -111,9 +111,9 @@ enum {
 	OPC_RH850_32bit_1 = (0x3F << 5),	// 111111
 
 
-	/* FORMAT VIII */
 
-	OPC_RH850_CLR1_bit3_disp16_reg1	=	(0x3E << 5),
+
+	OPC_RH850_BITMAN2	=	(0x3E << 5),
 
 	OPC_RH850_FORMAT_V_XIII = (0x1E << 6),
 
@@ -122,6 +122,20 @@ enum {
 	OPC_RH850_MULH2 = (0x17 << 5),
 
 
+};
+
+enum{
+	OPC_RH850_SET1_reg2_reg1	=	0,
+	OPC_RH850_NOT1_reg2_reg1	=	2,
+	OPC_RH850_CLR1_reg2_reg1	=	4,
+	OPC_RH850_TST1_reg2_reg1	=	6,
+};
+
+enum{
+	OPC_RH850_SET1_bit3_disp16_reg1	=	1,
+	OPC_RH850_NOT1_bit3_disp16_reg1	=	3,
+	OPC_RH850_CLR1_bit3_disp16_reg1	=	5,
+	OPC_RH850_TST1_bit3_disp16_reg1	=	7,
 };
 
 enum{
@@ -254,7 +268,7 @@ enum {
 	OPC_RH850_BINS_0	= (0x0  << 21), //BINS0,SHR, SHR2
 	OPC_RH850_BINS_1	= (0x1  << 21), //BINS1,SAR,SAR2
 	OPC_RH850_BINS_2	= (0x2  << 21),	//BINS2,SHL, SHL2, ROTL, ROTL2
-	OPC_RH850_CLR1		= (0x3  << 21),	//clr1, set, tst1, not1, caxi
+	OPC_RH850_BIT_MANIPULATION		= (0x3  << 21),	//clr1, set, tst1, not1, caxi in format IX
 };
 
 #define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))	//0010 on b26-b23
