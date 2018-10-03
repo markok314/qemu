@@ -3,31 +3,59 @@
 .text
 
 
-	mov 0x2, r1
-	mov 0xc, r3
-	mov 0xaabb, r4
-	callt 0x2
-	st.b r3, 0xab[r1]
-	JARL [R4], R10
-	mov 0x8, r5
-	
-	add r1, r5
-	add r2, r5
-	ROTL_i 0x8, R3, R7
-	ROTL_r R2, R4, R5
-	jmp r4
-	
-	add r3, r5
-	add r4, r5	
-	add r5, r5
+	mov 0xfee00022, r1
+	#mov 0xfff00000, r5
+	#add r5, r12
+	#mov 0xabc, r3
+	#mov 0xaabb, r4
+	#st.h r4, 0x0[r1]
+	#st.b r3, 0xab[r1]
+	#mov 0xaabb, r2
+	#caxi r1, r2, r5		#put 0xaabb in r2
+	#JARL [R4], R10
+	mov 0x8, r31
+	st.w r31, 0x0[r1]
+	mov 0xfeeecc00, r3
+	ld.w 0x0[r1], r1
+	mov 0x1, r20
+	mov 0x2, r21
+	mov 0x3, r22
+	mov 0x4, r23
+	mov 0x5, r24
+	mov 0x6, r25
+	prepare 0xfff, 0x0
+
+	mov 0xfff, r20
+	mov 0xffff, r21
+	mov 0xfffff, r22
+	mov 0xffff, r23
+	mov 0xfff, r24
+	mov 0xff, r25
 
 
-.org 0xaabb
+
+	dispose 0x0, 0xfff
+
+
+	#ld.w 0x0[r1], r20
+	#add r1, r5
+	#add r2, r5
+	#ROTL_i 0x8, R3, R7
+	#ROTL_r R2, R4, R5
+	#jmp r4
+	
+	#add r3, r5
+	#add r4, r5	
+	#add r5, r5
+
+
+#.org 0xaabb
 
 	
-	ld.b 0xab[r1], r10
-	mov 0x2, r3
-	LD.DW 0x2, R1, R4
+	#ld.bu 0xab[r1], r10
+	#mov 0x2, r3
+
+	
 
 SELF:
    	br SELF

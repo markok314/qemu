@@ -3070,11 +3070,10 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 	case OPC_RH850_DISPOSE_imm5_list12: {
 
-		//int list [32] = {20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
-		int list [32] = {31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20};
+		int list [12] = {31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20};
+		int numOfListItems = sizeof(list) / sizeof(list[0]);
 		printf("This is DISPOSE \n");
 		int list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
-
 
 		int dispList = 	((list12 & 0x80) << 4) |
 						((list12 & 0x40) << 4) |
@@ -3092,6 +3091,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		// TODO: address matching?
 		// what is happening with store and load addresses?
 		// check PREPARE and DISPOSE, write all 'adr' to regs to check!
+		// UPDATE: Addresses match perfectly; the problem may be in store/load instructions?
 
 		int test = 0x1;
 		gen_get_gpr(temp, 3); // stack pointer (sp) register is cpu_gpr[3]
@@ -3099,21 +3099,19 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		TCGv regToLoad = tcg_temp_new_i32();
 
-		//for(int i=(sizeof(list)-1); i>=0; i--){
-		for(int i=0; i<sizeof(list); i++){
+		for(int i=0; i<numOfListItems; i++){
 			tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
 			if( !((dispList & test)==0x0) ){
-				//gen_get_gpr(regToStore, list[i]);
-				gen_set_gpr(31, adr);	//for debuging purposes
-				tcg_gen_qemu_ld32u(regToLoad, adr, MEM_IDX);
+
+				//gen_set_gpr(i+4, adr);			//for debuging purposes
+
+				tcg_gen_qemu_ld_i32(regToLoad, adr, MEM_IDX, MO_TESL);
+
 				gen_set_gpr(list[i], regToLoad);
 				tcg_gen_addi_i32(temp, temp, 0x4);
-				printf("this should be loaded -> idx: %d reg: %d \n", i, list[i]);
 			}
 			test = test << 1;
-
 		}
-
 		gen_set_gpr(3, temp);
 		}
 
@@ -3187,11 +3185,11 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 	//case OPC_RH850_POPSP
 
-	case OPC_RH850_PREPARE_list12_imm5:{ // how to manually affect ff field? can not get value 0x2!
+	case OPC_RH850_PREPARE_list12_imm5:{ // how to manually affect the ff field? can not get value 0x2!
 
-		int list [32] = {20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+		int list [12] = {20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
 		int list12 = ( (extract32(ctx->opcode, 21, 11) << 1) | (extract32(ctx->opcode, 0, 1) ) ) ;
-
+		int numOfListItems = sizeof(list) / sizeof(list[0]);
 		int prepList = 	((list12 & 0x80) >> 7) |
 						((list12 & 0x40) >> 5) |
 						((list12 & 0x20) >> 3) |
@@ -3209,31 +3207,31 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
 		TCGv regToStore = tcg_temp_new_i32();
 
-		for(int i=0; i<sizeof(list); i++){
+		for(int i=0; i<numOfListItems; i++){
 			tcg_gen_subi_i32(temp, temp, 0x4);
 			tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
 			if( !((prepList & test)==0x0) ){
-				gen_set_gpr(31, adr);	//for debuging purposes
+				//gen_set_gpr((i+4), adr);	// for debuging purposes, writing addresses to reg4, reg5, reg6...
 				gen_get_gpr(regToStore, list[i]);
-				tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
+				//gen_set_gpr(i+4, regToStore);  // for debuging purposes, writing registers that will be stored reg4, reg5, reg6...
+				tcg_gen_qemu_st_i32(regToStore, adr, MEM_IDX, MO_TESL);
 				gen_set_gpr(list[i], regToStore);
 
-				printf("this should be stored -> idx: %d reg: %d \n", i, list[i]);
+				//printf("this should be stored -> idx: %d reg: %d \n", i, list[i]);
 			}
 			test = test << 1;
-
 		}
 
 		tcg_gen_subi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
-
 		gen_set_gpr(3, temp);
-
 
 	}	break;
 
 	case OPC_RH850_PREPARE_list12_imm5_sp:{
 
+		int list [12] = {20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
 		uint32_t list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
+		int numOfListItems = sizeof(list) / sizeof(list[0]);
 		int prepList = 	((list12 & 0x80) >> 7) |
 								((list12 & 0x40) >> 5) |
 								((list12 & 0x20) >> 3) |
@@ -3247,7 +3245,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 								((list12 & 0x2) << 10) |
 								((list12 & 0x1) << 10) ;
 
-		int list [32] = {20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+
 		printf("This is PREPARE that can be 32, 48 or 64bit \n");
 		uint32_t imm = 0x0;
 
@@ -3256,7 +3254,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		gen_get_gpr(temp, 3); // stack pointer register is cpu_gpr[3]
 		TCGv regToStore = tcg_temp_new_i32();
 
-		for(int i=0; i<sizeof(list); i++){
+		for(int i=0; i<numOfListItems; i++){
 			tcg_gen_subi_i32(temp, temp, 0x4);
 			tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
 			if( !((prepList & test)==0x0) ){
@@ -3289,7 +3287,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				break;
 
 			case 0x2:
-				printf("SUCCESS!!!\n");
+				printf("SUCCESS!!! The 'ff' field in instruction PREPARE is set to 0x2. \n");
 				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 16bits from memory
 				tcg_gen_movi_i32(temp, imm);
 				tcg_gen_shli_i32(temp, temp, 0x10);
