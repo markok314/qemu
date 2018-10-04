@@ -9,6 +9,13 @@
     .byte 0x03 | (\r3 << 3)
 .endm
 
+.macro STC_W r3:req, r1:req
+    .byte 0xe0 | \r1
+    .byte 0x07
+    .byte 0x7a
+    .byte 0x03 | (\r3 << 3)
+.endm
+
 .macro ROTL_r r1:req, r2:req, r3:req
     .byte 0xe0 | \r1
     .byte 0x07 | (\r2 << 3)
@@ -77,6 +84,12 @@
    .byte 0x07 | ((\regid) << 3)
    .byte 0x20 
    .byte 0x00 | ((\selid) << 3)
+.endm
+
+.macro LOOP r1:req, disp16:req
+    .byte 0xe0 | \r1
+    .byte 0x06
+   	.hword \disp16 | 0x1
 .endm
 
 .equ R0, 0
