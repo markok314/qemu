@@ -113,7 +113,7 @@ enum {
 
 
 
-	OPC_RH850_BITMAN2	=	(0x3E << 5),
+	OPC_RH850_BIT_MANIPULATION_2	=	(0x3E << 5),
 
 	OPC_RH850_FORMAT_V_XIII = (0x1E << 6),
 
