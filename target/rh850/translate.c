@@ -4156,7 +4156,8 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 	if (MASK_OP_FORMAT_V_FORMAT_XIII(ctx->opcode) == OPC_RH850_FORMAT_V_XIII){
 		if(extract32(ctx->opcode, 16, 1) == 0){
-		    uint32_t disp22 = extract32(ctx->opcode, 16, 16) | (extract32(ctx->opcode, 0, 6) << 16 );
+		    uint32_t disp22 = extract32(ctx->opcode, 16, 16) |
+		    		(extract32(ctx->opcode, 0, 6) << 16 );
 		    if( (disp22 & 0x200000) == 0x200000){
 		    	disp22 = disp22 | (0x3ff << 22);
 		    }
@@ -4397,7 +4398,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		if ( extract32(rs1,0,1) == 1 ) {
 			//SST.W
 	    	gen_store(ctx, MO_TEUL, 30, rs2, (extract32(ctx->opcode, 1, 6)) << 2 );
-			/// Note An MAE or MDP exception might occur depending on the result of address calculation.
+			/// Note An MAE or MDP exception might occur
+	    	/// depending on the result of address calculation.
 		}
 		else{
 			//SLD.W
@@ -4410,7 +4412,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		break;
 	case OPC_RH850_16bit_SSTH:
     	gen_store(ctx, MO_TEUW, 30, rs2, (extract32(ctx->opcode, 0, 7)) << 1 );
-    	/// Note An MAE or MDP exception might occur depending on the result of address calculation.
+    	/// Note An MAE or MDP exception might occur
+    	///depending on the result of address calculation.
 		break;
 	}
 }
@@ -4478,14 +4481,15 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         ctx.opcode = cpu_lduw_code(env, ctx.pc);
 
         if ((extract32(ctx.opcode, 9, 2) != 0x3) && (extract32(ctx.opcode, 5, 11) != 0x17)){
-			ctx.next_pc = ctx.pc + 2;		//16 bit instructions
-			decode_RH850_16(env, &ctx);		//this function includes JR and JARL (32-bit FORMAT VI)
+			ctx.next_pc = ctx.pc + 2;
+			decode_RH850_16(env, &ctx);		//this function includes 32-bit JR and JARL
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
-        	if ( ((extract32(ctx.opcode, 6, 11) == 0x41e) && (extract32(ctx.opcode, 17, 2) > 0x1)) ||	// 48 bit instructions
-			(extract32(ctx.opcode, 5, 11) == 0x31) ||	// MOVE3
-			(extract32(ctx.opcode, 5, 12) == 0x37)  || //this fits for JMP2(48-bit)
-			(extract32(ctx.opcode, 5, 11) == 0x17) ) { //this is for 48bit JARL and JR (format VI)
+        	if (((extract32(ctx.opcode, 6, 11) == 0x41e)
+        			&& (extract32(ctx.opcode, 17, 2) > 0x1)) ||
+        			(extract32(ctx.opcode, 5, 11) == 0x31) ||		//48-bit MOV
+					(extract32(ctx.opcode, 5, 12) == 0x37)  || 		//48-bit JMP
+					(extract32(ctx.opcode, 5, 11) == 0x17) ) { 		//48-bit JARL and JR
 
         		ctx.opcode1 = cpu_lduw_code(env, ctx.pc+4);
 				ctx.next_pc = ctx.pc + 6;
