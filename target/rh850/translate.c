@@ -2878,7 +2878,36 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation )
 	                    // execution control loop
 };
 
-//static void gen_loop(DisasContext *ctx, int rs1, int rs2, int operation){}
+static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
+{
+    TCGLabel *l = gen_new_label();
+    TCGv r1 = tcg_temp_new();
+	TCGv dest_addr = tcg_temp_new();
+    TCGv zero = tcg_temp_new();
+    TCGv disp = tcg_temp_new();
+
+    tcg_gen_movi_i32(zero, 0);
+    gen_get_gpr(r1, rs1);
+	tcg_gen_addi_i32(r1, r1, 0xffffffff);
+    tcg_gen_brcond_tl(TCG_COND_NE, r1, zero, l);
+
+    /*tcg_gen_movi_i32(disp, disp16);
+    tcg_gen_ext16u_tl(disp, disp);
+    tcg_gen_sub_i32(dest_addr, cpu_pc, disp);*/
+
+    tcg_temp_free(r1);
+    tcg_temp_free(dest_addr);
+    tcg_temp_free(zero);
+    tcg_temp_free(disp);
+
+    gen_goto_tb(ctx, 1, ctx->next_pc); // no jump, continue with next instr.
+    gen_set_label(l); 				// branch taken
+    gen_goto_tb(ctx, 0, ctx->pc - disp16);
+
+    ctx->bstate = BS_BRANCH;
+}
+
+
 
 static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){
 
@@ -3811,6 +3840,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    case OPC_RH850_LOOP:
 	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
 	    		//loop
+	    		gen_loop(ctx, rs1, ld_imm & 0xfffe);
 	    	} else {
 	    		gen_multiply(ctx, rs1, rs2, OPC_RH850_MULHI_imm16_reg1_reg2);
 	    	}
@@ -4442,7 +4472,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
     ///ctx.singlestep_enabled = cs->singlestep_enabled;
-    ctx.singlestep_enabled = 1;///
+    ctx.singlestep_enabled = 1;/// this is only for gdb exceptions
 
     ctx.tb = tb;
     ctx.bstate = BS_NONE;
@@ -4486,7 +4516,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
         	if (((extract32(ctx.opcode, 6, 11) == 0x41e)
-        			&& (extract32(ctx.opcode, 17, 2) > 0x1)) ||
+        				&& (extract32(ctx.opcode, 17, 2) > 0x1)) ||
         			(extract32(ctx.opcode, 5, 11) == 0x31) ||		//48-bit MOV
 					(extract32(ctx.opcode, 5, 12) == 0x37)  || 		//48-bit JMP
 					(extract32(ctx.opcode, 5, 11) == 0x17) ) { 		//48-bit JARL and JR
@@ -4541,6 +4571,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         }
 
     }
+
     if (tb->cflags & CF_LAST_IO) {
         gen_io_end();
     }
