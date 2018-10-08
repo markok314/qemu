@@ -4468,10 +4468,9 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     next_page_start = (pc_start & TARGET_PAGE_MASK) + TARGET_PAGE_SIZE;
     ctx.pc = pc_start;
 
-
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
-    ///ctx.singlestep_enabled = cs->singlestep_enabled;
+    //ctx.singlestep_enabled = cs->singlestep_enabled;
     ctx.singlestep_enabled = 1;/// this is only for gdb exceptions
 
     ctx.tb = tb;
@@ -4599,7 +4598,7 @@ done_generating:
 #ifdef DEBUG_DISAS
     if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)
         && qemu_log_in_addr_range(pc_start)) {
-        qemu_log("IN: %s\n", lookup_symbol(pc_start));
+        qemu_log("\nIN: %s\n", lookup_symbol(pc_start));
         log_target_disas(cs, pc_start, ctx.pc - pc_start);
         qemu_log("\n");
     }
