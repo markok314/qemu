@@ -3,43 +3,60 @@ import os
 import glob
 import subprocess
 import time
+import shutil
+import filterDlls as filter_dll
+
+if os.path.exists("windows64"):
+    shutil.rmtree("windows64")
+os.makedirs("windows64")
 
 os.chdir('../..')
 print(os.getcwd())
 
-if(len(glob.glob('docker-src*')) == 0):
-    #docker is not in qemu folder yet
-    print("Docker installing")
+cmd = ['sudo gnome-terminal --execute sudo make docker-test-mingw@fedora V=1 DEBUG=1 J=4 /bin/bash']
+p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 
-
-else:
-    #docker is already there, just need to start it
-    print("Starting docker and copying files")
-
-cmd = ['gnome-terminal --execute sudo make docker-test-mingw@fedora V=1 DEBUG=1 J=4 /bin/bash']
-p = subprocess.Popen(cmd, shell=True, executable='/bin/bash', stdout=subprocess.PIPE, universal_newlines=True)
-
-poll = p.poll()
-if poll == None:
-    print('living')
-
-
-#How to write to terminal with docker ???
-
-print('dead')
+time.sleep(40)
 
 #geting id from docker
 
-#a = str(os.popen("sudo docker ps -q").readlines())
-#a = a[2:]
-#a = a[:-4]
-#print(a)
+id = str(os.popen("sudo docker ps -q").readlines())
+id = id[2:]
+id = id[:-4]
+print(id)
+
+cmd = ["sudo docker exec -i " + id + " sh -c 'cd /tmp/qemu-test/src/ ;pwd"
+                            " cd QEMU_SRC ; ./configure --cross-prefix=x86_64-w64-mingw32- --target-list=rh850-softmmu ;make'"]
+
+p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+p.wait()
+
+cmd = ["sudo docker exec -i " + id + " sh -c 'mkdir ~/dlls;  cd /usr/x86_64-w64-mingw32/sys-root/mingw/bin/ ; cp *.dll ~/dlls'"]
+p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+p.wait()
+
+cmd = ["sudo docker cp " + id+":tmp/qemu-test/src/rh850-softmmu/qemu-system-rh850.exe isystem/utils/windows64"]
+p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+p.wait()
+
+cmd = ["sudo docker cp " + id+":/root/dlls isystem/utils/windows64"]
+p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+p.wait()
+
+os.chdir('isystem/utils')
+
+shutil.make_archive("windows64", 'zip', "windows64")
+
+os.chdir('../../')
+print(os.getcwd())
+
+cmd = ["sudo docker stop " + id]
+p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+p.wait()
+
+#remove docker
+cmd = ['sudo rm -rf docker-src*']
+p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 
 
-#cmd = ['sudo docker exec -i -d ' + a + ' /bin/bash']
-#subprocess.check_call(cmd, shell=True, executable='/bin/bash')
-
-
-
-
-
+print("------------FINISHED------------")
