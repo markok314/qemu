@@ -152,6 +152,9 @@ struct CPURH850State {
     target_ulong load_res;    	// inst addr for TCG
     target_ulong load_val;    	// inst val for TCG
 
+    target_ulong cpu_LLbit;    	// register for mutual exclusion (LDL.W, STC.W)
+    target_ulong cpu_LLAddress;    	// register for mutual exclusion (LDL.W, STC.W)
+
     target_ulong frm;			//  CSR floating point rounding mode
 
     target_ulong badaddr;		//changed to mea

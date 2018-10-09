@@ -330,6 +330,12 @@ enum {
 #define MASK_OP_FORMAT_V_FORMAT_XIII(op) (op & (0x1F << 6))
 
 
+enum {
+	operation_LDL_W = 0,
+	operation_STC_W = 1,
+	operation_CLL = 2,
+};
+
 
 
 //////////////////////////////////////////////////////////

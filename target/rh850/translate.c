@@ -32,7 +32,7 @@
 
 /* global register indices */
 static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[31], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56],
-			cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1];
+			cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1], cpu_LLbit, cpu_LLAddress;
 static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv load_res;
 static TCGv load_val;
@@ -668,9 +668,9 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
     TCGv t1_high = tcg_temp_new();
 
     gen_get_gpr(t0, rs1);
-    tcg_gen_movi_i32(tcg_imm, imm);
-    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
-    tcg_gen_add_tl(t0, t0, tcg_imm);
+	tcg_gen_movi_i32(tcg_imm, imm);
+	tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+	tcg_gen_add_tl(t0, t0, tcg_imm);
 
     if (memop == MO_TEQ) {
         tcg_gen_qemu_ld_i64(t1_64, t0, MEM_IDX, memop);
@@ -694,9 +694,9 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
 static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         target_long imm)
 {
-    TCGv t0 = tcg_temp_local_new();
-    TCGv dat = tcg_temp_local_new();
-    TCGv tcg_imm = tcg_temp_local_new();
+    TCGv t0 = tcg_temp_new();
+    TCGv dat = tcg_temp_new();
+    TCGv tcg_imm = tcg_temp_new();
     TCGv dat_high = tcg_temp_new();
     TCGv_i64 dat64 = tcg_temp_new_i64();
 
@@ -721,6 +721,62 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     tcg_temp_free_i64(dat64);
     tcg_temp_free(dat_high);
 }
+
+static void gen_mutual_exclusion(DisasContext *ctx, int rd, int rs1, int operation)
+{
+	/* LDL.W, STC.W, CLL: Implement as described.
+	Add two additional global CPU registers called LLBit and LLAddress.
+	Set them with LDL.W, and reset them with STC.W.
+	If LLBit is not set or LLAddress does not match STC.W address, make STC.W fail.
+	CLL clears LLBit.
+	Since we do not implement multicore CPU emulation, this implementation should be OK. */
+
+    if (operation == operation_LDL_W)
+    {
+        TCGv t0 = tcg_temp_new();
+        TCGv t1 = tcg_temp_new();
+
+        gen_get_gpr(t0, rs1);
+		tcg_gen_qemu_ld_tl(t1, t0, MEM_IDX, MO_TESL);
+		gen_set_gpr(rd, t1);
+
+		tcg_temp_free(t0);
+		tcg_temp_free(t1);
+
+		tcg_gen_movi_i32(cpu_LLbit, 1);
+    }
+    else if (operation == operation_STC_W)
+    {
+        TCGv adr = tcg_temp_new();
+        TCGv dat = tcg_temp_new();
+        TCGv token = tcg_temp_new();
+		TCGLabel *l1 = gen_new_label();
+		TCGLabel *l2 = gen_new_label();
+
+	    tcg_gen_brcondi_i32(TCG_COND_EQ, token, 0x1, l1);
+	    tcg_gen_movi_i32(dat, 0);
+	    tcg_gen_br(l2);
+	    gen_set_label(l1);
+        gen_get_gpr(adr, rs1);
+        gen_get_gpr(dat, rd);
+        tcg_gen_qemu_st_tl(dat, adr, MEM_IDX, MO_TESL);
+	    tcg_gen_movi_i32(dat, 1);
+	    gen_set_label(l2);
+
+        tcg_temp_free(adr);
+        tcg_temp_free(dat);
+        tcg_temp_free(token);
+
+        tcg_gen_movi_tl(cpu_LLbit, 0);
+    }
+    else if (operation == operation_CLL)
+    {
+
+
+    }
+}
+
+
 
 static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)
 {
@@ -3845,12 +3901,10 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	    	break;
 
 	    case OPC_RH850_LOOP:
-	    	if (extract32(ctx->opcode, 11, 5) == 0x0){
-	    		//loop
-	    		gen_loop(ctx, rs1, ld_imm & 0xfffe);
-	    	} else {
+	    	if (extract32(ctx->opcode, 11, 5) == 0x0)
+	    		gen_loop(ctx, rs1, ld_imm & 0xfffe);	// LOOP
+	    	else
 	    		gen_multiply(ctx, rs1, rs2, OPC_RH850_MULHI_imm16_reg1_reg2);
-	    	}
 	    	break;
 	    case OPC_RH850_BIT_MANIPULATION_2:
 
@@ -4109,7 +4163,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 				case OPC_RH850_FORMAT_XII:	// for opcode = 0110 ; format XII instructions
 											//excluding MUL and including CMOV
-											// add LDL.W and STC.W!!!
+											// add LDL.W and STC.W!!!	(Format VII)
 					checkXII = extract32(ctx->opcode, 21, 2);
 
 					switch(checkXII){
@@ -4139,11 +4193,14 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							break;
 						}
 						break;
-					case 3:	//these are SCHOL, SCHOR, SCH1L, SCH1R
+					case 3:	//these are SCHOL, SCHOR, SCH1L, SCH1R. 	Also LDL.W
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
 						case OPC_RH850_SCH0R_reg2_reg3:
-							gen_bit_search(ctx, rs2, OPC_RH850_SCH0R_reg2_reg3);
+							if (extract32(ctx->opcode, 5, 11) == 0x3F && extract32(ctx->opcode, 16, 5) == 0x18)
+								gen_mutual_exclusion(ctx, extract32(ctx->opcode, 27, 5), rs1, operation_LDL_W);
+							else
+								gen_bit_search(ctx, rs2, OPC_RH850_SCH0R_reg2_reg3);
 							break;
 						case OPC_RH850_SCH1R_reg2_reg3:
 							if (extract32(ctx->opcode, 19, 2) == 0x0){
@@ -4675,12 +4732,11 @@ void rh850_translate_init(void)
     cpu_CU2 = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, CU2_flag), "CU2");
     cpu_UM = tcg_global_mem_new_i32(cpu_env, offsetof(CPURH850State, UM_flag), "UM");
 
-
-
-
     cpu_pc = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, pc), "pc");
-    load_res = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_res),
-                             "load_res");
-    load_val = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_val),
-                             "load_val");
+    load_res = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_res), "load_res");
+    load_val = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, load_val), "load_val");
+
+    cpu_LLbit = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, cpu_LLbit), "cpu_LLbit");
+    cpu_LLAddress = tcg_global_mem_new(cpu_env, offsetof(CPURH850State, cpu_LLAddress), "cpu_LLAddress");
+
 }
