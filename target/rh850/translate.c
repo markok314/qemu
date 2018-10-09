@@ -1696,6 +1696,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 			width = extract32(ctx->opcode, 28, 4) - pos + 1;
 
+			printf("pos %d width %d \n",pos,width);
+
 			for(int i = 0; i < width; i++){
 				mask = mask | (0x1 << i);
 			}
@@ -1711,8 +1713,9 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_or_i32(tcg_r2, tcg_r2, insert);		//placing bits into reg2
 
 			gen_set_gpr(rs2, tcg_r2);
-
-			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
+			printf("test1\n");
+			//tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
+			printf("test2\n");
 			tcg_gen_shli_i32(cpu_SF, tcg_r2, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 

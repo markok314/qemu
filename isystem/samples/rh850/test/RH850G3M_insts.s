@@ -57,6 +57,26 @@
    .byte 0x01 | ((\cacheop & 0x1f) << 3)
 .endm
 
+.macro BINS1 r1:req, pos:req, width:req, r2:req
+   .byte 0xe0 | \r2
+   .byte 0x07 | (\r1 << 3)
+   .byte 0x90 | ((\pos & 0x7) << 1)
+   .byte 0x00 | ((\pos & 0x8)) | (((\width + \pos - 0x1 )& 0xf) << 4)
+.endm
+
+.macro BINS2 r1:req, pos:req, width:req, r2:req
+   .byte 0xe0 | \r2
+   .byte 0x07 | (\r1 << 3)
+   .byte 0xB0 | ((\pos & 0x7) << 1)
+   .byte 0x00 | ((\pos & 0x8)) | (((\width + \pos - 0x1 )& 0xf) << 4)
+.endm
+
+.macro BINS3 r1:req, pos:req, width:req, r2:req
+   .byte 0xe0 | \r2
+   .byte 0x07 | (\r1 << 3)
+   .byte 0xD0 | ((\pos & 0x7) << 1)
+   .byte 0x00 | ((\pos & 0x8)) | (((\width + \pos - 0x1 )& 0xf) << 4)
+.endm
 
 
 .equ R0, 0
