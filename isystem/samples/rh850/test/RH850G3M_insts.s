@@ -78,6 +78,12 @@
    .byte 0x00 | ((\pos & 0x8)) | (((\width + \pos - 0x1 )& 0xf) << 4)
 .endm
 
+.macro PREF prefop:req,r1
+   .byte 0xe0 | \r1
+   .byte 0xdf 
+   .byte 0x60
+   .byte 0x01 | (\prefop << 3)
+.endm
 
 .equ R0, 0
 .equ R1, 1

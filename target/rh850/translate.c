@@ -156,6 +156,10 @@ enum {
 	CLL = 0x7e,
 };
 
+enum {
+	OPC_RH850_BINS = 123456,
+};
+
 #define CASE_OP_32_64(X) case X
 /*
 static void generate_exception(DisasContext *ctx, int excp)
@@ -1689,7 +1693,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 	switch(operation) {
 
-		case 123456: //BINS
+		case OPC_RH850_BINS: //BINS
 
 			mask = 0;
 			pos = extract32(ctx->opcode, 17, 3) | (extract32(ctx->opcode, 27, 1) << 3);
@@ -3910,7 +3914,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					case OPC_RH850_BINS_0:
 						if (extract32(ctx->opcode, 20, 1) == 1){
 							//BINS0
-							gen_data_manipulation(ctx, rs1, rs2, 123456);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BINS);
 							printf("BINS0\n");
 						}
 						else{
@@ -3924,7 +3928,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					case OPC_RH850_BINS_1:
 						if (extract32(ctx->opcode, 20, 1) == 1){
 							//BINS1
-							gen_data_manipulation(ctx, rs1, rs2, 123456);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BINS);
 							printf("BINS1\n");
 						}
 						else{
@@ -3938,7 +3942,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					case OPC_RH850_BINS_2:
 						if (extract32(ctx->opcode, 20, 1) == 1){
 							//BINS2
-							gen_data_manipulation(ctx, rs1, rs2, 123456);
+							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BINS);
 							printf("BINS2\n");
 						}
 						else{
@@ -4025,6 +4029,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 							gen_special(ctx, env, rs1, rs2, OPC_RH850_TRAP);
 							break;
 						case OPC_RH850_PREF:
+							//printf("PREF \n");
 							break;
 						case OPC_RH850_POPSP_rh_rt:
 							gen_special(ctx, env, rs1, rs2, OPC_RH850_POPSP_rh_rt);
