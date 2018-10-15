@@ -6,9 +6,9 @@ import time
 import shutil
 import filterDlls as filter_dll
 
-if os.path.exists("windows64"):
-    shutil.rmtree("windows64")
-os.makedirs("windows64")
+if os.path.exists("windows32"):
+    shutil.rmtree("windows32")
+os.makedirs("windows32")
 
 os.chdir('../..')
 print(os.getcwd())
@@ -31,26 +31,26 @@ while isNotStarted:
         print(id)
 
 cmd = ["sudo docker exec -i " + id + " sh -c 'cd /tmp/qemu-test/src/ ;pwd"
-                            " cd QEMU_SRC ; ./configure --cross-prefix=x86_64-w64-mingw32- --target-list=rh850-softmmu ;make'"]
+                            " cd QEMU_SRC ; ./configure --cross-prefix=i686-w64-mingw32- --target-list=rh850-softmmu ;make'"]
 
 p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 p.wait()
 
-cmd = ["sudo docker exec -i " + id + " sh -c 'mkdir ~/dlls;  cd /usr/x86_64-w64-mingw32/sys-root/mingw/bin/ ; cp *.dll ~/dlls'"]
+cmd = ["sudo docker exec -i " + id + " sh -c 'mkdir ~/dlls;  cd /usr/i686-w64-mingw32/sys-root/mingw/ ; cp **/*.dll ~/dlls'"]
 p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 p.wait()
 
-cmd = ["sudo docker cp " + id+":tmp/qemu-test/src/rh850-softmmu/qemu-system-rh850.exe isystem/utils/windows64"]
+cmd = ["sudo docker cp " + id+":tmp/qemu-test/src/rh850-softmmu/qemu-system-rh850.exe isystem/utils/windows32"]
 p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 p.wait()
 
-cmd = ["sudo docker cp " + id+":/root/dlls isystem/utils/windows64"]
+cmd = ["sudo docker cp " + id+":/root/dlls isystem/utils/windows32"]
 p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 p.wait()
 
 os.chdir('isystem/utils')
 
-shutil.make_archive("windows64", 'zip', "windows64")
+shutil.make_archive("windows32", 'zip', "windows32")
 
 os.chdir('../../')
 print(os.getcwd())
