@@ -715,6 +715,13 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     else
     	tcg_gen_qemu_st_tl(dat, t0, MEM_IDX, memop);
 
+    // clear possible mutex
+	TCGLabel *l = gen_new_label();
+    tcg_gen_brcond_i32(TCG_COND_NE, t0, cpu_LLAddress, l);
+    tcg_gen_brcondi_i32(TCG_COND_NE, cpu_LLbit, 0x1, l);
+    tcg_gen_movi_i32(cpu_LLbit, 0);
+    gen_set_label(l);
+
     tcg_temp_free(t0);
     tcg_temp_free(dat);
     tcg_temp_free(tcg_imm);
@@ -722,7 +729,7 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
     tcg_temp_free(dat_high);
 }
 
-static void gen_mutual_exclusion(DisasContext *ctx, int rd, int rs1, int operation)
+static void gen_mutual_exclusion(DisasContext *ctx, int rs3, int rs1, int operation)
 {
 	/* LDL.W, STC.W, CLL: Implement as described.
 	Add two additional global CPU registers called LLBit and LLAddress.
@@ -733,49 +740,54 @@ static void gen_mutual_exclusion(DisasContext *ctx, int rd, int rs1, int operati
 
     if (operation == operation_LDL_W)
     {
-        TCGv t0 = tcg_temp_new();
-        TCGv t1 = tcg_temp_new();
+        TCGv adr = tcg_temp_new();
+        TCGv dat = tcg_temp_new();
 
-        gen_get_gpr(t0, rs1);
-		tcg_gen_qemu_ld_tl(t1, t0, MEM_IDX, MO_TESL);
-		gen_set_gpr(rd, t1);
+        gen_get_gpr(adr, rs1);
+		tcg_gen_qemu_ld_tl(dat, adr, MEM_IDX, MO_TESL);
+		gen_set_gpr(rs3, dat);
 
-		tcg_temp_free(t0);
-		tcg_temp_free(t1);
+		tcg_temp_free(adr);
+		tcg_temp_free(dat);
 
 		tcg_gen_movi_i32(cpu_LLbit, 1);
+		tcg_gen_mov_i32(cpu_LLAddress, adr);
     }
     else if (operation == operation_STC_W)
     {
-        TCGv adr = tcg_temp_new();
-        TCGv dat = tcg_temp_new();
-        TCGv token = tcg_temp_new();
-		TCGLabel *l1 = gen_new_label();
-		TCGLabel *l2 = gen_new_label();
+        TCGv adr = tcg_temp_local_new();
+        TCGv dat = tcg_temp_local_new();
+        TCGv token = tcg_temp_local_new();
+		TCGLabel *l_fail = gen_new_label();
+		TCGLabel *l_ok = gen_new_label();
 
-	    tcg_gen_brcondi_i32(TCG_COND_EQ, token, 0x1, l1);
-	    tcg_gen_movi_i32(dat, 0);
-	    tcg_gen_br(l2);
-	    gen_set_label(l1);
+	    tcg_gen_mov_i32(token, cpu_LLbit);
+	    tcg_gen_brcondi_i32(TCG_COND_NE, token, 0x1, l_fail);
         gen_get_gpr(adr, rs1);
-        gen_get_gpr(dat, rd);
+        gen_get_gpr(dat, rs3);
+	    tcg_gen_brcond_i32(TCG_COND_NE, adr, cpu_LLAddress, l_fail);
         tcg_gen_qemu_st_tl(dat, adr, MEM_IDX, MO_TESL);
 	    tcg_gen_movi_i32(dat, 1);
-	    gen_set_label(l2);
+        tcg_gen_br(l_ok);
+
+	    gen_set_label(l_fail);
+        tcg_gen_movi_i32(dat, 0);
+	    gen_set_label(l_ok);
+		gen_set_gpr(rs3, dat);
+
+        tcg_gen_movi_tl(cpu_LLbit, 0);
 
         tcg_temp_free(adr);
         tcg_temp_free(dat);
         tcg_temp_free(token);
-
-        tcg_gen_movi_tl(cpu_LLbit, 0);
     }
     else if (operation == operation_CLL)
     {
-
-
+		tcg_gen_movi_i32(cpu_LLbit, 0);
     }
+    else
+    	printf("ERROR gen_mutual_exclusion \n");
 }
-
 
 
 static void gen_multiply(DisasContext *ctx, int rs1, int rs2, int operation)
@@ -3923,7 +3935,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 				}
 	    	break;
-		case OPC_RH850_32bit_1:		/* case for opcode = 11111 ; formats IX, X, XI, XII */
+		case OPC_RH850_32bit_1:		/* case for opcode = 111111 ; formats IX, X, XI, XII */
 			if (extract32(ctx->opcode, 16, 1) == 0x1 ) {
 				if (rs2 == 0x0) {
 					//this is BCOND2
@@ -4091,20 +4103,25 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_PUSHSP_rh_rt:
 							gen_special(ctx, env, rs1, rs2, OPC_RH850_PUSHSP_rh_rt);
 							break;
+						//case OPC_RH850_CLL:
+							//if (extract32(ctx->opcode, 23, 9) == 0x1E2)
+							//break;
 						default:
-							if((extract32(ctx->opcode, 13, 12) == 0xB07)){
+							if ((extract32(ctx->opcode, 13, 12) == 0xB07))
+							{
 								if ((extract32(ctx->opcode, 27, 5) == 0x1E) &&
-									(extract32(ctx->opcode, 0, 5) == 0x1F)){
-								//CLL
+									(extract32(ctx->opcode, 0, 5) == 0x1F))
+								{
+									if ((extract32(ctx->opcode, 23, 4) == 0x2)) // CLL
+										gen_mutual_exclusion(ctx, extract32(ctx->opcode, 27, 5), rs1, operation_CLL);
 								} else {
 									//CACHE; if cacheop bits are 1111110, opcode matches CLL ins,
 									//then they are THE SAME instruction, so this should be correct
 									gen_cache(ctx,rs1,rs2, 1);
 								}
-							}else
+							} else
 								printf("ERROR! \n");
 						break;
-
 					}
 					break;
 				case OPC_RH850_MUL_INSTS:
@@ -4163,7 +4180,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 
 				case OPC_RH850_FORMAT_XII:	// for opcode = 0110 ; format XII instructions
 											//excluding MUL and including CMOV
-											// add LDL.W and STC.W!!!	(Format VII)
+											// also LDL.W and STC.W	(Format VII)
 					checkXII = extract32(ctx->opcode, 21, 2);
 
 					switch(checkXII){
@@ -4197,17 +4214,20 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						formXop = extract32(ctx->opcode, 17, 2);
 						switch(formXop){
 						case OPC_RH850_SCH0R_reg2_reg3:
-							if (extract32(ctx->opcode, 5, 11) == 0x3F && extract32(ctx->opcode, 16, 5) == 0x18)
-								gen_mutual_exclusion(ctx, extract32(ctx->opcode, 27, 5), rs1, operation_LDL_W);
+							if (extract32(ctx->opcode, 5, 11) == 0x3F &&
+									extract32(ctx->opcode, 16, 5) == 0x18)
+								gen_mutual_exclusion(ctx, extract32(ctx->opcode, 27, 5),
+										rs1, operation_LDL_W);
 							else
 								gen_bit_search(ctx, rs2, OPC_RH850_SCH0R_reg2_reg3);
 							break;
 						case OPC_RH850_SCH1R_reg2_reg3:
 							if (extract32(ctx->opcode, 19, 2) == 0x0){
 								gen_bit_search(ctx, rs2, OPC_RH850_SCH1R_reg2_reg3);
-							} else if (extract32(ctx->opcode, 19, 2) == 0x3){
-								//STC.W
-							}
+							} else if (extract32(ctx->opcode, 5, 11) == 0x3F &&
+									extract32(ctx->opcode, 16, 5) == 0x1a)
+								gen_mutual_exclusion(ctx, extract32(ctx->opcode, 27, 5),
+										rs1, operation_STC_W);
 							break;
 						case OPC_RH850_SCH0L_reg2_reg3:
 							gen_bit_search(ctx, rs2, OPC_RH850_SCH0L_reg2_reg3);

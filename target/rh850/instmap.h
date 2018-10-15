@@ -202,7 +202,6 @@ enum{
 	OPC_RH850_RIE 					= 3,
 	OPC_RH850_CALLT_imm6			= 4,
 	OPC_RH850_CAXI_reg1_reg2_reg3	= 5,
-	OPC_RH850_CLL					= 6,
 	OPC_RH850_DISPOSE_imm5_list12	= 7,
 	OPC_RH850_DISPOSE_imm5_list12_reg1 = 8,
 	OPC_RH850_FETRAP_vector4		= 15,
@@ -287,6 +286,7 @@ enum {
 	OPC_RH850_POPSP_rh_rt	= 	(0xC0C << 11),
 	OPC_RH850_PUSHSP_rh_rt	= 	(0xC08 << 11),
 	//don't forget CACHE
+	OPC_RH850_CLL	= 	(0xC1F << 11),
 
 };
 

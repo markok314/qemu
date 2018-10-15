@@ -9,6 +9,19 @@
     .byte 0x03 | (\r3 << 3)
 .endm
 
+.macro STC_W r3:req, r1:req
+    .byte 0xe0 | \r1
+    .byte 0x07
+    .byte 0x7a
+    .byte 0x03 | (\r3 << 3)
+.endm
+
+.macro CLL
+    .hword 0xffff
+    .byte 0x60
+    .byte 0xf1
+.endm
+
 .macro LD_DW disp23:req, r1:req, r3:req
     .byte 0xa0 | \r1
     .byte 0x07
@@ -85,6 +98,13 @@
    .byte 0x01 | (\prefop << 3)
 .endm
 
+.macro SNOOZE
+    .byte 0xe0
+    .byte 0x0f
+    .byte 0x20
+    .byte 0x01
+.endm
+
 .equ R0, 0
 .equ R1, 1
 .equ R2, 2
@@ -106,3 +126,5 @@
 .equ R18, 18
 .equ R19, 19
 .equ R20, 20
+.equ R21, 21
+

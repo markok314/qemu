@@ -900,6 +900,10 @@ int CDisassemblerNEC850::DissNEC850(BOOL bQD, const u32 dwInst, const u32 dwInst
     case 0xC16087E0: SET_STR(bQD, Instruction, "TLBS"); return 4;
     case 0x816087E0: SET_STR(bQD, Instruction, "TLBVI"); return 4;
     case 0xE16087E0: SET_STR(bQD, Instruction, "TLBW"); return 4;
+
+    // Added 15.10.2018
+    case 0xF160FFFF: SET_STR(bQD, Instruction, "CLL"); return 4;
+
     }
   }
 
