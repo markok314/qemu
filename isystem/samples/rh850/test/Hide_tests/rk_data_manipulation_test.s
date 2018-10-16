@@ -1,4 +1,3 @@
-.include "RH850G3M_insts.s"
 .text
 .include "gpr_init.s"
 
@@ -14,11 +13,19 @@
 
 #----------------------Testing the BINS instruction-----
 
-# Gcc does not recognize this instruction
-# This should be tested later
+	BINS1 R1, 0x1, 0x2, R4
+	
 
 
 #----------------------Testing the BSH instruction-----
+
+	mov 0xffff1234, r1
+	mov 0x12005678, r2
+	mov 0xff11ff00, r3
+	mov 0xadac0000, r4
+	mov 0x1f2e3d8c, r5
+	mov 0x13450112, r6
+	mov 0x0, r7
 
 	bsh r1, r8	# S flag is set
 	bsh r3, r9	# byte of zeros found; CY flag is set
@@ -74,16 +81,33 @@
 	mov 0x1, r5
 	mov 0xa, r6
 
-	rotl r5, r1, r7		# 0th bit is 1; CY flag is set
-	rotl r5, r2, r8		# S flag is set
-	rotl r0, r1, r9		# S flag is set
-	rotl r0, r2, r10	# 0th bit is 1; CY flag is set
-	rotl r6, r3, r11	# S flag is set
-	rotl r6, r10, r12	# CY and S flags are set
-	rotl r6, r0, r13	# Z flag is set
-	rotl r6, r7, r14	# no flag is set
+	ROTL_r R5, R1, R7		# 0th bit is 1; CY flag is set
+	ROTL_r R5, R2, R8		# S flag is set
+	ROTL_r R0, R1, R9		# S flag is set
+	ROTL_r R0, R2, R10	# 0th bit is 1; CY flag is set
+	ROTL_r R6, R3, R11	# S flag is set
+	ROTL_r R6, R10,R12	# CY and S flags are set
+	ROTL_r R6, R0, R13	# Z flag is set
+	ROTL_r R6, R7, R14	# no flag is set
 
-	# also test the 'rotl imm5, r2, r3' instruction, once it is implemented in RH850G3M_insts.s
+
+	mov 0x80000000, r1
+	mov 0x7fffffff, r2
+	mov 0x00234567, r3
+	mov 0x02345678, r4
+	mov 0x1, r5
+	mov 0xa, r6
+
+	
+	ROTL_i 0x1, R1, R7
+	ROTL_i 0x1, R2, R8		# S flag is set
+	ROTL_i 0x0, R1, R9		# S flag is set
+	ROTL_i 0x0, R2, R10	# 0th bit is 1; CY flag is set
+	ROTL_i 0xa, R3, R11	# S flag is set
+	ROTL_i 0xa, R10,R12	# CY and S flags are set
+	ROTL_i 0xa, R0, R13	# Z flag is set
+	ROTL_i 0xa, R7, R14	# no flag is set
+
 
 #----------------------Testing the SAR instruction-----
 
@@ -361,5 +385,66 @@
 
 
 	ldsr r0, psw
+
+#----------------------Testing the SXB instruction-----
+
+	mov 0xff, r1
+	mov 0x80, r2
+	mov 0x7f, r3
+	mov 0x180, r4
+	mov 0x17f, r5
+
+	sxb r1
+	sxb r2
+	sxb r3
+	sxb r4
+	sxb r5
+
+#----------------------Testing the SXH instruction-----
+
+	mov 0x0000, r1
+	mov 0xa123, r2
+	mov 0x7fff, r3
+	mov 0x17000, r4
+	mov 0x8f123, r5
+
+	sxh r1
+	sxh r2
+	sxh r3
+	sxh r4
+	sxh r5
+
+
+#----------------------Testing the ZXB instruction-----
+
+	mov 0x13134ff, r1
+	mov 0x1280, r2
+	mov 0x4327f, r3
+	mov 0x23180, r4
+	mov 0x21317f, r5
+
+	zxb r1
+	zxb r2
+	zxb r3
+	zxb r4
+	zxb r5
+	zxb r8
+
+#----------------------Testing the ZXH instruction-----
+
+	mov 0x13134ff, r1
+	mov 0x1280, r2
+	mov 0x4327f, r3
+	mov 0x23180, r4
+	mov 0x21317f, r5
+	mov 0xfabcaf, r8
+
+	zxh r1
+	zxh r2
+	zxh r3
+	zxh r4
+	zxh r5
+	zxh r8
+
 Lbl: br Lbl
 

@@ -92,6 +92,26 @@
    	.hword \disp16 | 0x1
 .endm
 
+.macro CLL
+    .hword 0xffff
+    .byte 0x60
+    .byte 0xf1
+.endm
+
+.macro PREF prefop:req,r1
+   .byte 0xe0 | \r1
+   .byte 0xdf 
+   .byte 0x60
+   .byte 0x01 | (\prefop << 3)
+.endm
+
+.macro SNOOZE
+    .byte 0xe0
+    .byte 0x0f
+    .byte 0x20
+    .byte 0x01
+.endm
+
 .equ R0, 0
 .equ R1, 1
 .equ R2, 2
