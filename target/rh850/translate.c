@@ -783,7 +783,12 @@ static void gen_mutual_exclusion(DisasContext *ctx, int rs3, int rs1, int operat
     }
     else if (operation == operation_CLL)
     {
+<<<<<<< Updated upstream
 		tcg_gen_movi_i32(cpu_LLbit, 0);
+=======
+    	//testing eclipse (robert)
+
+>>>>>>> Stashed changes
     }
     else
     	printf("ERROR gen_mutual_exclusion \n");
