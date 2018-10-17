@@ -13,9 +13,6 @@ var2:   .byte   0x34
 var3:   .byte   0xc3
 var4:   .byte   -10
 */
-#----------------------------------ld.b(2)-----disp23 // zaenkrat nimamo dostopa do visokih naslovov!
-#
-#		...
 
 #----------------------------------ld.bu(1)--disp16--- OK
 /*
@@ -29,10 +26,6 @@ var2:   .byte   0x34
 var3:   .byte   0xc3
 var4:   .byte   -10
 */
-
-#----------------------------------ld.bu(2)-----disp23 // zaenkrat nimamo dostopa do visokih naslovov!
-#
-#		...
 
 #----------------------------------ld.h(1)--disp16--- OK
 /*
