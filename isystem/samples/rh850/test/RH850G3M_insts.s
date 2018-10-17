@@ -2,74 +2,6 @@
 
 # implement instructions missing in V850 (added for E3 - RH850) as macros
 
-.macro LDL_W r1:req, r3:req
-    .byte 0xe0 | \r1
-    .byte 0x07
-    .byte 0x78
-    .byte 0x03 | (\r3 << 3)
-.endm
-
-.macro STC_W r3:req, r1:req
-    .byte 0xe0 | \r1
-    .byte 0x07
-    .byte 0x7a
-    .byte 0x03 | (\r3 << 3)
-.endm
-
-.macro CLL
-    .hword 0xffff
-    .byte 0x60
-    .byte 0xf1
-.endm
-
-.macro LD_DW disp23:req, r1:req, r3:req
-    .byte 0xa0 | \r1
-    .byte 0x07
-   	.hword lo((\disp23 & 0x7e) << 4) | 0x09 | (\r3 << 11)
-   	.hword lo(\disp23 >> 7)
-.endm
-
-.macro ST_DW r3:req, disp23:req, r1:req
-    .byte 0xa0 | \r1
-    .byte 0x07
-   	.hword lo((\disp23 & 0x7e) << 4) | 0x0f | (\r3 << 11)
-   	.hword lo(\disp23 >> 7)
-.endm
-
-.macro ROTL_r r1:req, r2:req, r3:req
-    .byte 0xe0 | \r1
-    .byte 0x07 | (\r2 << 3)
-    .byte 0xc6
-    .byte 0x0 | (\r3 << 3)
-.endm
-
-.macro ROTL_i p:req, r2:req, r3:req
-    .byte 0xe0 | \p
-    .byte 0x07 | (\r2 << 3)
-    .byte 0xc4
-    .byte 0x0 | (\r3 << 3)
-.endm
-
-.macro JARL r1:req, r3:req
-    .byte 0xe0 | \r1
-    .byte 0xc7
-    .byte 0x60
-    .byte 0x01 | (\r3 << 3)
-.endm
-
-.macro LOOP r1:req, disp16:req
-    .byte 0xe0 | \r1
-    .byte 0x06
-   	.hword \disp16 | 0x1
-.endm
-
-.macro CACHE cacheop:req,r1:req
-   .byte 0xe0 | \r1
-   .byte 0xe7 | (((\cacheop & 0x60)) >> 2)
-   .byte 0x60
-   .byte 0x01 | ((\cacheop & 0x1f) << 3)
-.endm
-
 .macro BINS1 r1:req, pos:req, width:req, r2:req
    .byte 0xe0 | \r2
    .byte 0x07 | (\r1 << 3)
@@ -91,11 +23,95 @@
    .byte 0x00 | ((\pos & 0x8)) | (((\width + \pos - 0x1 )& 0xf) << 4)
 .endm
 
+.macro CACHE cacheop:req,r1:req
+   .byte 0xe0 | \r1
+   .byte 0xe7 | (((\cacheop & 0x60)) >> 2)
+   .byte 0x60
+   .byte 0x01 | ((\cacheop & 0x1f) << 3)
+.endm
+
+.macro CLL
+    .hword 0xffff
+    .byte 0x60
+    .byte 0xf1
+.endm
+
+.macro JARL r1:req, r3:req
+    .byte 0xe0 | \r1
+    .byte 0xc7
+    .byte 0x60
+    .byte 0x01 | (\r3 << 3)
+.endm
+
+.macro LD_DW disp23:req, r1:req, r3:req
+    .byte 0xa0 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x09 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
+#.macro LD.DW p:req, r1:req, r3:req
+#    .byte 0xa0 | \r1
+#    .byte 0x07
+#    .byte 0x09 | ((\p & 0x7) << 5)
+#    .byte ((\p & 0x38) >> 3) | (\r3 << 3)
+#    .byte ((\p & 0x3fc0) >> 6)
+#    .byte ((\p & 0x3fc000) >> 14)
+#.endm
+
+.macro LDL_W r1:req, r3:req
+    .byte 0xe0 | \r1
+    .byte 0x07
+    .byte 0x78
+    .byte 0x03 | (\r3 << 3)
+.endm
+
+.macro LDSR_ID r1:req, regid:req ,selid:req
+   .byte 0xe0 | \r1
+   .byte 0x07 | ((\regid) << 3)
+   .byte 0x20
+   .byte 0x00 | ((\selid) << 3)
+.endm
+
+.macro LOOP r1:req, disp16:req
+    .byte 0xe0 | \r1
+    .byte 0x06
+   	.hword \disp16 | 0x1
+.endm
+
+.macro POPSP rh:req, rt:req
+	.byte 0xe0 | \rh
+	.byte 0x67
+	.byte 0x60
+	.byte 0x01 | (\rt << 3)
+.endm
+
 .macro PREF prefop:req,r1
    .byte 0xe0 | \r1
-   .byte 0xdf 
+   .byte 0xdf
    .byte 0x60
    .byte 0x01 | (\prefop << 3)
+.endm
+
+.macro PUSHSP rh:req, rt:req
+	.byte 0xe0 | \rh
+	.byte 0x47
+	.byte 0x60
+	.byte 0x01 | (\rt << 3)
+.endm
+
+.macro ROTL_i p:req, r2:req, r3:req
+    .byte 0xe0 | \p
+    .byte 0x07 | (\r2 << 3)
+    .byte 0xc4
+    .byte 0x0 | (\r3 << 3)
+.endm
+
+.macro ROTL_r r1:req, r2:req, r3:req
+    .byte 0xe0 | \r1
+    .byte 0x07 | (\r2 << 3)
+    .byte 0xc6
+    .byte 0x0 | (\r3 << 3)
 .endm
 
 .macro SNOOZE
@@ -104,6 +120,37 @@
     .byte 0x20
     .byte 0x01
 .endm
+
+.macro ST_DW r3:req, disp23:req, r1:req
+    .byte 0xa0 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x0f | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
+#.macro ST.DW r3:req, p:req, r1:req
+#    .byte 0xa0 | \r1
+#    .byte 0x07
+#    .byte 0x09 | ((\p & 0x7) << 5)
+#    .byte ((\p & 0x38) >> 3) | (\r3 << 3)
+#    .byte ((\p & 0x3fc0) >> 6)
+#    .byte ((\p & 0x3fc000) >> 14)
+#.endm
+
+.macro STC_W r3:req, r1:req
+    .byte 0xe0 | \r1
+    .byte 0x07
+    .byte 0x7a
+    .byte 0x03 | (\r3 << 3)
+.endm
+
+.macro STSR_ID regid:req, r1:req, selid:req
+   .byte 0xe0 | \regid
+   .byte 0x07 | ((\r1) << 3)
+   .byte 0x40
+   .byte 0x00 | ((\selid) << 3)
+.endm
+
 
 .equ R0, 0
 .equ R1, 1
@@ -127,4 +174,13 @@
 .equ R19, 19
 .equ R20, 20
 .equ R21, 21
-
+.equ R22, 22
+.equ R23, 23
+.equ R24, 24
+.equ R25, 25
+.equ R26, 26
+.equ R27, 27
+.equ R28, 28
+.equ R29, 29
+.equ R30, 30
+.equ R31, 31
