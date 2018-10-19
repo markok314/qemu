@@ -56,4 +56,4 @@ def check_registers(file,NUM_OF_INTS_TO_PRINT,file_name):
         if instNumber > NUM_OF_INTS_TO_PRINT:
             break
 
-check_registers("../../../../rh850.log", 10, "out")
+check_registers("../../../../rh850.log", 30, "out")

@@ -3053,6 +3053,8 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 
     //(*info->fprintf_func)(info->stream,"%12lx  %s",   instVal, buf);
 
+	printf("%s\n", buf);///
+
     return len;
 }
 

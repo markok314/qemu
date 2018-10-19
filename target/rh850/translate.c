@@ -388,62 +388,68 @@ static TCGv condition_satisfied(int cond)
 	TCGv condResult = tcg_temp_new_i32();
 	tcg_gen_movi_i32(condResult, 0x0);
 
-	switch(cond){
-	case V_COND:
-		return cpu_OVF;
-	case C_COND:
-		return cpu_CYF;
-	case Z_COND:
-		return cpu_ZF;
-	case NH_COND:
-		tcg_gen_or_i32(condResult, cpu_CYF, cpu_ZF);
-		break;
-	case S_COND:
-		return cpu_SF;
-	case T_COND:
-		tcg_gen_movi_i32(condResult, 0x1);
-		break;
-	case LT_COND:
-		tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
-		break;
-	case LE_COND:
-		tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
-		tcg_gen_or_i32(condResult, condResult, cpu_ZF);
-		break;
-	case NV_COND:
-		tcg_gen_not_i32(condResult, cpu_OVF);
-		tcg_gen_andi_i32(condResult, condResult, 0x1);
-		break;
-	case NC_COND:
-		tcg_gen_not_i32(condResult, cpu_CYF);
-		tcg_gen_andi_i32(condResult, condResult, 0x1);
-		break;
-	case NZ_COND:
-		tcg_gen_not_i32(condResult, cpu_ZF);
-		tcg_gen_andi_i32(condResult, condResult, 0x1);
-		break;
-	case H_COND:
-		tcg_gen_or_i32(condResult, cpu_CYF, cpu_ZF);
-		tcg_gen_not_i32(condResult, condResult);
-		tcg_gen_andi_i32(condResult, condResult, 0x1);
-		break;
-	case NS_COND:
-		tcg_gen_not_i32(condResult, cpu_SF);
-		tcg_gen_andi_i32(condResult, condResult, 0x1);
-		break;
-	case SA_COND:
-		return cpu_SATF;
-	case GE_COND:
-		tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
-		tcg_gen_not_i32(condResult, condResult);
-		tcg_gen_andi_i32(condResult, condResult, 0x1);
-		break;
-	case GT_COND:
-		tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
-		tcg_gen_or_i32(condResult, condResult, cpu_ZF);
-		tcg_gen_not_i32(condResult, condResult);
-		tcg_gen_andi_i32(condResult, condResult, 0x1);
-		break;
+	switch(cond) {
+		case GE_COND:
+			tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
+			tcg_gen_not_i32(condResult, condResult);
+			tcg_gen_andi_i32(condResult, condResult, 0x1);
+			break;
+		case GT_COND:
+			tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
+			tcg_gen_or_i32(condResult, condResult, cpu_ZF);
+			tcg_gen_not_i32(condResult, condResult);
+			tcg_gen_andi_i32(condResult, condResult, 0x1);
+			break;
+		case LE_COND:
+			tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
+			tcg_gen_or_i32(condResult, condResult, cpu_ZF);
+			break;
+		case LT_COND:
+			tcg_gen_xor_i32(condResult, cpu_SF, cpu_OVF);
+			break;
+
+		case H_COND:
+			tcg_gen_or_i32(condResult, cpu_CYF, cpu_ZF);
+			tcg_gen_not_i32(condResult, condResult);
+			tcg_gen_andi_i32(condResult, condResult, 0x1);
+			break;
+		case NH_COND:
+			tcg_gen_or_i32(condResult, cpu_CYF, cpu_ZF);
+			break;
+
+		case NS_COND:
+			tcg_gen_not_i32(condResult, cpu_SF);
+			tcg_gen_andi_i32(condResult, condResult, 0x1);
+			break;
+
+		case S_COND:
+			return cpu_SF;
+
+		case C_COND:
+			return cpu_CYF;
+
+		case NC_COND:
+			tcg_gen_not_i32(condResult, cpu_CYF);
+			tcg_gen_andi_i32(condResult, condResult, 0x1);
+			break;
+		case NV_COND:
+			tcg_gen_not_i32(condResult, cpu_OVF);
+			tcg_gen_andi_i32(condResult, condResult, 0x1);
+			break;
+		case NZ_COND:
+			tcg_gen_not_i32(condResult, cpu_ZF);
+			tcg_gen_andi_i32(condResult, condResult, 0x1);
+			break;
+
+		case SA_COND:
+			return cpu_SATF;
+		case T_COND:
+			tcg_gen_movi_i32(condResult, 0x1);
+			break;
+		case V_COND:
+			return cpu_OVF;
+		case Z_COND:
+			return cpu_ZF;
 	}
 	return condResult;
 }
@@ -4692,6 +4698,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         }
         break;
     case BS_BRANCH: /* ops using BS_BRANCH generate own exit seq */
+    	break;
     default:
         break;
     }
