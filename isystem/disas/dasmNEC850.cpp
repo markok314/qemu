@@ -658,7 +658,7 @@ jstring CDisassemblerNEC850::NecGetDisp22(const u32 dwInst)
 	SignExtend(lDisp, 22);
 	DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
-	Operand = Hex(dwAddr, 4);
+	Operand = Hex(dwAddr, 6);
 	return Operand;
 	}
 
@@ -739,7 +739,7 @@ jstring CDisassemblerNEC850::NecGetDisp23(const u32 dwInst, const u32 dwInst1)
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	//Operand = StrF(lDisp); ///, 3);
-	Operand = Hex(lDisp, 4);
+	Operand = Hex(lDisp, 6);
 	return Operand;
 }
 
@@ -750,7 +750,7 @@ jstring CDisassemblerNEC850::NecGetDisp23Z0(const u32 dwInst, const u32 dwInst1)
 	//DWORD dwAddr = DWORD_FROMADDROFFS(m_pParameters->m_aAddress) + (DWORD) lDisp;
 	jstring Operand;
 	//Operand = StrF(lDisp); ///, 4);
-	Operand = Hex(lDisp, 4);
+	Operand = Hex(lDisp, 6);
 	return Operand;
 }
 

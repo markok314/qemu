@@ -3789,12 +3789,32 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 	uint32_t disp32 = (opcode48 >> 16);
 
 	switch(opcode20) {
+
+		case OPC_RH850_LDB2:
+	        gen_load(ctx, MO_SB, rs3, rs1, disp23);
+			break;
+		case OPC_RH850_LDH2:
+	        gen_load(ctx, MO_TESW, rs3, rs1, disp23);
+			break;
+		case OPC_RH850_LDW2:
+	        gen_load(ctx, MO_TESL, rs3, rs1, disp23);
+			break;
 		case OPC_RH850_LDDW:
 	        gen_load(ctx, MO_TEQ, rs3, rs1, disp23);
 			break;
+
+		case OPC_RH850_STB2:
+	        gen_store(ctx, MO_SB, rs1, rs3, disp23);
+			break;
+		case OPC_RH850_STH2:
+	        gen_store(ctx, MO_TESW, rs1, rs3, disp23);
+			break;
+		case OPC_RH850_STW2:
+	        gen_store(ctx, MO_TESL, rs1, rs3, disp23);
+			break;
 		case OPC_RH850_STDW:
 	    	gen_store(ctx, MO_TEQ, rs1, rs3, disp23);
-		break;
+			break;
 	}
 
 	if (extract32(ctx->opcode, 5, 11) == 0x31) {

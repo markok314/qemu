@@ -43,6 +43,13 @@
     .byte 0x01 | (\r3 << 3)
 .endm
 
+.macro LD_B disp23:req, r1:req, r3:req
+    .byte 0x80 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7f) << 4) | 0x05 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
 .macro LD_DW disp23:req, r1:req, r3:req
     .byte 0xa0 | \r1
     .byte 0x07
@@ -119,6 +126,13 @@
     .byte 0x0f
     .byte 0x20
     .byte 0x01
+.endm
+
+.macro ST_B r3:req, disp23:req, r1:req
+    .byte 0x80 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7f) << 4) | 0x0d | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
 .endm
 
 .macro ST_DW r3:req, disp23:req, r1:req
