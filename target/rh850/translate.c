@@ -2687,8 +2687,9 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			end = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
-			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to end
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r1=0 jump to end
+			// regs should be undefined!!
 			tcg_gen_br(fin);
 
 			gen_set_label(cont);
@@ -2744,8 +2745,8 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			end = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
-			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to cont
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r1=0 jump to cont
 			tcg_gen_br(fin);
 
 			gen_set_label(cont);
@@ -2801,7 +2802,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			end = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
 			tcg_gen_br(fin);
 
