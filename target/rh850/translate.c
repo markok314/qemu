@@ -3226,6 +3226,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	int regID;
 	int selID;
 	int imm;
+	int valueldsr;
 
 	TCGv t0 = tcg_temp_local_new();
 	TCGv t1 = tcg_temp_local_new();
@@ -3457,13 +3458,28 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		regID=rs2;
 		selID = extract32(ctx->opcode, 27, 5);
 
-		int valueldsr = decode_register(regID,selID);
+		valueldsr = decode_register(regID,selID);
 
 		if(regID==PSW_register){
 			gen_reset_flags(ctx);
 		}
+		printf("ta izpis ne obstaja!!!!! (ldsr regID selID)\n");
 		gen_get_gpr(r2, rs1);
 		gen_set_sysreg(valueldsr, r2);
+		break;
+
+	case OPC_RH850_LDSR_reg2_regID:
+		regID=rs2;
+		selID = 0 ;
+
+		valueldsr = decode_register(regID,selID);
+
+		if(valueldsr==PSW_register){
+			gen_reset_flags(ctx);
+		}
+		gen_get_gpr(r2, rs1);
+		gen_set_sysreg(valueldsr, r2);
+
 		break;
 
 	//case OPC_RH850_LDLW:
@@ -4018,7 +4034,12 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						}
 						break;
 					case OPC_RH850_LDSR_reg2_regID_selID:
-						gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
+						if(extract32(ctx->opcode, 27, 5)== 0){
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID);
+						} else {
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
+						}
+
 						break;
 					case OPC_RH850_STSR_regID_reg2_selID:
 						gen_special(ctx, env, rs1, rs2, OPC_RH850_STSR_regID_reg2_selID);
@@ -4669,7 +4690,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
         // Setting PSW to 0 so we can write new state
 
-        tcg_gen_movi_i32(cpu_sysRegs[PSW_register], 0x0);
+        tcg_gen_andi_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register], 0xffffffe0);
 
         // Writing flag values to PSW register
 
