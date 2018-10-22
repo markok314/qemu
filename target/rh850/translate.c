@@ -2441,6 +2441,7 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 	switch(operation){
 		case OPC_RH850_SCH0L_reg2_reg3: {
 
+			TCGv foundFlag = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv r3_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -2464,20 +2465,24 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_brcondi_tl(TCG_COND_NE, count, 0x20, loop);//--------------------
 
 			tcg_gen_movi_i32(result, 0x0);
-			tcg_gen_movi_i32(cpu_ZF, 0x1);
+			tcg_gen_movi_i32(foundFlag, 0x0);
 			tcg_gen_br(end);
 
 			gen_set_label(found);
+			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
-			tcg_gen_movi_i32(cpu_CYF, 0x1);
+
 
 			gen_set_label(end);
-			gen_set_gpr(int_rs3, result);
 
+			gen_set_gpr(int_rs3, result);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
@@ -2485,6 +2490,7 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 		case OPC_RH850_SCH0R_reg2_reg3: {
 
+			TCGv foundFlag = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv r3_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -2508,19 +2514,23 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_brcondi_tl(TCG_COND_NE, count, 0x20, loop);//--------------------
 
 			tcg_gen_movi_i32(result, 0x0);
-			tcg_gen_movi_i32(cpu_ZF, 0x1);
+			tcg_gen_movi_i32(foundFlag, 0x0);
 			tcg_gen_br(end);
 
 			gen_set_label(found);
+			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
-			tcg_gen_movi_i32(cpu_CYF, 0x1);
 
 			gen_set_label(end);
+
 			gen_set_gpr(int_rs3, result);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
@@ -2528,6 +2538,7 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 		case OPC_RH850_SCH1L_reg2_reg3: {
 
+			TCGv foundFlag = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv r3_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -2551,19 +2562,23 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_brcondi_tl(TCG_COND_NE, count, 0x20, loop);//--------------------
 
 			tcg_gen_movi_i32(result, 0x0);
-			tcg_gen_movi_i32(cpu_ZF, 0x1);
+			tcg_gen_movi_i32(foundFlag, 0x0);
 			tcg_gen_br(end);
 
 			gen_set_label(found);
+			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
-			tcg_gen_movi_i32(cpu_CYF, 0x1);
 
 			gen_set_label(end);
+
 			gen_set_gpr(int_rs3, result);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
@@ -2571,6 +2586,7 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 
 		case OPC_RH850_SCH1R_reg2_reg3: {
 
+			TCGv foundFlag = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv r3_local = tcg_temp_local_new();
 			TCGv result = tcg_temp_local_new();
@@ -2594,19 +2610,23 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_brcondi_tl(TCG_COND_NE, count, 0x20, loop);//--------------------
 
 			tcg_gen_movi_i32(result, 0x0);
-			tcg_gen_movi_i32(cpu_ZF, 0x1);
+			tcg_gen_movi_i32(foundFlag, 0x0);
 			tcg_gen_br(end);
 
 			gen_set_label(found);
+			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
-			tcg_gen_movi_i32(cpu_CYF, 0x1);
 
 			gen_set_label(end);
+
 			gen_set_gpr(int_rs3, result);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
 			tcg_temp_free(result);
