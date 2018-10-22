@@ -2060,26 +2060,20 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 		case OPC_RH850_SAR_reg1_reg2: {
 
-			TCGv local_MSB = tcg_temp_local_new_i32();
 			TCGv r1_local = tcg_temp_local_new_i32();
 			TCGv r2_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
 
-			tcg_gen_mov_i32(r1_local, tcg_r1);
 			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);	//shift by only lower 5 bits of reg1
 			tcg_gen_mov_i32(r2_local, tcg_r2);
-			tcg_gen_andi_i32(local_MSB, r2_local, 0x80000000);
 
+			tcg_gen_subi_i32(r1_local, tcg_r1, 0x1);	//shift by one less
 			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
 
-			gen_set_gpr(rs2, r2_local);
+			tcg_gen_andi_i32(cpu_CYF, r2_local, 0x1);	//LSB here is the last bit to be shifted
+			tcg_gen_sari_i32(r2_local, r2_local, 0x1);
 
-			cont = gen_new_label();
-			//cpu_CYF is MSB after shift
-			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
-			tcg_gen_andi_i32(r2_local, r2_local, 0x7fffffff);
-			tcg_gen_or_i32(r2_local, r2_local, local_MSB);
-			//tcg_gen_movi_i32(local_comp, 0x80000000);
-			//tcg_gen_setcond_i32(TCG_COND_EQ, cpu_CYF, r2_local, local_comp);
+			gen_set_gpr(rs2, r2_local);
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
@@ -2100,12 +2094,16 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_ext8u_i32(r1_local, r1_local);
 			tcg_gen_mov_i32(r2_local, tcg_r2);
 
+			tcg_gen_subi_i32(r1_local, tcg_r1, 0x1);	//shift by one less
 			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
+			tcg_gen_andi_i32(cpu_CYF, r2_local, 0x1);	//LSB here is the last bit to be shifted
+			tcg_gen_sari_i32(r2_local, r2_local, 0x1);
+
 			gen_set_gpr(rs2, r2_local);
 
 			cont = gen_new_label();
 
-			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
+
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
@@ -2129,12 +2127,13 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(r3_local, int_rs3);
 
+			tcg_gen_subi_i32(r1_local, tcg_r1, 0x1);	//shift by one less
 			tcg_gen_sar_i32(r3_local, r2_local, r1_local);
+			tcg_gen_andi_i32(cpu_CYF, r3_local, 0x1);	//LSB here is the last bit to be shifted
+			tcg_gen_sari_i32(r3_local, r3_local, 0x1);
 			gen_set_gpr(int_rs3, r3_local);
 
 			cont = gen_new_label();
-
-			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
