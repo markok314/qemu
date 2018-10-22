@@ -2475,12 +2475,12 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
-
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found at the end
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
@@ -2524,11 +2524,12 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
@@ -2572,11 +2573,12 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
@@ -2620,11 +2622,12 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_addi_i32(result, count, 0x1);
 
 			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
