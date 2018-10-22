@@ -13,8 +13,13 @@
 
 #----------------------Testing the BINS instruction-----
 
-	BINS1 R1, 0x1, 0x2, R4
-	
+	BINS2 R1, 0x0, 0x4, R4
+	BINS1 R1, 0x0, 0x10, R4
+	BINS2 R1, 0x2, 0x4, R7
+	BINS3 R1, 0xf, 0x2, R7
+	BINS1 R1, 0x0, 0x10, R8
+	BINS1 R1, 0x5, 0x10, R9
+
 
 
 #----------------------Testing the BSH instruction-----
@@ -44,6 +49,129 @@
 	bsw r6, r13	# OK if byte of zeros are found?
 
 #----------------------Testing the CMOV instruction-----
+
+	
+	cmov V, r1, r2, r3
+	cmov S, r1, r2, r3
+	cmov NV, r1, r2, r3
+	cmov NS, r1, r2, r3
+	cmov C, r1, r2, r3
+	cmov T, r1, r2, r3
+	cmov NC, r1, r2, r3
+	cmov SA, r1, r2, r3
+	cmov Z, r1, r2, r3
+	cmov LT, r1, r2, r3
+	cmov NZ, r1, r2, r3
+	cmov GE, r1, r2, r3
+	cmov NH, r1, r2, r3
+	cmov LE, r1, r2, r3
+	cmov H, r1, r2, r3
+	cmov GT, r1, r2, r3
+
+	mov 0xfffff234, r1
+	bsh r1, r3	# Testing with S flag set
+	
+
+	cmov V, r4, r5, r6
+	cmov S, r4, r5, r6
+	cmov NV, r4, r5, r6
+	cmov NS, r4, r5, r6
+	cmov C, r4, r5, r6
+	cmov T, r4, r5, r6
+	cmov NC, r4, r5, r6
+	cmov SA, r4, r5, r6
+	cmov Z, r4, r5, r6
+	cmov LT, r4, r5, r6
+	cmov NZ, r4, r5, r6
+	cmov GE, r4, r5, r6
+	cmov NH, r4, r5, r6
+	cmov LE, r4, r5, r6
+	cmov H, r4, r5, r6
+	cmov GT, r4, r5, r6
+
+	mov 0x5, r2
+	mov -0x5, r1
+	add r1, r2	# Testing with CY and Z flags set
+
+	cmov V, r4, r5, r6
+	cmov S, r4, r5, r6
+	cmov NV, r4, r5, r6
+	cmov NS, r4, r5, r6
+	cmov C, r4, r5, r6
+	cmov T, r4, r5, r6
+	cmov NC, r4, r5, r6
+	cmov SA, r4, r5, r6
+	cmov Z, r4, r5, r6
+	cmov LT, r4, r5, r6
+	cmov NZ, r4, r5, r6
+	cmov GE, r4, r5, r6
+	cmov NH, r4, r5, r6
+	cmov LE, r4, r5, r6
+	cmov H, r4, r5, r6
+	cmov GT, r4, r5, r6
+
+	mov 0xffffffff, r2
+	mov -0x5, r1
+	add r1, r2	# Testing with CY and S flags set
+
+	cmov V, r2, r3, r4
+	cmov S, r2, r3, r4
+	cmov NV, r2, r3, r4
+	cmov NS, r2, r3, r4
+	cmov C, r2, r3, r4
+	cmov T, r2, r3, r4
+	cmov NC, r2, r3, r4
+	cmov SA, r2, r3, r4
+	cmov Z, r2, r3, r4
+	cmov LT, r2, r3, r4
+	cmov NZ, r2, r3, r4
+	cmov GE, r2, r3, r4
+	cmov NH, r2, r3, r4
+	cmov LE, r2, r3, r4
+	cmov H, r2, r3, r4
+	cmov GT, r2, r3, r4
+
+	mov 0x7fffffff, r2
+	mov 0x5, r1
+	add r1, r2	# Testing with OV and S flags set
+
+	cmov V, r2, r3, r4
+	cmov S, r2, r3, r4
+	cmov NV, r2, r3, r4
+	cmov NS, r2, r3, r4
+	cmov C, r2, r3, r4
+	cmov T, r2, r3, r4
+	cmov NC, r2, r3, r4
+	cmov SA, r2, r3, r4
+	cmov Z, r2, r3, r4
+	cmov LT, r2, r3, r4
+	cmov NZ, r2, r3, r4
+	cmov GE, r2, r3, r4
+	cmov NH, r2, r3, r4
+	cmov LE, r2, r3, r4
+	cmov H, r2, r3, r4
+	cmov GT, r2, r3, r4
+
+	mov 0x80000000, r2
+	mov -0x1, r1
+	add r1, r2	# Testing with CY and OV flags set
+
+	cmov V, r2, r3, r4
+	cmov S, r2, r3, r4
+	cmov NV, r2, r3, r4
+	cmov NS, r2, r3, r4
+	cmov C, r2, r3, r4
+	cmov T, r2, r3, r4
+	cmov NC, r2, r3, r4
+	cmov SA, r2, r3, r4
+	cmov Z, r2, r3, r4
+	cmov LT, r2, r3, r4
+	cmov NZ, r2, r3, r4
+	cmov GE, r2, r3, r4
+	cmov NH, r2, r3, r4
+	cmov LE, r2, r3, r4
+	cmov H, r2, r3, r4
+	cmov GT, r2, r3, r4
 
 #----------------------Testing the HSH instruction-----
 
