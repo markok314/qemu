@@ -1973,8 +1973,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			gen_set_gpr(int_rs3, tcg_r2);
 
 			tcg_gen_shri_i32(cpu_SF, tcg_r2, 0x1f);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
 			tcg_gen_andi_i32(tcg_temp, tcg_r2, 0x0000ffff);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_temp, 0x0);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, tcg_temp, 0x0);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 
