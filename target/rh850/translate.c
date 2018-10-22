@@ -2293,7 +2293,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_mov_i32(r1_local, tcg_r1);
 			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);
 			tcg_gen_mov_i32(r2_local, tcg_r2);
-			gen_set_gpr(18, r1_local);
+
 			cont = gen_new_label();
 			end = gen_new_label();
 
