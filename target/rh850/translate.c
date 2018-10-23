@@ -3109,7 +3109,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_shl_i32(r2, one, r2);
 
 			tcg_gen_and_i32(test, temp, r2);
-			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+			tcg_gen_setcond_i32(TCG_COND_NE, cpu_ZF, test, r2);
 
 			tcg_gen_or_i32(temp, temp, r2);
 
@@ -3128,7 +3128,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB);
 
 			tcg_gen_andi_i32(test, temp, (0x1 << bit));
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, test, (0x1 << bit));
 
 			tcg_gen_ori_i32(temp, temp, (0x1 << bit));
 
@@ -3147,7 +3147,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_shl_i32(r2, one, r2); // r2 = mask
 
 			tcg_gen_and_i32(test, temp, r2);
-			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+			tcg_gen_setcond_i32(TCG_COND_NE, cpu_ZF, test, r2);
 
 			//test = temp & mask
 			tcg_gen_and_i32(test, temp, r2);
@@ -3176,7 +3176,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB);
 
 			tcg_gen_andi_i32(test, temp, (0x1 << bit));
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, test, (0x1 << bit));
 
 			tcg_gen_movi_i32(r2, (0x1 << bit)); // r2 = mask
 
@@ -3202,11 +3202,11 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_movi_i32(one, 0x1);
 
 			tcg_gen_qemu_ld_i32(temp, adr, MEM_IDX, MO_UB);
-
+			tcg_gen_andi_i32(r2, r2, 0x7);
 			tcg_gen_shl_i32(r2, one, r2);
 
 			tcg_gen_and_i32(test, temp, r2);
-			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+			tcg_gen_setcond_i32(TCG_COND_NE, cpu_ZF, test, r2);
 
 			tcg_gen_not_i32(r2, r2);
 			tcg_gen_and_i32(temp, temp, r2);
@@ -3228,7 +3228,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 
 			tcg_gen_movi_i32(test, (0x1 << bit));
 			tcg_gen_andi_i32(test, temp, (0x1 << bit));
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, test, (0x1 << bit));
 
 			tcg_gen_movi_i32(test, (0x1 << bit));
 			tcg_gen_not_i32(test, test);
@@ -3248,7 +3248,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 			tcg_gen_shl_i32(r2, one, r2);
 
 			tcg_gen_and_i32(test, temp, r2);
-			tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, test, r2);
+			tcg_gen_setcond_i32(TCG_COND_NE, cpu_ZF, test, r2);
 
 			break;
 
@@ -3265,7 +3265,7 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 
 			tcg_gen_movi_i32(test, (0x1 << bit));
 			tcg_gen_andi_i32(test, temp, (0x1 << bit));
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, test, (0x1 << bit));
+			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, test, (0x1 << bit));
 
 			break;
 	}
