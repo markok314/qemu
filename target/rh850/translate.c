@@ -1857,13 +1857,16 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 			tcg_gen_movi_i32(count_local, 0x0);
 
-			gen_set_label(cont);////
+			//gen_set_label(cont);////
 
 			tcg_gen_andi_i32(temp_local, r3_local, 0x000000ff);
 			tcg_gen_brcondi_i32(TCG_COND_EQ, temp_local, 0x0, set);////
-			tcg_gen_addi_i32(count_local, count_local, 0x1);
-			tcg_gen_shri_i32(r3_local, r3_local, 0x1);
-			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x9, cont);////
+			//tcg_gen_addi_i32(count_local, count_local, 0x1);
+			//tcg_gen_shri_i32(r3_local, r3_local, 0x1);
+			//tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x9, cont);////
+			tcg_gen_andi_i32(temp_local, r3_local, 0x0000ff00);
+			tcg_gen_brcondi_i32(TCG_COND_EQ, temp_local, 0x0, set);////
+
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
 			tcg_gen_br(end);
 
@@ -1904,8 +1907,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_andi_i32(temp_local, r3_local, 0x000000ff);
 			tcg_gen_brcondi_i32(TCG_COND_EQ, temp_local, 0x0, set);////
 			tcg_gen_addi_i32(count_local, count_local, 0x1);
-			tcg_gen_shri_i32(r3_local, r3_local, 0x1);
-			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x1a, cont);////
+			tcg_gen_shri_i32(r3_local, r3_local, 0x8);
+			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x4, cont);////
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
 			tcg_gen_br(end);
 
@@ -2046,6 +2049,11 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			break;
 
 		case OPC_RH850_ROTL_imm5_reg2_reg3:
+		{
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv imm_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+
 			tcg_gen_movi_tl(tcg_imm, int_imm);
 			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
 			int_rs3 = extract32(ctx->opcode, 27, 5);
@@ -2058,9 +2066,21 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_shri_i32(cpu_SF, tcg_r3, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 
-			break;
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			tcg_gen_mov_i32(imm_local, tcg_imm);
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, tcg_imm, 0x0, cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			gen_set_label(cont);
+
+		}	break;
 
 		case OPC_RH850_ROTL_reg1_reg2_reg3:
+		{
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv r1_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_rotl_tl(tcg_r3, tcg_r2, tcg_r1);
@@ -2071,29 +2091,41 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_shri_i32(cpu_SF, tcg_r3, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 
-			break;
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, tcg_r1, 0x0, cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			gen_set_label(cont);
+
+		}	break;
 
 		case OPC_RH850_SAR_reg1_reg2: {
 
 			TCGv r1_local = tcg_temp_local_new_i32();
 			TCGv r2_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+			end = gen_new_label();
 
 			tcg_gen_mov_i32(r1_local, tcg_r1);
-			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);	//shift by only lower 5 bits of reg1
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);	//shift by value of lower 5 bits of reg1
 			tcg_gen_mov_i32(r2_local, tcg_r2);
-
-			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
-
-			gen_set_gpr(rs2, r2_local);
-
-			cont = gen_new_label();
-			//cpu_CYF is MSB after shift
-			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			tcg_gen_br(end);
 
 			gen_set_label(cont);
+
+			tcg_gen_subi_i32(r1_local, r1_local, 0x1);	//shift by r1-1
+
+			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
+			tcg_gen_andi_i32(cpu_CYF, r2_local, 0x1);	//LSB here is the last bit to be shifted
+			tcg_gen_sari_i32(r2_local, r2_local, 0x1);
+
+			gen_set_label(end);
+
+			gen_set_gpr(rs2, r2_local);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
@@ -2104,22 +2136,27 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 			TCGv r1_local = tcg_temp_local_new_i32();
 			TCGv r2_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+			end = gen_new_label();
 
 			tcg_gen_movi_tl(r1_local, int_imm);
 			tcg_gen_ext8u_i32(r1_local, r1_local);
 			tcg_gen_mov_i32(r2_local, tcg_r2);
 
-			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
-			gen_set_gpr(rs2, r2_local);
-
-			cont = gen_new_label();
-
-			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
-
 			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			tcg_gen_br(end);
 
 			gen_set_label(cont);
+
+			tcg_gen_subi_i32(r1_local, r1_local, 0x1);	//shift by one less
+			tcg_gen_sar_i32(r2_local, r2_local, r1_local);
+			tcg_gen_andi_i32(cpu_CYF, r2_local, 0x1);	//LSB here is the last bit to be shifted
+			tcg_gen_sari_i32(r2_local, r2_local, 0x1);
+
+			gen_set_label(end);
+
+			gen_set_gpr(rs2, r2_local);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
@@ -2131,6 +2168,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			TCGv r1_local = tcg_temp_local_new_i32();
 			TCGv r2_local = tcg_temp_local_new_i32();
 			TCGv r3_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+			end = gen_new_label();
 
 			tcg_gen_mov_i32(r1_local, tcg_r1);
 			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);	//shift by only lower 5 bits of reg1
@@ -2138,19 +2177,24 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(r3_local, int_rs3);
 
-			tcg_gen_sar_i32(r3_local, r2_local, r1_local);
-			gen_set_gpr(int_rs3, r3_local);
-
-			cont = gen_new_label();
-
-			tcg_gen_shri_i32(cpu_CYF, r2_local, 0x1f);
-
-			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
+			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);	//is non-shift?
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			tcg_gen_mov_i32(r3_local, r2_local);
+			tcg_gen_br(end);
 
 			gen_set_label(cont);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
-			tcg_gen_shri_i32(cpu_SF, r2_local, 0x1f);
+
+
+			tcg_gen_subi_i32(r1_local, r1_local, 0x1);	//shift by one less
+			tcg_gen_sar_i32(r3_local, r2_local, r1_local);
+			tcg_gen_andi_i32(cpu_CYF, r3_local, 0x1);	//LSB here is the last bit to be shifted
+			tcg_gen_sari_i32(r3_local, r3_local, 0x1);
+
+			gen_set_label(end);
+
+			gen_set_gpr(int_rs3, r3_local);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
+			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 		}
 			break;
@@ -2304,13 +2348,12 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			TCGv r1_local = tcg_temp_local_new_i32();
 			TCGv r2_local = tcg_temp_local_new_i32();
 			TCGv temp_local = tcg_temp_local_new_i32();
-
-			tcg_gen_mov_i32(r1_local, tcg_r1);
-			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);
-			tcg_gen_mov_i32(r2_local, tcg_r2);
-
 			cont = gen_new_label();
 			end = gen_new_label();
+
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_andi_i32(r1_local, r1_local, 0x1f); //
+			tcg_gen_mov_i32(r2_local, tcg_r2);
 
 			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont); //checking for non-shift
 
@@ -2375,6 +2418,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			TCGv r2_local = tcg_temp_local_new_i32();
 			TCGv r3_local = tcg_temp_local_new_i32();
 			TCGv temp_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+			end = gen_new_label();
 
 			tcg_gen_mov_i32(r1_local, tcg_r1);
 			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);
@@ -2382,8 +2427,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(r3_local, int_rs3);
 
-			cont = gen_new_label();
-			end = gen_new_label();
+
 
 			tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x0, cont); //checking for non-shift
 
@@ -2397,6 +2441,7 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 			gen_set_label(cont);
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			tcg_gen_mov_i32(r3_local, r2_local);
 
 			gen_set_label(end);
 			gen_set_gpr(int_rs3, r3_local);
@@ -2489,16 +2534,17 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
-			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
-
+			//tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			//tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found at the end
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, r2_local, 0xfffffffe); //setting CY if found at the end
 
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
@@ -2538,15 +2584,17 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
-			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			//tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			//tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, r2_local, 0x7fffffff);
 
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
@@ -2586,15 +2634,17 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
-			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			//tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			//tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, r2_local, 0x1);
 
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
@@ -2634,15 +2684,17 @@ static void gen_bit_search(DisasContext *ctx, int rs2, int operation)
 			tcg_gen_movi_i32(foundFlag, 0x1);
 			tcg_gen_addi_i32(result, count, 0x1);
 
-			tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			//tcg_gen_brcondi_tl(TCG_COND_NE, result, 0x20, end);
+			//tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
 
 			gen_set_label(end);
 
 			gen_set_gpr(int_rs3, result);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, foundFlag, 0x1); //setting CY if found
+
 			tcg_gen_setcondi_i32(TCG_COND_NE, cpu_ZF, foundFlag, 0x1); //setting Z if not found
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 			tcg_gen_movi_i32(cpu_SF, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_CYF, r2_local, 0x80000000);
 
 			tcg_temp_free(r2_local);
 			tcg_temp_free(count);
@@ -2690,8 +2742,11 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			end = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
-			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to end
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r1=0 jump to end
+			///// regs should be undefined!!
+			tcg_gen_movi_i32(r2_local, 0x80000000);
+			/////
 			tcg_gen_br(fin);
 
 			gen_set_label(cont);
@@ -2703,8 +2758,10 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, overflowed, 0x1);	//are 1
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, end);
 			tcg_gen_movi_i32(r2_local, 0x80000000);						//DO THIS
-			tcg_gen_movi_i32(cpu_OVF, 0x1);
-			gen_set_gpr(rs2, r2_local);
+			tcg_gen_movi_i32(r3_local, 0x0000);
+			//tcg_gen_movi_i32(cpu_OVF, 0x1);
+			gen_set_gpr(rs2, r2_local);			//write zeros if undefined
+			gen_set_gpr(int_rs3, r3_local);
 			tcg_gen_br(fin);
 
 			gen_set_label(end);
@@ -2714,15 +2771,20 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			if(rs2==int_rs3){
 				gen_set_gpr(rs2, r3_local);
+
+				//// flags should be undefined if r2=r3
+
 			} else {
 				gen_set_gpr(rs2, r2_local);
 				gen_set_gpr(int_rs3, r3_local);
+
+				tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+				tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			}
 
 			gen_set_label(fin);
 
-			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
 
 		}	break;
 
@@ -2747,8 +2809,8 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			end = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
-			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r2=0 jump to cont
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
+			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r1=0 jump to cont
 			tcg_gen_br(fin);
 
 			gen_set_label(cont);
@@ -2769,10 +2831,12 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_div_i32(r2_local, r2_local, r1_local);
 			gen_set_gpr(rs2, r2_local);
 
-			gen_set_label(fin);
-
 			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+			gen_set_label(fin);
+
+
 
 		}	break;
 
@@ -2804,7 +2868,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			end = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
 			tcg_gen_br(fin);
 
@@ -2862,7 +2926,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			cont = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
 			tcg_gen_br(fin);
 
@@ -2878,10 +2942,13 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_SF, r2_local, 0x1);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
 			gen_set_label(fin);		/////
 
-			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
 		}
 			break;
 
@@ -2896,6 +2963,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv r3_local = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
 
 			tcg_gen_mov_i32(r1_local, tcg_r1);
 			tcg_gen_mov_i32(r2_local, tcg_r2);
@@ -2907,7 +2975,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			cont = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
 			tcg_gen_br(fin);
 
@@ -2923,9 +2991,12 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
-			gen_set_label(fin);		/////
-			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_andi_i32(check, r2_local, 0x80000000);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_SF, check, 0x80000000);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+			gen_set_label(fin);		/////
+
 		}
 			break;
 	}
@@ -3238,6 +3309,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	int regID;
 	int selID;
 	int imm;
+	int valueldsr;
 
 	TCGv t0 = tcg_temp_local_new();
 	TCGv t1 = tcg_temp_local_new();
@@ -3469,13 +3541,28 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		regID=rs2;
 		selID = extract32(ctx->opcode, 27, 5);
 
-		int valueldsr = decode_register(regID,selID);
+		valueldsr = decode_register(regID,selID);
 
 		if(regID==PSW_register){
 			gen_reset_flags(ctx);
 		}
+		printf("ta izpis ne obstaja!!!!! (ldsr regID selID)\n");
 		gen_get_gpr(r2, rs1);
 		gen_set_sysreg(valueldsr, r2);
+		break;
+
+	case OPC_RH850_LDSR_reg2_regID:
+		regID=rs2;
+		selID = 0 ;
+
+		valueldsr = decode_register(regID,selID);
+
+		if(valueldsr==PSW_register){
+			gen_reset_flags(ctx);
+		}
+		gen_get_gpr(r2, rs1);
+		gen_set_sysreg(valueldsr, r2);
+
 		break;
 
 	//case OPC_RH850_LDLW:
@@ -4036,7 +4123,12 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						}
 						break;
 					case OPC_RH850_LDSR_reg2_regID_selID:
-						gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
+						if(extract32(ctx->opcode, 27, 5)== 0){
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID);
+						} else {
+							gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
+						}
+
 						break;
 					case OPC_RH850_STSR_regID_reg2_selID:
 						gen_special(ctx, env, rs1, rs2, OPC_RH850_STSR_regID_reg2_selID);
@@ -4688,7 +4780,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
         // Setting PSW to 0 so we can write new state
 
-        tcg_gen_movi_i32(cpu_sysRegs[PSW_register], 0x0);
+        tcg_gen_andi_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register], 0xffffffe0);
 
         // Writing flag values to PSW register
 
