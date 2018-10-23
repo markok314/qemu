@@ -2740,8 +2740,8 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, overflowed, 0x1);	//are 1
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, end);
-			tcg_gen_movi_i32(r2_local, 0x80000000);						//DO THIS
-			tcg_gen_movi_i32(cpu_OVF, 0x1);
+			tcg_gen_movi_i32(r2_local, 0x00000000);						//DO THIS
+			//tcg_gen_movi_i32(cpu_OVF, 0x1);
 			gen_set_gpr(rs2, r2_local);
 			tcg_gen_br(fin);
 
