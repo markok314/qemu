@@ -2729,7 +2729,9 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont); 		//if r1=0 jump to end
-			// regs should be undefined!!
+			///// regs should be undefined!!
+			tcg_gen_movi_i32(r2_local, 0x80000000);
+			/////
 			tcg_gen_br(fin);
 
 			gen_set_label(cont);
@@ -2754,17 +2756,20 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			if(rs2==int_rs3){
 				gen_set_gpr(rs2, r3_local);
+
+				//// flags should be undefined if r2=r3
+
 			} else {
 				gen_set_gpr(rs2, r2_local);
 				gen_set_gpr(int_rs3, r3_local);
+
+				tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+				tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			}
-
-
 
 			gen_set_label(fin);
 
-			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
 
 		}	break;
 
