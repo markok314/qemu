@@ -2757,10 +2757,12 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
-			gen_set_label(fin);
-
 			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+			gen_set_label(fin);
+
+
 
 		}	break;
 
@@ -2807,10 +2809,12 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_div_i32(r2_local, r2_local, r1_local);
 			gen_set_gpr(rs2, r2_local);
 
-			gen_set_label(fin);
-
 			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+			gen_set_label(fin);
+
+
 
 		}	break;
 
