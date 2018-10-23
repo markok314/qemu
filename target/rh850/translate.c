@@ -1892,8 +1892,8 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_andi_i32(temp_local, r3_local, 0x000000ff);
 			tcg_gen_brcondi_i32(TCG_COND_EQ, temp_local, 0x0, set);////
 			tcg_gen_addi_i32(count_local, count_local, 0x1);
-			tcg_gen_shri_i32(r3_local, r3_local, 0x1);
-			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x1a, cont);////
+			tcg_gen_shri_i32(r3_local, r3_local, 0x8);
+			tcg_gen_brcondi_i32(TCG_COND_NE, count_local, 0x3, cont);////
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
 			tcg_gen_br(end);
 
