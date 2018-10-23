@@ -10,7 +10,7 @@ import sys
 import os
 
 
-def check_registers(file,NUM_OF_INTS_TO_PRINT,file_name):
+def check_registers(file,NUM_OF_INSTS_TO_PRINT,file_name):
     #sys.stdout = open('log_qemu_'+file_name+'.log', 'w')
     instNumber = 0
     counter = 0
@@ -53,7 +53,7 @@ def check_registers(file,NUM_OF_INTS_TO_PRINT,file_name):
         counter = counter + 1
         if counter > NUM_OF_LINES_WITH_GPR_VALUES:
             readLogLine = False
-        if instNumber > NUM_OF_INTS_TO_PRINT:
+        if instNumber > NUM_OF_INSTS_TO_PRINT:
             break
 
-check_registers("../../../../rh850.log", 30, "out")
+check_registers("../../../../rh850.log", 50, "out")

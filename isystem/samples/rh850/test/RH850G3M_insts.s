@@ -50,6 +50,13 @@
    	.hword lo(\disp23 >> 7)
 .endm
 
+.macro LD_BU disp23:req, r1:req, r3:req
+    .byte 0xa0 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7f) << 4) | 0x05 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
 .macro LD_DW disp23:req, r1:req, r3:req
     .byte 0xa0 | \r1
     .byte 0x07
@@ -66,6 +73,20 @@
 #    .byte ((\p & 0x3fc000) >> 14)
 #.endm
 
+.macro LD_H disp23:req, r1:req, r3:req
+    .byte 0x80 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x07 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
+.macro LD_HU disp23:req, r1:req, r3:req
+    .byte 0xa0 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x07 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
 .macro LDL_W r1:req, r3:req
     .byte 0xe0 | \r1
     .byte 0x07
@@ -78,6 +99,13 @@
    .byte 0x07 | ((\regid) << 3)
    .byte 0x20
    .byte 0x00 | ((\selid) << 3)
+.endm
+
+.macro LD_W disp23:req, r1:req, r3:req
+    .byte 0x80 | \r1
+    .byte 0x07
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x09 | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
 .endm
 
 .macro LOOP r1:req, disp16:req
@@ -151,6 +179,12 @@
 #    .byte ((\p & 0x3fc000) >> 14)
 #.endm
 
+.macro ST_H r3:req, disp23:req, r1:req
+    .hword 0x07a0 | \r1
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x0d | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
+.endm
+
 .macro STC_W r3:req, r1:req
     .byte 0xe0 | \r1
     .byte 0x07
@@ -163,6 +197,12 @@
    .byte 0x07 | ((\r1) << 3)
    .byte 0x40
    .byte 0x00 | ((\selid) << 3)
+.endm
+
+.macro ST_W r3:req, disp23:req, r1:req
+    .hword 0x0780 | \r1
+   	.hword lo((\disp23 & 0x7e) << 4) | 0x0f | (\r3 << 11)
+   	.hword lo(\disp23 >> 7)
 .endm
 
 
