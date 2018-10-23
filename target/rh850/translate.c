@@ -2095,6 +2095,9 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			TCGv r2_local = tcg_temp_local_new_i32();
 
 			tcg_gen_movi_tl(r1_local, int_imm);
+
+
+
 			tcg_gen_ext8u_i32(r1_local, r1_local);
 			tcg_gen_mov_i32(r2_local, tcg_r2);
 
@@ -2106,8 +2109,6 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			gen_set_gpr(rs2, r2_local);
 
 			cont = gen_new_label();
-
-
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
@@ -2128,6 +2129,9 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			end = gen_new_label();
 
 			tcg_gen_mov_i32(r1_local, tcg_r1);
+			tcg_gen_mov_i32(r2_local, tcg_r2);
+			int_rs3 = extract32(ctx->opcode, 27, 5);
+			gen_get_gpr(r3_local, int_rs3);
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, r1_local, 0x0, cont);	//is non-shift?
 			tcg_gen_movi_i32(cpu_CYF, 0x0);
@@ -2135,18 +2139,15 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 
 			gen_set_label(cont);
 			tcg_gen_andi_i32(r1_local, r1_local, 0x1f);	//shift by only lower 5 bits of reg1
-			tcg_gen_mov_i32(r2_local, tcg_r2);
-			int_rs3 = extract32(ctx->opcode, 27, 5);
-			gen_get_gpr(r3_local, int_rs3);
 
 			tcg_gen_subi_i32(r1_local, r1_local, 0x1);	//shift by one less
 			tcg_gen_sar_i32(r3_local, r2_local, r1_local);
 			tcg_gen_andi_i32(cpu_CYF, r3_local, 0x1);	//LSB here is the last bit to be shifted
 			tcg_gen_sari_i32(r3_local, r3_local, 0x1);
-			gen_set_gpr(int_rs3, r3_local);
 
 			gen_set_label(end);
 
+			gen_set_gpr(int_rs3, r3_local);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r3_local, 0x0);
 			tcg_gen_shri_i32(cpu_SF, r3_local, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
