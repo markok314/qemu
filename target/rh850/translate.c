@@ -665,7 +665,8 @@ static void gen_logic_CC(TCGv_i32 result){
 	MO_TEQ => 64
 */
 
-static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long imm)
+static void gen_load(DisasContext *ctx, int memop, int rd, int rs1,
+		target_long imm, unsigned is_disp23)
 {
     TCGv t0 = tcg_temp_new();
     TCGv t1 = tcg_temp_new();
@@ -675,7 +676,14 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
 
     gen_get_gpr(t0, rs1);
 	tcg_gen_movi_i32(tcg_imm, imm);
-	tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+
+    if (!is_disp23)
+    	tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+    else {
+        tcg_gen_shli_i32(tcg_imm, tcg_imm, 9);
+        tcg_gen_sari_i32(tcg_imm, tcg_imm, 9);
+    }
+
 	tcg_gen_add_tl(t0, t0, tcg_imm);
 
     if (memop == MO_TEQ) {
@@ -698,7 +706,7 @@ static void gen_load(DisasContext *ctx, int memop, int rd, int rs1, target_long 
 }
 
 static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
-        target_long imm)
+        target_long imm, unsigned is_disp23)
 {
     TCGv t0 = tcg_temp_new();
     TCGv dat = tcg_temp_new();
@@ -708,7 +716,14 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
 
     gen_get_gpr(t0, rs1);				// loading rs1 to t0
     tcg_gen_movi_i32(tcg_imm, imm);
-    tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+
+    if (!is_disp23)
+    	tcg_gen_ext16s_i32(tcg_imm, tcg_imm);
+    else {
+        tcg_gen_shli_i32(tcg_imm, tcg_imm, 9);
+        tcg_gen_sari_i32(tcg_imm, tcg_imm, 9);
+    }
+
     tcg_gen_add_tl(t0, t0, tcg_imm);	// adding displacement to t0
 
     gen_get_gpr(dat, rs2);				// getting data from rs2
@@ -3819,29 +3834,35 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 	switch(opcode20) {
 
 		case OPC_RH850_LDB2:
-	        gen_load(ctx, MO_SB, rs3, rs1, disp23);
+	        gen_load(ctx, MO_SB, rs3, rs1, disp23, 1);
 			break;
 		case OPC_RH850_LDH2:
-	        gen_load(ctx, MO_TESW, rs3, rs1, disp23);
+	        gen_load(ctx, MO_TESW, rs3, rs1, disp23, 1);
 			break;
 		case OPC_RH850_LDW2:
-	        gen_load(ctx, MO_TESL, rs3, rs1, disp23);
+	        gen_load(ctx, MO_TESL, rs3, rs1, disp23, 1);
 			break;
 		case OPC_RH850_LDDW:
-	        gen_load(ctx, MO_TEQ, rs3, rs1, disp23);
+	        gen_load(ctx, MO_TEQ, rs3, rs1, disp23, 1);
+			break;
+		case OPC_RH850_LDBU2:
+	        gen_load(ctx, MO_UB, rs3, rs1, disp23, 1);
+			break;
+		case OPC_RH850_LDHU2:
+	        gen_load(ctx, MO_TEUW, rs3, rs1, disp23, 1);
 			break;
 
 		case OPC_RH850_STB2:
-	        gen_store(ctx, MO_SB, rs1, rs3, disp23);
+	        gen_store(ctx, MO_SB, rs1, rs3, disp23, 1);
 			break;
 		case OPC_RH850_STH2:
-	        gen_store(ctx, MO_TESW, rs1, rs3, disp23);
+	        gen_store(ctx, MO_TESW, rs1, rs3, disp23, 1);
 			break;
 		case OPC_RH850_STW2:
-	        gen_store(ctx, MO_TESL, rs1, rs3, disp23);
+	        gen_store(ctx, MO_TESL, rs1, rs3, disp23, 1);
 			break;
 		case OPC_RH850_STDW:
-	    	gen_store(ctx, MO_TEQ, rs1, rs3, disp23);
+	    	gen_store(ctx, MO_TEQ, rs1, rs3, disp23, 1);
 			break;
 	}
 
@@ -3885,29 +3906,29 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 	switch(op){
 
 		case OPC_RH850_LDB:
-	        gen_load(ctx, MO_SB, rs2, rs1, ld_imm);
+	        gen_load(ctx, MO_SB, rs2, rs1, ld_imm, 0);
 	    	break;
 
 	    case OPC_RH850_LDH_LDW:
 	    	if ( extract32(ctx->opcode, 16, 1) == 0 ){
-	    		gen_load(ctx, MO_TESW, rs2, rs1, ld_imm);	// LD.H
+	    		gen_load(ctx, MO_TESW, rs2, rs1, ld_imm, 0);	// LD.H
 	    	}
 	    	else{
-	    		gen_load(ctx, MO_TESL, rs2, rs1, ld_imm & 0xfffe);	// LD.W
+	    		gen_load(ctx, MO_TESL, rs2, rs1, ld_imm & 0xfffe, 0);	// LD.W
 	    	}
 	    	break;
 
 	    case OPC_RH850_STB:
-	    	gen_store(ctx, MO_SB, rs1, rs2, (extract32(ctx->opcode, 16, 16)));
+	    	gen_store(ctx, MO_SB, rs1, rs2, (extract32(ctx->opcode, 16, 16)), 0);
 	    	break;
 
 	    case OPC_RH850_STH_STW:
 	    	if ( extract32(ctx->opcode, 16, 1)==1 ) {
-	    		gen_store(ctx, MO_TESL, rs1, rs2, ((extract32(ctx->opcode, 17, 15)))<<1);
+	    		gen_store(ctx, MO_TESL, rs1, rs2, ((extract32(ctx->opcode, 17, 15))) << 1, 0);
 	    		//this is STORE WORD
 	    		break;
 	    	}
-	    	gen_store(ctx, MO_TESW, rs1, rs2, ((extract32(ctx->opcode, 17, 15)))<<1);
+	    	gen_store(ctx, MO_TESW, rs1, rs2, ((extract32(ctx->opcode, 17, 15))) << 1, 0);
 	    	//this is STORE HALFWORD
 	    	break;
 
@@ -3998,7 +4019,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 					break;
 				} else {
 					//this is LD.HU
-					gen_load(ctx, MO_TEUW, rs2, rs1, ld_imm & 0xfffe);
+					gen_load(ctx, MO_TEUW, rs2, rs1, ld_imm & 0xfffe, 0);
 					break;
 				}
 			}
@@ -4335,7 +4356,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 		}else{
 			if (extract32(ctx->opcode, 11, 5) != 0){
 				//LD.BU
-				gen_load(ctx, MO_UB, rs2, rs1, (ld_imm & 0xfffe) | extract32(ctx->opcode, 5, 1) );
+				gen_load(ctx, MO_UB, rs2, rs1, (ld_imm & 0xfffe) | extract32(ctx->opcode, 5, 1), 0);
 
 			}else{
 				if (extract32(ctx->opcode, 16, 3) == 0x3){
@@ -4476,10 +4497,10 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 		} else {
 			if(extract32(rs1,4,1)==1){
 				//SLD.HU
-				gen_load(ctx, MO_TEUW, rs2, 30, extract32(ctx->opcode, 0, 4) << 1);
+				gen_load(ctx, MO_TEUW, rs2, 30, extract32(ctx->opcode, 0, 4) << 1, 0);
 			}else{
 				//SLD.BU
-				gen_load(ctx, MO_UB, rs2, 30, extract32(ctx->opcode, 0, 4) );
+				gen_load(ctx, MO_UB, rs2, 30, extract32(ctx->opcode, 0, 4), 0);
 			}
 			break;
 		}
@@ -4552,29 +4573,29 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 
 	switch(opIV){
 	case OPC_RH850_16bit_SLDB:
-		gen_load(ctx, MO_SB, rs2, 30, extract32(ctx->opcode, 0, 7) );
+		gen_load(ctx, MO_SB, rs2, 30, extract32(ctx->opcode, 0, 7), 0);
 		break;
 	case OPC_RH850_16bit_SLDH:
-		gen_load(ctx, MO_TESW, rs2, 30, extract32(ctx->opcode, 0, 7) << 1);
+		gen_load(ctx, MO_TESW, rs2, 30, extract32(ctx->opcode, 0, 7) << 1, 0);
 		break;
 	case OPC_RH850_16bit_IV10:
 		if ( extract32(rs1,0,1) == 1 ) {
 			//SST.W
-	    	gen_store(ctx, MO_TEUL, 30, rs2, (extract32(ctx->opcode, 1, 6)) << 2 );
+	    	gen_store(ctx, MO_TEUL, 30, rs2, (extract32(ctx->opcode, 1, 6)) << 2, 0);
 			/// Note An MAE or MDP exception might occur
 	    	/// depending on the result of address calculation.
 		}
 		else{
 			//SLD.W
-			gen_load(ctx, MO_TESL, rs2, 30, extract32(ctx->opcode, 1, 6) << 2);
+			gen_load(ctx, MO_TESL, rs2, 30, extract32(ctx->opcode, 1, 6) << 2, 0);
 		}
 		break;
 	case OPC_RH850_16bit_SSTB:
-    	gen_store(ctx, MO_UB, 30, rs2, (extract32(ctx->opcode, 0, 7)));
+    	gen_store(ctx, MO_UB, 30, rs2, (extract32(ctx->opcode, 0, 7)), 0);
     	/// Note An MDP exception might occur depending on the result of address calculation.
 		break;
 	case OPC_RH850_16bit_SSTH:
-    	gen_store(ctx, MO_TEUW, 30, rs2, (extract32(ctx->opcode, 0, 7)) << 1 );
+    	gen_store(ctx, MO_TEUW, 30, rs2, (extract32(ctx->opcode, 0, 7)) << 1, 0);
     	/// Note An MAE or MDP exception might occur
     	///depending on the result of address calculation.
 		break;
@@ -4642,13 +4663,14 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
         ctx.opcode = cpu_lduw_code(env, ctx.pc);
 
-        if ((extract32(ctx.opcode, 9, 2) != 0x3) && (extract32(ctx.opcode, 5, 11) != 0x17)){
+        if ((extract32(ctx.opcode, 9, 2) != 0x3) && (extract32(ctx.opcode, 5, 11) != 0x17)) {
 			ctx.next_pc = ctx.pc + 2;
 			decode_RH850_16(env, &ctx);		//this function includes 32-bit JR and JARL
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
         	if (((extract32(ctx.opcode, 6, 11) == 0x41e)
-        				&& (extract32(ctx.opcode, 17, 2) > 0x1)) ||
+        				&& ((extract32(ctx.opcode, 17, 2) > 0x1) ||
+        						(extract32(ctx.opcode, 17, 3) == 0x4))) ||
         			(extract32(ctx.opcode, 5, 11) == 0x31) ||		//48-bit MOV
 					(extract32(ctx.opcode, 5, 12) == 0x37)  || 		//48-bit JMP
 					(extract32(ctx.opcode, 5, 11) == 0x17) ) { 		//48-bit JARL and JR
