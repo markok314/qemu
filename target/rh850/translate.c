@@ -2034,6 +2034,11 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			break;
 
 		case OPC_RH850_ROTL_imm5_reg2_reg3:
+		{
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv imm_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+
 			tcg_gen_movi_tl(tcg_imm, int_imm);
 			tcg_gen_ext8u_tl(tcg_imm, tcg_imm);
 			int_rs3 = extract32(ctx->opcode, 27, 5);
@@ -2042,14 +2047,25 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			gen_set_gpr(int_rs3, tcg_r3);
 
 			tcg_gen_andi_i32(cpu_CYF, tcg_r3, 0x1);
-			//tcg_gen_setcond_i32(TCG_COND_EQ, cpu_CYF,
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r3, 0x0);
 			tcg_gen_shri_i32(cpu_SF, tcg_r3, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 
-			break;
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			tcg_gen_mov_i32(imm_local, tcg_imm);
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, tcg_imm, 0x0, cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			gen_set_label(cont);
+
+		}	break;
 
 		case OPC_RH850_ROTL_reg1_reg2_reg3:
+		{
+			TCGv r3_local = tcg_temp_local_new_i32();
+			TCGv r1_local = tcg_temp_local_new_i32();
+			cont = gen_new_label();
+
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3,int_rs3);
 			tcg_gen_rotl_tl(tcg_r3, tcg_r2, tcg_r1);
@@ -2060,7 +2076,14 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_shri_i32(cpu_SF, tcg_r3, 0x1f);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
 
-			break;
+			tcg_gen_mov_i32(r3_local, tcg_r3);
+			tcg_gen_mov_i32(r1_local, tcg_r1);
+
+			tcg_gen_brcondi_i32(TCG_COND_NE, tcg_r1, 0x0, cont);
+			tcg_gen_movi_i32(cpu_CYF, 0x0);
+			gen_set_label(cont);
+
+		}	break;
 
 		case OPC_RH850_SAR_reg1_reg2: {
 
