@@ -2900,7 +2900,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			cont = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
 			tcg_gen_br(fin);
 
@@ -2916,10 +2916,13 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
+
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_SF, r2_local, 0x1);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
 			gen_set_label(fin);		/////
 
-			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
 		}
 			break;
 
@@ -2934,6 +2937,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			TCGv r1_local = tcg_temp_local_new();
 			TCGv r2_local = tcg_temp_local_new();
 			TCGv r3_local = tcg_temp_local_new();
+			TCGv check = tcg_temp_local_new();
 
 			tcg_gen_mov_i32(r1_local, tcg_r1);
 			tcg_gen_mov_i32(r2_local, tcg_r2);
@@ -2945,7 +2949,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			cont = gen_new_label();
 			fin = gen_new_label();
 
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, r1_local, 0x0);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, cont);
 			tcg_gen_br(fin);
 
@@ -2961,9 +2965,12 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
-			gen_set_label(fin);		/////
-			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_andi_i32(check, r2_local, 0x80000000);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_SF, check, 0x80000000);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
+			gen_set_label(fin);		/////
+
 		}
 			break;
 	}
