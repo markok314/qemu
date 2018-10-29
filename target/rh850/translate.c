@@ -3079,6 +3079,7 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
     gen_get_gpr(r1, rs1);
 	tcg_gen_addi_i32(r1, r1, 0xffffffff);
     tcg_gen_brcond_tl(TCG_COND_NE, r1, zero, l);
+    //set flags
 
     /*tcg_gen_movi_i32(disp, disp16);
     tcg_gen_ext16u_tl(disp, disp);
@@ -3919,6 +3920,7 @@ static void decode_RH850_48(CPURH850State *env, DisasContext *ctx)
 	uint32_t disp32 = (opcode48 >> 16);
 
 	switch(opcode20) {
+
 
 		case OPC_RH850_LDB2:
 	        gen_load(ctx, MO_SB, rs3, rs1, disp23, 1);
