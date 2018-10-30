@@ -1,5 +1,23 @@
-#the script should be tested, its possibly that it does not work right...
-# could be some problems with wine executing on 32 bit exe programs?
+# This script is used for build and deploy arm, rh850, powerpc and tricore for windows.
+# Script download and launch docker, configure it and starts building. Target .exe
+# files and dll files are copied to windows32 or windows64.
+# The script also filter dlls and copy needed dlls to file filtered_dlls.
+
+# You should have docker, python3 and wine installed.
+
+# Usage:
+
+# sudo python3 createWindowsDistro.py
+
+# Possible flags:
+# -t build only target which are listed here
+# -a select arhitecture
+
+# Example of usage:
+# sudo python3 createWindowsDistro.py -t rh850,arm -a 64
+# This build rh850 and arm for windows 64.
+
+
 
 import sys
 import os
@@ -11,7 +29,8 @@ import argparse
 import shutil
 
 
-def check_dlls(copyRh850, copyArm, copyTricore, copyPowerPc):
+def check_dlls(build32, build64, copyRh850, copyArm, copyTricore, copyPowerPc):
+
     check = ""
     if copyRh850:
         check = "rh850"
@@ -20,43 +39,51 @@ def check_dlls(copyRh850, copyArm, copyTricore, copyPowerPc):
     elif copyTricore:
         check = "tricore"
     elif copyPowerPc:
-        check = "powerpc"
+        check = "ppc"
 
     os.chdir('isystem/utils')
-    if os.path.exists("windows32"):
+
+    if build32:
+
         os.chdir('windows32')
 
         if os.path.exists("filtered_dlls"):
             shutil.rmtree("filtered_dlls")
         os.makedirs("filtered_dlls")
 
+        os.chdir('dlls32')
+
         for file in glob.glob("*.dll"):
             os.rename(file, file + '_tst')
             print(file, end='')
             try:
-                cmd = ['wine qemu-system-' + check + '.exe -M help > /dev/null 2>&1']
+
+                cmd = ["su -c 'wine qemu-system-" + check + ".exe -M help > /dev/null 2>&1 '"]
                 subprocess.check_call(cmd, shell=True, executable='/bin/bash')
                 print()
                 os.rename(file + '_tst', file)
             except:
                 print(" NEEDED")
                 os.rename(file + '_tst', file)
-                shutil.copy2(file, '/filtered_dlls')
+                shutil.copy2(file, '../filtered_dlls')
 
-        os.chdir("../")
+        os.chdir("../../")
 
-    if os.path.exists("windows64"):
+    if build64:
+
         os.chdir('windows64')
 
         if os.path.exists("filtered_dlls"):
             shutil.rmtree("filtered_dlls")
         os.makedirs("filtered_dlls")
 
+        os.chdir('dlls64')
+
         for file in glob.glob("*.dll"):
             os.rename(file, file + '_tst')
             print(file, end='')
             try:
-                cmd = ['wine qemu-system-' + check + '.exe -M help > /dev/null 2>&1']
+                cmd = ["su -c 'wine qemu-system-" + check + ".exe -M help > /dev/null 2>&1 '"]
                 subprocess.check_call(cmd, shell=True, executable='/bin/bash')
                 print()
                 os.rename(file + '_tst', file)
@@ -64,9 +91,9 @@ def check_dlls(copyRh850, copyArm, copyTricore, copyPowerPc):
             except:
                 print(" NEEDED")
                 os.rename(file + '_tst', file)
-                shutil.copy2(file, '/filtered_dlls')
+                shutil.copy2(file, '../filtered_dlls')
 
-        os.chdir("../")
+        os.chdir("../../")
 
 
 def zip_files():
@@ -111,30 +138,50 @@ def stop_docker():
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 
 
-def copy_exe(copyRh850, copyArm, copyTricore, copyPowerPc, architecure):
+def copy_exe(id,copyRh850, copyArm, copyTricore, copyPowerPc, architecure):
 
     path = " "
     if copyRh850:
         cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/rh850-softmmu/qemu-system-rh850.exe"
-                                        " isystem/utils/windows" + architecure]
+                                        " isystem/utils/windows" + str(architecure)]
+        p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+        p.wait()
+
+        cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/rh850-softmmu/qemu-system-rh850.exe"
+                                        " isystem/utils/windows" + str(architecure)+"/dlls"+str(architecure)]
         p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
         p.wait()
 
     if copyArm:
         cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/arm-softmmu/qemu-system-arm.exe"
-                                        " isystem/utils/windows" + architecure]
+                                        " isystem/utils/windows" + str(architecure)]
+        p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+        p.wait()
+
+        cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/arm-softmmu/qemu-system-arm.exe"
+                                        " isystem/utils/windows" + str(architecure) + "/dlls"+str(architecure)]
         p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
         p.wait()
 
     if copyTricore:
         cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/tricore-softmmu/qemu-system-tricore.exe"
-                                        " isystem/utils/windows" + architecure]
+                                        " isystem/utils/windows" + str(architecure)]
+        p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+        p.wait()
+
+        cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/tricore-softmmu/qemu-system-tricore.exe"
+                                        " isystem/utils/windows" + str(architecure) + "/dlls"+str(architecure)]
         p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
         p.wait()
 
     if copyPowerPc:
-        cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/powerpc-softmmu/qemu-system-powerpc.exe"
-                                        " isystem/utils/windows" + architecure]
+        cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/ppc-softmmu/qemu-system-ppc.exe"
+                                        " isystem/utils/windows" + str(architecure)]
+        p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+        p.wait()
+
+        cmd = ["sudo docker cp " + id + ":tmp/qemu-test/src/ppc-softmmu/qemu-system-ppc.exe"
+                                        " isystem/utils/windows" + str(architecure) + "/dlls"+str(architecure)]
         p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
         p.wait()
 
@@ -148,19 +195,21 @@ def build_copy_64(id, target, copyRh850, copyArm, copyTricore, copyPowerPc):
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
-    cmd = ["sudo docker exec -i " + id + " sh -c 'mkdir ~/dlls;  cd /usr/x86_64-w64-mingw32/sys-root/mingw/bin/ ;"
-                                         " cp *.dll ~/dlls'"]
+    cmd = ["sudo docker exec -i " + id + " sh -c 'mkdir ~/dlls64;  cd /usr/x86_64-w64-mingw32/sys-root/mingw/bin/ ;"
+                                         " cp *.dll ~/dlls64'"]
+    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+    p.wait()
+
+    cmd = ["sudo docker cp " + id + ":/root/dlls64/ isystem/utils/windows64"]
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
     copy_exe(id,copyRh850, copyArm, copyTricore, copyPowerPc, 64)
 
-    cmd = ["sudo docker cp " + id+":/root/dlls isystem/utils/windows64"]
-    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
-    p.wait()
 
 
-def build_copy32(id, target, copyRh850, copyArm, copyTricore, copyPowerPc):
+
+def build_copy_32(id, target, copyRh850, copyArm, copyTricore, copyPowerPc):
 
     cmd = ["sudo docker exec -i " + id + " sh -c 'cd /tmp/qemu-test/src/ ;pwd"
                                          " cd QEMU_SRC ; ./configure --cross-prefix=i686-w64-mingw32-"
@@ -175,16 +224,16 @@ def build_copy32(id, target, copyRh850, copyArm, copyTricore, copyPowerPc):
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
-    copy_exe(id,copyRh850, copyArm, copyTricore, copyPowerPc, 32)
-
-    cmd = ["sudo docker cp " + id + ":/root/dlls32 isystem/utils/windows32"]
+    cmd = ["sudo docker cp " + id + ":/root/dlls32/ isystem/utils/windows32"]
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
+    copy_exe(id,copyRh850, copyArm, copyTricore, copyPowerPc, 32)
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-t', '--target', nargs='+', default=['arm', 'powerpc', 'tricore', 'rh850'],
-                    choices=['arm', 'powerpc', 'tricore', 'rh850'])
+parser.add_argument('-t', '--target', nargs='+', default=['arm', 'ppc', 'tricore', 'rh850'],
+                    choices=['arm', 'ppc', 'tricore', 'rh850'])
 
 parser.add_argument("-a", "--architecture", nargs='+', default=['32', '64'], choices=['32', '64'])
 args = parser.parse_args()
@@ -217,11 +266,10 @@ if "arm" in build:
 if "tricore" in build:
     copyTricore = True
 
-if "powerpc" in build:
+if "ppc" in build:
      copyPowerPc = True
 
-#start docker
-id = start_docker()
+
 
 if build64 and build32:
     print("---------Building: " + build + " for 32 and 64 bit Windows---------")
@@ -231,6 +279,10 @@ if build64 and build32:
     if os.path.exists("windows64"):
         shutil.rmtree("windows64")
     os.makedirs("windows64")
+
+    # start docker
+    id = start_docker()
+
     build_copy_64(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
     build_copy_32(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
 
@@ -239,6 +291,10 @@ elif build32:
     if os.path.exists("windows32"):
         shutil.rmtree("windows32")
     os.makedirs("windows32")
+
+    # start docker
+    id = start_docker()
+
     build_copy_32(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
 
 elif build64:
@@ -246,9 +302,13 @@ elif build64:
     if os.path.exists("windows64"):
         shutil.rmtree("windows64")
     os.makedirs("windows64")
+
+    # start docker
+    id = start_docker()
+
     build_copy_64(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
 
-check_dlls(copyRh850, copyArm, copyTricore, copyPowerPc)
+check_dlls(build32, build64, copyRh850, copyArm, copyTricore, copyPowerPc)
 zip_files()
 stop_docker()
 
