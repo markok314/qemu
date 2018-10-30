@@ -20,13 +20,13 @@
 
 	mov 0xffffffff, r6
 	sub r11, r10		#5 iterations
-	ble 0x3fd		#loop to 0x800
+	ble lab2		#loop to 0x800
 
 	
 	JARL_RR R1, R5
 	
 	
-.org 0x00000800
+lab2:
 
 	mov 0xabcdef, r18
 	mov 0x5, r10
