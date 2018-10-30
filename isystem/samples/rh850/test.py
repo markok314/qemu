@@ -35,7 +35,7 @@ results = []
 result_for_file = "PASSED"
 
 for file in glob.glob("*.s"):
-    if(file != 'gpr_init.s'):
+    if(file != 'gpr_init.s' and file != 'RH850G3M_insts.s'):
         result_for_file = "PASSED"
         testing_files.append(file)
         sys.stdout = sys.__stdout__

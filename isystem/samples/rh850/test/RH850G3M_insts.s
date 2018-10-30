@@ -36,7 +36,7 @@
     .byte 0xf1
 .endm
 
-.macro JARL r1:req, r3:req
+.macro JARL_RR r1:req, r3:req
     .byte 0xe0 | \r1
     .byte 0xc7
     .byte 0x60

@@ -3028,6 +3028,7 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
 
 static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation ){
 
+	// disp32 is alredy generated when entering calling this function
 	int rs2, rs3;
 	TCGv link_addr = tcg_temp_new();
 	TCGv dest_addr = tcg_temp_new();
@@ -3059,6 +3060,8 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation )
 	if (disp32) {
 		tcg_gen_addi_tl(dest_addr, dest_addr, disp32);
 	}
+
+	tcg_gen_andi_i32(dest_addr, dest_addr, 0xfffffffe);
 
 	tcg_gen_mov_i32(cpu_pc, dest_addr);
 	// ctx->next_pc can't be set here, the value is known only at runtime

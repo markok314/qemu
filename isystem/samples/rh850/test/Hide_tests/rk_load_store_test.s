@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 #------------------------------------------
@@ -25,7 +25,7 @@
 	ST_B R6, 0x2bbbb R1
 					#st.dw r2, disp23[r1]
 	ST_DW R7, 0x123f0 R2
-	ST_DW R5, 0x123fa R2
+	ST_DW R5, 0x123fc R2
 					#st.h r2, disp16[r1]
 					#st.h r2, disp23[r1]
 	st.h r3, 0x0[r3]
@@ -43,9 +43,9 @@
 	st.w r8, 0x4[r4]
 	st.w r6, 0x8[r4]
 
-	ST_W R5, 0x12345 R4
-	ST_W R6, 0x23456 R4
-	ST_W R8, 0xab R4
+	ST_W R5, 0x12348 R4
+	ST_W R6, 0x04444 R4
+	ST_W R8, 0xa0 R4
 
 #----------------------------LOAD INSTRUCTIONS---------------
 
@@ -63,7 +63,7 @@
 	LD_B 0x2bbbb R1, R17
 					#ld.dw disp23[r1], r2
 	LD_DW 0x123f0 R2, R14
-	LD_DW 0x123fa R2, R16
+	LD_DW 0x123fc R2, R16
 					#ld.h disp16[r1], r2
 					#ld.h disp23[r1], r2
 	ld.h 0x0[r3], r18
@@ -92,9 +92,9 @@
 	ld.w 0x4[r4], r27
 	ld.w 0x8[r4], r28
 
-	LD_W 0x12345 R4, R5
-	LD_W 0x23456 R4, R6
-	LD_W 0xab R4, R7
+	LD_W 0x12348 R4, R5
+	LD_W 0x4444 R4, R6
+	LD_W 0xa0 R4, R7
 
 #----------------------SHORT STORE INSTRUCTIONS---------------
 
