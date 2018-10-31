@@ -2731,7 +2731,6 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_mov_i32(r1_local, tcg_r1);
 			tcg_gen_mov_i32(r2_local, tcg_r2);
 
-
 			int_rs3 = extract32(ctx->opcode, 27, 5);
 			gen_get_gpr(tcg_r3, int_rs3);
 			tcg_gen_mov_i32(r3_local, tcg_r3);
@@ -2759,9 +2758,10 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, end);
 			tcg_gen_movi_i32(r2_local, 0x80000000);						//DO THIS
 			tcg_gen_movi_i32(r3_local, 0x0000);
-			//tcg_gen_movi_i32(cpu_OVF, 0x1);
 			gen_set_gpr(rs2, r2_local);			//write zeros if undefined
 			gen_set_gpr(int_rs3, r3_local);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
 			tcg_gen_br(fin);
 
 			gen_set_label(end);
@@ -2771,20 +2771,15 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			if(rs2==int_rs3){
 				gen_set_gpr(rs2, r3_local);
-
-				//// flags should be undefined if r2=r3
-
 			} else {
 				gen_set_gpr(rs2, r2_local);
 				gen_set_gpr(int_rs3, r3_local);
-
-				tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
-				tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			}
 
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
+
 			gen_set_label(fin);
-
-
 
 		}	break;
 
@@ -2824,6 +2819,8 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_movi_i32(r2_local, 0x80000000);						//DO THIS
 			tcg_gen_movi_i32(cpu_OVF, 0x1);
 			gen_set_gpr(rs2, r2_local);
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			tcg_gen_br(fin);
 
 			gen_set_label(end);
@@ -2841,7 +2838,7 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 		}	break;
 
 		case OPC_RH850_DIVH_reg1_reg2_reg3: {
-			// 0x80000000/0xffffffff=0x80000000; cpu_OVF=1
+			// 0x80000000/0xffffffff=0x80000000; cpu_OVF=1, cpu_Z=1?
 			// reg2/0x0000=undefined; cpu_OVF=1
 			// if reg2==reg3; reg2=remainder
 
@@ -2881,8 +2878,12 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_OVF, overflowed, 0x1);
 			tcg_gen_brcondi_i32(TCG_COND_NE, cpu_OVF, 0x1, end);
 			tcg_gen_movi_i32(r2_local, 0x80000000);
+			tcg_gen_movi_i32(r3_local, 0x0000);
 			tcg_gen_movi_i32(cpu_OVF, 0x1);
 			gen_set_gpr(rs2, r2_local);
+			gen_set_gpr(int_rs3, r3_local);
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			tcg_gen_br(fin);
 
 			gen_set_label(end);		/////
@@ -2897,11 +2898,10 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
-			gen_set_label(fin);		/////
-
 			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 
+			gen_set_label(fin);		/////
 		}	break;
 
 		case OPC_RH850_DIVHU_reg1_reg2_reg3:{
@@ -2934,7 +2934,6 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_remu_i32(r3_local, r2_local, r1_local);
 			tcg_gen_divu_i32(r2_local, r2_local, r1_local);
 
-
 			if(rs2==int_rs3){
 				gen_set_gpr(rs2, r3_local);
 			} else {
@@ -2942,13 +2941,10 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
-
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_SF, r2_local, 0x1);
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, r2_local, 0x0);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 
 			gen_set_label(fin);		/////
-
-
 		}
 			break;
 
@@ -2981,8 +2977,8 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			gen_set_label(cont);	/////
 
-			tcg_gen_remu_i32(tcg_r3, tcg_r2, tcg_r1);
-			tcg_gen_divu_i32(tcg_r2, tcg_r2, tcg_r1);
+			tcg_gen_remu_i32(r3_local, r2_local, r1_local);
+			tcg_gen_divu_i32(r2_local, r2_local, r1_local);
 
 			if(rs2==int_rs3){
 				gen_set_gpr(rs2, r3_local);
@@ -2991,9 +2987,9 @@ static void gen_divide(DisasContext *ctx, int rs1, int rs2, int operation)
 				gen_set_gpr(int_rs3, r3_local);
 			}
 
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 			tcg_gen_andi_i32(check, r2_local, 0x80000000);
 			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_SF, check, 0x80000000);
-			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, r2_local, 0x0);
 
 			gen_set_label(fin);		/////
 
