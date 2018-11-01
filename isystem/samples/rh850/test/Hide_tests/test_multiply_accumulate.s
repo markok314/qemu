@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 	
 #----------------------Testing the MAC instruction-----
@@ -179,4 +179,7 @@
 
 	macu r2,r3,r4,r6
 	macu r12,r13,r14,r16
-	
+
+
+
+Lbl:	br Lbl

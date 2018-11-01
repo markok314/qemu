@@ -1,8 +1,12 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 	#sub max negative number 1 and adf 1
 	#checking if this set some flags or not
+
+	mov 0x7fffffff, r17
+	mov 0x1, r18
+	add r17, r18
 
 	#testing for v = 1
 	mov 0x80000000,r1

@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 #--------tests for DIVQ-----------------------------	
@@ -237,6 +237,8 @@
 	mov 0xffffffff,r2
 	divqu r2,r1,r1
 	
+
+Lbl:	br Lbl
 
 	
 

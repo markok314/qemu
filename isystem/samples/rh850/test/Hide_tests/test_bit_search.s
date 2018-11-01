@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 	#test for SCH0L
@@ -50,5 +50,6 @@
 	
 	Lbl: br Lbl
 	
+
 
 	

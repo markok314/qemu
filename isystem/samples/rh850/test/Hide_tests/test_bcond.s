@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 	
 #SAT/CARRY/OVERFLOW/SIGNED/ZERO
@@ -260,3 +260,8 @@
 	ldsr r2, PSW
 	bz 0x2
 	mov 0x2c, r1
+
+
+
+Lbl:	br Lbl
+

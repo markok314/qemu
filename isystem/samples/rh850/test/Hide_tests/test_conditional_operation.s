@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 	#testing starts here
@@ -221,7 +221,7 @@
 	mov 0x2,r2
 	adf z,r1,r2,r18
 	adf nz,r1,r2,r19
-	
+
 	#checking z and nz flag
 
 	#test z = 0
@@ -319,7 +319,10 @@
 	adf le,r1,r2,r8
 	adf gt,r1,r2,r9
 
-	
+
+
+
+
 	#simple tests for sbf
 
 	mov 0x5,r9
@@ -365,7 +368,7 @@
 	sbf ge,r1,r2,r20
 	sbf le,r1,r2,r21
 	sbf gt,r1,r2,r22
-	
+
 	mov 0x80000000,r1
 	mov 0x80000000,r2
 	sbf v,r1,r2,r4
@@ -718,11 +721,6 @@
 	add r1,r2
 	sbf gt,r1,r2,r9
 
-		
-	Lbl: br Lbl
-	
-	
-	
-	
-	
-	
+Lbl: 	br Lbl
+
+

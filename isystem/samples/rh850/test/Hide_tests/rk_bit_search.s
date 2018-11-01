@@ -3,7 +3,6 @@
 
 
 
-
 	mov 0xffff1234, r1
 	mov 0x12005678, r2
 	mov 0xff11ff00, r3

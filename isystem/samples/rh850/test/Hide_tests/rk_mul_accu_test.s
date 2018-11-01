@@ -1,6 +1,6 @@
-.text
-.include "gpr_init.s"
 .include "RH850G3M_insts.s"
+.include "gpr_init.s"
+
 
 	mov 0x11224, r1
 	mov 0x5b32, r2

@@ -1,6 +1,6 @@
-.text
-.include "gpr_init.s"
 .include "RH850G3M_insts.s"
+.include "gpr_init.s"
+
 
 # explanation of comments
 # 0 - the conditions are not satisfied

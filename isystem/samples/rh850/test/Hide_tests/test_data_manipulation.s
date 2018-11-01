@@ -1,8 +1,8 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 
-#--------tests for bins (something is wrong with bins)
+#--------tests for bins (missing, implement macro for bins)
 
 	
 #--------tests for BSH-----------------------------
@@ -800,3 +800,5 @@
 	
 	
 Lbl: br Lbl
+
+

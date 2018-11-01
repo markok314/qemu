@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 #-----------------tests for div------------------#
@@ -523,6 +523,8 @@
 	mov 0x1,r2
 	divu r2,r1,r1
 	divu r1,r2,r2
+
+Lbl:	br Lbl
 	#here should be s flag
 	
 	

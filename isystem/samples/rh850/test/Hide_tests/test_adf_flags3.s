@@ -1,4 +1,4 @@
-.text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 	#testing for v = 1
 	mov 0x80000000,r1

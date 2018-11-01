@@ -11,36 +11,36 @@ Linker script and memory map
                 0x00000000                _Min_Heap_Size = 0x0
                 0x00000400                _Min_Stack_Size = 0x400
 
-.text           0x00000000       0x5e
+.text           0x00000000       0xaa
  *(.isr_vector)
  *(.text*)
- .text          0x00000000       0x5e bs_test-branch.o
+ .text          0x00000000       0xaa sbf_test.o
  *(.glue_7t)
  *(.glue_7)
  *(.rodata*)
-                0x0000005e                _etext = .
-                0x0000005e                _sidata = .
+                0x000000aa                _etext = .
+                0x000000aa                _sidata = .
 
-.data           0xfee00000        0x0 load address 0x0000005e
+.data           0xfee00000        0x0 load address 0x000000aa
                 0xfee00000                _sdata = .
  *(vtable)
  *(.data*)
- .data          0xfee00000        0x0 bs_test-branch.o
+ .data          0xfee00000        0x0 sbf_test.o
                 0xfee00000                _edata = .
 
-.bss            0xfee00000        0x0 load address 0x0000005e
+.bss            0xfee00000        0x0 load address 0x000000aa
                 0xfee00000                _sbss = .
  *(.bss*)
- .bss           0xfee00000        0x0 bs_test-branch.o
+ .bss           0xfee00000        0x0 sbf_test.o
  *(COMMON)
                 0xfee00000                _ebss = .
  *(.stack)
                 0xfee00000                _estack = .
-LOAD bs_test-branch.o
+LOAD sbf_test.o
 LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2\libgcc.a
 START GROUP
 LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2/../../../../v850-elf/lib\libc.a
 LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2\libgcc.a
 END GROUP
 LOAD c:/sysgcc/v850-elf/bin/../lib/gcc/v850-elf/4.7.2\libgcc.a
-OUTPUT(bs_test-branch.elf elf32-v850)
+OUTPUT(sbf_test.elf elf32-v850)

@@ -1,6 +1,6 @@
 .include "RH850G3M_insts.s"
+.include "gpr_init.s"
 
-.text
 
 	mov 1, R4
 	mov 3, R1
@@ -14,3 +14,5 @@
 	loop R2, 4
 	mov 3, R2
 	mov 4, R2
+
+Lbl:	br Lbl

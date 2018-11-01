@@ -1,4 +1,5 @@
-.text
+.include "RH850G3M_insts.s"
+.include "gpr_init.s"
 
 #--------------------------Testing CLR1 bit#3, disp16 [reg1] instruction-----------
 
@@ -433,3 +434,11 @@
 	TST1 r26, [r2]
 	
 	TST1 r27, [r1]
+
+
+
+
+
+Lbl:	br Lbl
+
+
