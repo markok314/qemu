@@ -1464,6 +1464,8 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			gen_set_label(end);
 			gen_set_gpr(rs2, result);
 
+			// second negation is needed for appropriate flag calculation
+			tcg_gen_neg_i32(r1_local, r1_local);
 			gen_satsub_CC(r2_local, r1_local, result);
 
 			tcg_temp_free(result);
@@ -1592,6 +1594,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			gen_set_label(end);
 			gen_set_gpr(rs2, result);
 
+			tcg_gen_neg_i32(imm_local, imm_local);
 			gen_satsub_CC(r1_local, imm_local, result);
 
 			tcg_temp_free(result);
@@ -1663,6 +1666,7 @@ static void gen_sat_op(DisasContext *ctx, int rs1, int rs2, int operation)
 			gen_set_label(end);
 			gen_set_gpr(rs2, result);
 
+			tcg_gen_neg_i32(r1_local, r1_local);
 			gen_satsub_CC(r2_local, r1_local, result);
 
 			tcg_temp_free(result);
