@@ -284,7 +284,16 @@ if build64 and build32:
     id = start_docker()
 
     build_copy_64(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
+    check_dlls(False, True, copyRh850, copyArm, copyTricore, copyPowerPc)
+    zip_files()
+    stop_docker()
+
+    os.chdir('isystem/utils')
+    id = start_docker()
     build_copy_32(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
+    check_dlls(True, False, copyRh850, copyArm, copyTricore, copyPowerPc)
+    zip_files()
+    stop_docker()
 
 elif build32:
     print("---------Building: " + build + " for 32 bit Windows---------")
@@ -296,6 +305,9 @@ elif build32:
     id = start_docker()
 
     build_copy_32(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
+    check_dlls(build32, build64, copyRh850, copyArm, copyTricore, copyPowerPc)
+    zip_files()
+    stop_docker()
 
 elif build64:
     print("---------Building: " + build + " for 64 bit Windows---------")
@@ -308,9 +320,9 @@ elif build64:
 
     build_copy_64(id, build, copyRh850, copyArm, copyTricore, copyPowerPc)
 
-check_dlls(build32, build64, copyRh850, copyArm, copyTricore, copyPowerPc)
-zip_files()
-stop_docker()
+    check_dlls(build32, build64, copyRh850, copyArm, copyTricore, copyPowerPc)
+    zip_files()
+    stop_docker()
 
 print("------------FINISHED------------")
 
