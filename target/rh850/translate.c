@@ -3067,12 +3067,11 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation )
 
 	tcg_gen_andi_i32(dest_addr, dest_addr, 0xfffffffe);
 
-	tcg_gen_mov_i32(cpu_pc, dest_addr);
-	// ctx->next_pc can't be set here, the value is known only at runtime
-	// It will be set when new translation block compilation starts.
-	tcg_gen_exit_tb(0); // AFAIK this exits native code and returns to QEMU
-	                    // execution control loop
-};
+    tcg_gen_mov_i32(cpu_pc, dest_addr);
+    //tcg_temp_free(link_addr);
+    //tcg_temp_free(dest_addr);
+    gen_exception_debug();
+}
 
 static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
 {
