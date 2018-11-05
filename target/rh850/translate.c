@@ -3068,8 +3068,8 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation )
 	tcg_gen_andi_i32(dest_addr, dest_addr, 0xfffffffe);
 
     tcg_gen_mov_i32(cpu_pc, dest_addr);
-    //tcg_temp_free(link_addr);
-    //tcg_temp_free(dest_addr);
+    tcg_temp_free(link_addr);
+    tcg_temp_free(dest_addr);
     gen_exception_debug();
 }
 
@@ -4724,8 +4724,8 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
-    //ctx.singlestep_enabled = cs->singlestep_enabled;
-    ctx.singlestep_enabled = 1;/// this is only for gdb exceptions
+    ctx.singlestep_enabled = cs->singlestep_enabled;
+    //ctx.singlestep_enabled = 1;/// this is only for gdb exceptions
 
     ctx.tb = tb;
     ctx.bstate = BS_NONE;
