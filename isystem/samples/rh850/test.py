@@ -91,7 +91,8 @@ for file in glob.glob("*.s"):
                     print(line1[:-1])
                 elif(index == 2):
                     #PSW
-                    if args.flags:
+                    if True:
+                        #print("CHECKING FLAGS ALSO");
                         if line1[-2:] != line2[-2:]:
                             # CHECKING JUST LAST 4 BITS OF PSW REG
                             print("ERROR" + line1[:-1] +" "+ line2[:-1])
