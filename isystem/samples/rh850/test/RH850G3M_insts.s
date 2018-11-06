@@ -2,7 +2,7 @@
 
 # implement instructions missing in V850 (added for E3 - RH850) as macros
 
-.macro BINS r1:req, pos:req, width:req, r2:req
+.macro BINS r2:req, pos:req, width:req, r1:req
    .byte 0xe0 | \r2
    .byte 0x07 | (\r1 << 3)
    .if \pos>=0x10

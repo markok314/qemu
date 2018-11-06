@@ -1763,7 +1763,6 @@ static void gen_logical(DisasContext *ctx, int rs1, int rs2, int operation)
 }
 
 static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int operation)
-//TODO: check BINS
 {
 	TCGv tcg_r1 = tcg_temp_new();
 	TCGv tcg_r2 = tcg_temp_new();
@@ -1782,22 +1781,46 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 	int int_rs3;
 	int int_cond;
 	int pos;
+	int lsb;
+	int msb;
 	int width;
 	int mask;
+	int group;
 
 	gen_get_gpr(tcg_r1, rs1);
 	gen_get_gpr(tcg_r2, rs2);
 
 	switch(operation) {
 
-		case OPC_RH850_BINS: //BINS
+		case OPC_RH850_BINS:
+
+			group = extract32(ctx->opcode, 21, 2);
 
 			mask = 0;
 			pos = extract32(ctx->opcode, 17, 3) | (extract32(ctx->opcode, 27, 1) << 3);
+			lsb = pos;
 
+			msb = extract32(ctx->opcode, 28, 4);
 			width = extract32(ctx->opcode, 28, 4) - pos + 1;
 
-			printf("pos %d width %d \n",pos,width);
+			switch(group){
+			case 0:			//bins0
+				pos += 16;
+				break;
+			case 1:			//bins1
+				width += 16;
+				msb+=16;
+				break;
+			case 2:			//bins2
+				break;
+			}
+
+			if(msb<lsb){
+				tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
+				tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, tcg_r2, 0x0);
+				tcg_gen_movi_i32(cpu_OVF, 0x0);
+				break;
+			}
 
 			for(int i = 0; i < width; i++){
 				mask = mask | (0x1 << i);
@@ -1814,12 +1837,9 @@ static void gen_data_manipulation(DisasContext *ctx, int rs1, int rs2, int opera
 			tcg_gen_or_i32(tcg_r2, tcg_r2, insert);		//placing bits into reg2
 
 			gen_set_gpr(rs2, tcg_r2);
-			printf("test1\n");
-			//tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
-			printf("test2\n");
-			tcg_gen_shli_i32(cpu_SF, tcg_r2, 0x1f);
+			tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_ZF, tcg_r2, 0x0);
+			tcg_gen_setcondi_i32(TCG_COND_LT, cpu_SF, tcg_r2, 0x0);
 			tcg_gen_movi_i32(cpu_OVF, 0x0);
-
 
 			break;
 
