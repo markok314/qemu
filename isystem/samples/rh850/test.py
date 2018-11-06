@@ -81,7 +81,20 @@ for file in glob.glob("*.s"):
         # R1                R1
         # R2                R2
         # ...               ...
-    
+	
+        num_lines_qemu = sum(1 for line in log_qemu)
+        print(num_lines_qemu)
+        num_lines_bluebox = sum(1 for line in log_blubox)
+        print(num_lines_bluebox)
+        if num_lines_bluebox-(NUM_OF_PRINTED_REGISTERS*2) > num_lines_qemu:
+            result_for_file = "FAILED"
+            print("files are different size")
+	
+        log_qemu.close()
+        log_blubox.close()
+        log_qemu = open('log_qemu_'+file+'.log', 'r')
+        log_blubox = open('log_bluebox_'+file+'.log', 'r')
+
         print("----------")
         for line1, line2 in zip(log_qemu, log_blubox):
             if start>=NUM_OF_REGS_TO_NOT_CHECK:
