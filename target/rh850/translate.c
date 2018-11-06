@@ -4745,7 +4745,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
     ctx.singlestep_enabled = cs->singlestep_enabled;
-    //ctx.singlestep_enabled = 1;/// this is only for gdb exceptions
+    ctx.singlestep_enabled = 1;/// this is only for gdb exceptions
 
     ctx.tb = tb;
     ctx.bstate = BS_NONE;
