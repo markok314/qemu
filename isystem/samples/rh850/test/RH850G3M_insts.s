@@ -38,6 +38,11 @@
     .byte 0x01 | (\r3 << 3)
 .endm
 
+.macro JR_ disp32:req
+    .hword 0x02e0
+    .word \disp32
+.endm
+
 .macro LD_B disp23:req, r1:req, r3:req
     .byte 0x80 | \r1
     .byte 0x07
