@@ -1,6 +1,6 @@
 .include "RH850G3M_insts.s"
-.include "gpr_init.s"
 
+#-------LOOP---------------------------------------- OK
 
 	mov 1, R4
 	mov 3, R1
