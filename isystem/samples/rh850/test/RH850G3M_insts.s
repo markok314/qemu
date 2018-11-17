@@ -31,6 +31,12 @@
     .byte 0xf1
 .endm
 
+.macro JARL_ disp32:req, r1:req
+    .byte 0xe0 | \r1
+    .byte 0x02
+    .word \disp32 & 0xfffffffe
+.endm
+
 .macro JARL_RR r1:req, r3:req
     .byte 0xe0 | \r1
     .byte 0xc7

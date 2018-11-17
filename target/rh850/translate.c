@@ -4788,13 +4788,11 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 			decode_RH850_16(env, &ctx);		//this function includes 32-bit JR and JARL
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
-        	if (((extract32(ctx.opcode, 6, 11) == 0x41e)
-        				&& ((extract32(ctx.opcode, 17, 2) > 0x1) ||
-        						(extract32(ctx.opcode, 17, 3) == 0x4))) ||
+        	if (((extract32(ctx.opcode, 6, 11) == 0x41e) && ((extract32(ctx.opcode, 17, 2) > 0x1) ||
+        			(extract32(ctx.opcode, 17, 3) == 0x4))) ||
         			(extract32(ctx.opcode, 5, 11) == 0x31) ||		//48-bit MOV
 					(extract32(ctx.opcode, 5, 12) == 0x37)  || 		//48-bit JMP
 					(extract32(ctx.opcode, 5, 11) == 0x17) ) { 		//48-bit JARL and JR
-
         		ctx.opcode1 = cpu_lduw_code(env, ctx.pc+4);
 				ctx.next_pc = ctx.pc + 6;
 				decode_RH850_48(env, &ctx);
