@@ -209,4 +209,7 @@ trace-ust-all.c
 /build/
 /roms/seabios/*
 /roms/vgabios/*
+/isystem/samples/rh850/test/stm32.map
+.settings/language.settings.xml
+.pydevproject
 
