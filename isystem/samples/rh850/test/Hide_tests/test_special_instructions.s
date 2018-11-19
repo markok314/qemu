@@ -130,6 +130,7 @@
 		STSR 14, r3
 		STSR PSW, r4
 		feret
+		feret
 	
 	
 Lbl:	br Lbl
