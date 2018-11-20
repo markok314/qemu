@@ -3898,8 +3898,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			tcg_gen_br(cont);
 
 			gen_set_label(add_scbp);
-			///tcg_gen_shli_tl(t0, local_vector, 0x2);
-			tcg_gen_shli_tl(local_vector, local_vector, 0x2);///
+			tcg_gen_shli_tl(local_vector, local_vector, 0x2);
 			tcg_gen_ext8u_tl(local_vector, local_vector);
 			tcg_gen_add_i32(t0, local_vector, cpu_sysRegs[SCBP_register]); // t0 = adr
 
@@ -3910,7 +3909,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			tcg_gen_add_i32(t1,t1,cpu_sysRegs[SCBP_register]);
 
 			tcg_gen_mov_i32(cpu_pc, t1);
-			tcg_gen_exit_tb(0);
+
+			tcg_gen_exit_tb(0); /// -> clears flags!
+            ctx->bstate = BS_BRANCH;
 			break;
 		}
 	}
