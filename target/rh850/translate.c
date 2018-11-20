@@ -187,7 +187,7 @@ static void gen_exception_illegal(DisasContext *ctx)
 }
 */
 
-static int decode_register(int regID,int selLID){
+static int decode_register(int regID,int selID){
 	/*
 	 *
 	This functions take regID and sellID and output single number for specific register,
@@ -196,7 +196,7 @@ static int decode_register(int regID,int selLID){
 	*/
 	int value = -1;
 
-	switch(selLID){
+	switch(selID){
 		case 0:
 				switch(regID){
 				case 0:
@@ -3883,7 +3883,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			TCGv local_SCCFG_SIZE = tcg_temp_local_new_i32();
 			tcg_gen_mov_i32(local_SCCFG_SIZE, cpu_sysRegs[SCCFG_register]);
 			tcg_gen_andi_tl(local_SCCFG_SIZE, local_SCCFG_SIZE, 0x7F);
-			//WHERE ARE BITS OF SCCFG_SIZE (BITS 7 TO 0 OF SCCFG)  SETED/RESETED?
+			//WHERE ARE BITS OF SCCFG_SIZE (BITS 7 TO 0 OF SCCFG)  SET/RESET ?
 
 			tcg_gen_brcond_i32(TCG_COND_LEU, local_vector, local_SCCFG_SIZE, add_scbp);
 			tcg_gen_add_i32(t0, local_vector,cpu_sysRegs[SCBP_register]);
@@ -4888,15 +4888,12 @@ void rh850_translate_init(void)
     /* registers, unless you specifically block reads/writes to reg 0 */
     cpu_gpr[0] = NULL;
 
-
     for (i = 1; i < 32; i++) {
         cpu_gpr[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, progRegs[i]), rh850_prog_regnames[i]);
     }
 
-
     for (i = 0; i < 31; i++) {
-
         cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPURH850State, sysBasicRegs[i]), rh850_sys_basic_regnames[i]);
     }
