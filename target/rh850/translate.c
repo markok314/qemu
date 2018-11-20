@@ -3894,13 +3894,14 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			//WHERE ARE BITS OF SCCFG_SIZE (BITS 7 TO 0 OF SCCFG)  SET/RESET ?
 
 			tcg_gen_brcond_i32(TCG_COND_LEU, local_vector, local_SCCFG_SIZE, add_scbp);
-			tcg_gen_add_i32(t0, local_vector,cpu_sysRegs[SCBP_register]);
+			tcg_gen_add_i32(t0, local_vector, cpu_sysRegs[SCBP_register]);
 			tcg_gen_br(cont);
 
 			gen_set_label(add_scbp);
-			tcg_gen_shli_tl(t0, local_vector, 0x2);
+			///tcg_gen_shli_tl(t0, local_vector, 0x2);
+			tcg_gen_shli_tl(local_vector, local_vector, 0x2);///
 			tcg_gen_ext8u_tl(local_vector, local_vector);
-			tcg_gen_add_i32(t0, local_vector,cpu_sysRegs[SCBP_register]);
+			tcg_gen_add_i32(t0, local_vector, cpu_sysRegs[SCBP_register]); // t0 = adr
 
 			gen_set_label(cont);
 
@@ -4832,6 +4833,30 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
 
         tcg_gen_shli_i32(temp, cpu_SATF, 0x4);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+		tcg_gen_shli_i32(temp, cpu_ID, 0x5);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+        tcg_gen_shli_i32(temp, cpu_EP, 0x6);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+        tcg_gen_shli_i32(temp, cpu_NP, 0x7);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+        tcg_gen_shli_i32(temp, cpu_EBV, 0xF);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+        tcg_gen_shli_i32(temp, cpu_CU0, 0x10);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+        tcg_gen_shli_i32(temp, cpu_CU1, 0x11);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+        tcg_gen_shli_i32(temp, cpu_CU2, 0x12);
+        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+        tcg_gen_shli_i32(temp, cpu_UM, 0x1E);
         tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
 
         if (cs->singlestep_enabled) {
