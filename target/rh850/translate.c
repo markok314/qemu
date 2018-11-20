@@ -376,11 +376,17 @@ static inline void gen_get_psw(TCGv t)
 
 static inline void gen_reset_flags(DisasContext *ctx)
 {
-	tcg_gen_andi_i32(cpu_ZF, cpu_sysRegs[PSW_register], 0x1);
-	tcg_gen_andi_i32(cpu_SF, cpu_sysRegs[PSW_register], 0x2);
-	tcg_gen_andi_i32(cpu_OVF, cpu_sysRegs[PSW_register], 0x4);
-	tcg_gen_andi_i32(cpu_CYF, cpu_sysRegs[PSW_register], 0x8);
-	tcg_gen_andi_i32(cpu_SATF, cpu_sysRegs[PSW_register], 0x10);
+	TCGv temp = tcg_temp_new_i32();
+	tcg_gen_mov_i32(temp, cpu_sysRegs[PSW_register]);
+	tcg_gen_andi_i32(cpu_ZF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_SF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_OVF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_CYF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_SATF, temp, 0x1);
 }
 
 static TCGv condition_satisfied(int cond)
@@ -3347,10 +3353,10 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		//setting CTPC to PC+2
 		tcg_gen_addi_i32(cpu_sysRegs[CTPC_register], cpu_pc, 0x2);
 		//extracting PSW bits 0:4
-		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0xf);
+		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0x1f);
 
 		//clearing CTPSW bits 0:4
-		tcg_gen_andi_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], 0xfffffff0);
+		tcg_gen_andi_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], 0xffffffe0);
 		//setting CPTSW bits 0:4
 		tcg_gen_or_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], temp);
 
