@@ -376,11 +376,17 @@ static inline void gen_get_psw(TCGv t)
 
 static inline void gen_reset_flags(DisasContext *ctx)
 {
-	tcg_gen_movi_i32(cpu_ZF, 0x0);
-	tcg_gen_movi_i32(cpu_SF, 0x0);
-	tcg_gen_movi_i32(cpu_OVF, 0x0);
-	tcg_gen_movi_i32(cpu_CYF, 0x0);
-	tcg_gen_movi_i32(cpu_SATF, 0x0);
+	TCGv temp = tcg_temp_new_i32();
+	tcg_gen_mov_i32(temp, cpu_sysRegs[PSW_register]);
+	tcg_gen_andi_i32(cpu_ZF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_SF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_OVF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_CYF, temp, 0x1);
+	tcg_gen_shri_i32(temp, temp, 0x1);
+	tcg_gen_andi_i32(cpu_SATF, temp, 0x1);
 }
 
 static TCGv condition_satisfied(int cond)
@@ -3347,10 +3353,10 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		//setting CTPC to PC+2
 		tcg_gen_addi_i32(cpu_sysRegs[CTPC_register], cpu_pc, 0x2);
 		//extracting PSW bits 0:4
-		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0xf);
+		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0x1f);
 
 		//clearing CTPSW bits 0:4
-		tcg_gen_andi_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], 0xfffffff0);
+		tcg_gen_andi_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], 0xffffffe0);
 		//setting CPTSW bits 0:4
 		tcg_gen_or_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], temp);
 
@@ -3361,6 +3367,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_add_i32(adr, cpu_sysRegs[CTBP_register], adr);
 
 		tcg_gen_qemu_ld16u(temp, adr, 0);
+
 		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[CTBP_register]);
 
 		tcg_gen_exit_tb(0);
@@ -3416,6 +3423,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		//setting lower 5 bits of PSW
 		tcg_gen_or_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], temp);
 
+		tcg_temp_free_i32(temp);
 		tcg_gen_exit_tb(0);
 
 		break;
@@ -3570,12 +3578,12 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		valueldsr = decode_register(regID,selID);
 
+		gen_get_gpr(r2, rs1);
+		gen_set_sysreg(valueldsr, r2);
+
 		if(regID==PSW_register){
 			gen_reset_flags(ctx);
 		}
-		printf("ta izpis ne obstaja!!!!! (ldsr regID selID)\n");
-		gen_get_gpr(r2, rs1);
-		gen_set_sysreg(valueldsr, r2);
 		break;
 
 	case OPC_RH850_LDSR_reg2_regID:
@@ -3584,12 +3592,12 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		valueldsr = decode_register(regID,selID);
 
-		if(valueldsr==PSW_register){
-			gen_reset_flags(ctx);
-		}
 		gen_get_gpr(r2, rs1);
 		gen_set_sysreg(valueldsr, r2);
 
+		if(valueldsr==PSW_register){
+			gen_reset_flags(ctx);
+		}
 		break;
 
 	//case OPC_RH850_LDLW:
