@@ -374,7 +374,7 @@ static inline void gen_get_psw(TCGv t)
 	tcg_gen_mov_tl(t, cpu_sysRegs[PSW_register]);
 }
 
-static inline void gen_reset_flags(DisasContext *ctx)
+static inline void gen_restore_flags(DisasContext *ctx)
 {
 	TCGv temp = tcg_temp_new_i32();
 	tcg_gen_mov_i32(temp, cpu_sysRegs[PSW_register]);
@@ -3582,7 +3582,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		gen_set_sysreg(valueldsr, r2);
 
 		if(regID==PSW_register){
-			gen_reset_flags(ctx);
+			gen_restore_flags(ctx);
 		}
 		break;
 
@@ -3596,7 +3596,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		gen_set_sysreg(valueldsr, r2);
 
 		if(valueldsr==PSW_register){
-			gen_reset_flags(ctx);
+			gen_restore_flags(ctx);
 		}
 		break;
 
@@ -3657,10 +3657,10 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		TCGv regToStore = tcg_temp_new_i32();
 
 		for(int i=0; i<numOfListItems; i++){
-			tcg_gen_subi_i32(temp, temp, 0x4);
-			tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
 
 			if( !((prepList & test)==0x0) ){
+				tcg_gen_subi_i32(temp, temp, 0x4);
+				tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
 				gen_get_gpr(regToStore, list[i]);
 				tcg_gen_qemu_st_i32(regToStore, adr, MEM_IDX, MO_TESL);
 				gen_set_gpr(list[i], regToStore);
@@ -3698,9 +3698,10 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		TCGv regToStore = tcg_temp_new_i32();
 
 		for(int i=0; i<numOfListItems; i++){
-			tcg_gen_subi_i32(temp, temp, 0x4);
-			tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
+
 			if( !((prepList & test)==0x0) ){
+				tcg_gen_subi_i32(temp, temp, 0x4);
+				tcg_gen_andi_i32(adr, temp, 0xfffffffc); //masking the lower two bits
 				gen_get_gpr(regToStore, list[i]);
 				tcg_gen_qemu_st32(regToStore, adr, MEM_IDX);
 				gen_set_gpr(list[i], regToStore);
