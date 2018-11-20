@@ -1,11 +1,10 @@
 .include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
-#------------------------------------------------
-
-#	ldsr r0, psw 	# load r0 to PSW register
-#	stsr psw, r2	# load PSW to r2
-
+#
+# Testing instructions:
+# CAXI, CALL, CTRET, LDSR, STSR
+#
 
 #--------------------- Tests for CAXI ---------
 
@@ -40,70 +39,67 @@
 
 	ST_H R0, 0x0, R5
 
+#--------------------Test for CALLT+CTRET -----------
 
+	mov 0x11, r1
+	ldsr r1, psw 
 
+	mov 0xfee00200, r1
+	LDSR_ID R1, 20, 0	# CTBP = 0xfee00200
+
+	mov 0x20, r2
+	st.h r2, 0x0[r1]
+
+	# storing CTRET opcode
+	mov 0xfee00220, r1
+	mov 0x014407E0, r2
+	st.w r2, 0x0[r1]
+
+	callt 0x00	# adr<-0xfee00200 (iz tega pobere hw)
+			# PC <-0xfee00200 + hw(load(0xfee00200)
+			# PC <-0xfee00220
+
+#--------------------
+
+	mov 0x9, r1
+	ldsr r1, psw 
+
+	mov 0xfee00500, r1
+	LDSR_ID R1, 20, 0	# CTBP = 0xfee00500
+
+	mov 0xfee00520, r1
+	mov 0x40, r2
+	st.h r2, 0x0[r1]
+
+	# storing CTRET opcode
+	mov 0xfee00540, r1
+	mov 0x014407E0, r2
+	st.w r2, 0x0[r1]
+
+	callt 0x10	# adr<-0xfee00520 (CTBP+imm)
+			# PC <-0xfee00540 (CTBP+load(adr))
+
+#--------------------
+
+	mov 0xd, r1
+	ldsr r1, psw 
+
+	mov 0xfee00900, r1
+	LDSR_ID R1, 20, 0	# CTBP = 0xfee00900
+
+	mov 0xfee00906, r1
+	mov 0x100, r2
+	st.h r2, 0x0[r1]
+
+	# storing CTRET opcode
+	mov 0xfee00a00, r1
+	mov 0x014407E0, r2
+	st.w r2, 0x0[r1]
+
+	callt 0x3	# adr<-0xfee00906 (CTBP+imm)
+			# PC <-0xfee00a00 (CTBP+load(adr))
 	
-#--------------------- Tests for CTRET ---------
 
-	# preparing values for CTPC register
-	
-	mov hilo(ctretBr1), r5
-	mov hilo(ctretBr2), r6
-	mov hilo(ctretBr3), r7
-	mov hilo(ctretBr4), r8
-
-	# preparing values for CTPSW register
-	
-	mov 0xd, r9
-	mov 0x1e, r10
-	mov 0x1, r11
-	mov 0x9, r12
-	
-	ldsr r5, ctpc		# loading ctretBr1 addr to ctpc
-	ldsr r9, ctpsw		# loading 0xd to ctpsw
-	ctret
-
-ctReturn1:
-	ldsr r6, ctpc		# loading ctretBr2 addr to ctpc
-	ldsr r10, ctpsw		# loading 0x1e to ctpsw
-	ctret
-
-ctReturn2:
-	ldsr r7, ctpc		# loading ctretBr3 addr to ctpc
-	ldsr r11, ctpsw		# loading 0x1 to ctpsw
-	ctret
-
-ctReturn3:
-	ldsr r8, ctpc		# loading ctretBr4 addr to ctpc
-	ldsr r12, ctpsw		# loading 0x9 to ctpsw
-	ctret
-
-ctReturn4:
-	mov hilo(label1), r10	# continue to next test
-
-	ldsr r10, ctpc
-	ldsr r0, ctpsw
-	ctret
-	
-
-
-	
-
-ctretBr1:
-	mov 0xffffffff, r20
-	br ctReturn1
-
-ctretBr2:
-	mov 0xffffffff, r21
-	br ctReturn2
-ctretBr3:
-	mov 0xffffffff, r22
-	br ctReturn3
-ctretBr4:
-	mov 0xffffffff, r23
-	br ctReturn4
-
-#------------------------------------------------
 
 
 label1: 
@@ -115,132 +111,173 @@ label1:
 	di			# quick test for DI instruction
 	stsr psw, r1	
 
+#--------------------Test for LDSR + STSR -----------
 
-#--------------------- Tests for EIRET ---------
-	
 
-	# preparing values for EIPC register
-	
-	mov hilo(eiretBr1), r5
-	mov hilo(eiretBr2), r6
-	mov hilo(eiretBr3), r7
-	mov hilo(eiretBr4), r8
+	mov 0xabcd, r1
+	mov 0xbade, r2
+	mov 0x1234, r3
+	mov 0x11111111, r4
+	mov 0xffffffff, r5
+	mov 0x26467, r6
+	mov 0x31fadeff, r7
+	mov 0x00f1134, r8
+	mov 0xcf53, r9
 
-	# preparing values for EIPSW register
-	
-	mov 0x1d, r9
-	mov 0x8, r10
-	mov 0x5, r11
-	mov 0x11, r12
 
-	ldsr r5, eipc		# loading eiretBr1 addr to eipc
-	ldsr r9, eipsw		# loading 0x1d to eipsw
-	eiret
-
-eiReturn1:
-	ldsr r6, eipc		# loading eiretBr2 addr to eipc
-	ldsr r10, eipsw		# loading 0x8 to eipsw
-	eiret
-
-eiReturn2:
-	ldsr r7, eipc		# loading eiretBr3 addr to eipc
-	ldsr r11, eipsw		# loading 0x5 to eipsw
-	eiret
-
-eiReturn3:
-	ldsr r8, eipc		# loading eiretBr4 addr to eipc
-	ldsr r12, eipsw		# loading 0x11 to eipsw
-	eiret
-
-eiReturn4:
-	mov hilo(label2), r10	# continue to next test
-
-	ldsr r10, eipc
+	ldsr r0, eipc
 	ldsr r0, eipsw
-	eiret
+	ldsr r1, FEPC
+	ldsr r2, FEPSW
+	ldsr r3, FPSR
+	ldsr r3, FPEPC
+	ldsr r4, FPST
+	ldsr r5, FPCC
+	ldsr r6, FPCFG
+	ldsr r7, FPEC
+	ldsr r9, EIIC
+	ldsr r2, FEIC
+	ldsr r1, CTPC
+	ldsr r4, CTPSW
+	ldsr r8, CTBP
+	ldsr r7, EIWR
+	ldsr r6, FEWR
+	ldsr r4, BSEL
 
 
+	LDSR_ID R1, 0, 1
+	LDSR_ID R2, 2, 1
+	LDSR_ID R3, 3, 1
+	LDSR_ID R4, 4, 1
+	LDSR_ID R6, 5, 1
+	LDSR_ID R5, 6, 1
+	LDSR_ID R8, 11, 1
+	LDSR_ID R9, 12, 1
+	LDSR_ID R4, 0, 2
+	LDSR_ID R5, 6, 2
+	LDSR_ID R1, 7, 2
+	LDSR_ID R6, 8, 2
 
-eiretBr1:
-	mov 0xffffffff, r24
-	br eiReturn1
-eiretBr2:
-	mov 0xffffffff, r25
-	br eiReturn2
-eiretBr3:
-	mov 0xffffffff, r26
-	br eiReturn3
-eiretBr4:
-	mov 0xffffffff, r27
-	br eiReturn4
-
-
-label2:
-
-#--------------------- Tests for FERET ---------
 	
+	stsr FEPC, r1
+	stsr FEPSW, r2
+	stsr FPSR, r3
+	stsr FPEPC, r4
+	stsr FPST, r6
+	stsr FPCC, r4
+	stsr FPCFG, r5
+	stsr FPEC, r7
+	stsr EIIC, r8
+	stsr FEIC, r9
+	stsr CTPC, r10
+	stsr CTPSW, r11
+	stsr CTBP, r12
+	stsr EIWR, r13
+	stsr FEWR, r14
+	stsr BSEL, r15
 
-	# preparing values for FEPC register
-	
-	mov hilo(feretBr1), r5
-	mov hilo(feretBr2), r6
-	mov hilo(feretBr3), r7
-	mov hilo(feretBr4), r8
-
-	# preparing values for FEPSW register
-	
-	mov 0x1d, r9
-	mov 0x8, r10
-	mov 0x5, r11
-	mov 0x11, r12
-
-	ldsr r5, fepc		# loading feretBr1 addr to fepc
-	ldsr r9, fepsw		# loading 0x1d to fepsw
-	feret
-
-feReturn1:
-	ldsr r6, fepc		# loading feretBr2 addr to fepc
-	ldsr r10, fepsw		# loading 0x8 to fepsw
-	feret
-
-feReturn2:
-	ldsr r7, fepc		# loading feretBr3 addr to fepc
-	ldsr r11, fepsw		# loading 0x5 to fepsw
-	feret
-
-feReturn3:
-	ldsr r8, fepc		# loading eiretBr4 addr to fepc
-	ldsr r12, fepsw		# loading 0x11 to fepsw
-	feret
-
-feReturn4:
-	mov hilo(label3), r10	# continue to next test
-
-	ldsr r10, fepc
-	ldsr r0, fepsw
-	feret
+	STSR_ID 0, R1, 1
+	STSR_ID 2, R4 1
+	STSR_ID 3, R2, 1
+	STSR_ID 4, R7, 1
+	STSR_ID 5, R4, 1
+	STSR_ID 6, R9, 1
+	STSR_ID 11, R8, 1
+	STSR_ID 12, R5, 1
+	STSR_ID 0, R3, 2
+	STSR_ID 6, R11, 2
+	STSR_ID 7, R13 2
+	STSR_ID 8, R14, 2
 
 
+#--------------------------imported from rk_special_test2.s
+#----------------------------------------------------
+#----------------------------------------------------
+#----------------------------------------------------
 
-feretBr1:
-	mov 0xffffffff, r24
-	br feReturn1
-feretBr2:
-	mov 0xffffffff, r25
-	br feReturn2
-feretBr3:
-	mov 0xffffffff, r26
-	br feReturn3
-feretBr4:
-	mov 0xffffffff, r27
-	br feReturn4
+#
+# Testing instructions:
+# FETRAP, FERET, TRAP, EIRET, RIE
+#
+
+#--------------------FETRAP------------offset=0x30
+
+	mov 0x4000, r1
+	LDSR_ID R1, 2, 1	# RBASE = 0x4000
+
+	mov 0x6000, r1
+	LDSR_ID R1, 3, 1	# EBASE = 0x6000
+
+	fetrap 1
+
+	fetrap 2
+
+	fetrap 3
+
+	fetrap 0xc
 
 
-label3:
+
+#---------------------TRAP--------------------offset=40/50
+
+	mov 0xb000, r1
+	LDSR_ID R1, 2, 1	# RBASE = 0xb000
+
+	mov 0xd000, r1
+	LDSR_ID R1, 3, 1	# EBASE = 0xd000
+
+	trap 0x11	
+
+	trap 0x1f
+
+	trap 0x0
+
+	trap 0xc
+
+	trap 0x7
+
+
+#---------------------RIE--------------------offset=0x60
+
+	mov 0x1000, r1
+	LDSR_ID R1, 2, 1	# RBASE = 0x1000
+
+	mov 0x2000, r1
+	LDSR_ID R1, 3, 1	# EBASE = 0x2000
+
+	#rie		# stores this PC as return addr
+
+
+	# rie imm/imm What does this instruciton do on target?
+
+
+
+
 
 
 Lbl: br Lbl
 	
+.org 0x1060
+	feret
 
+.org 0x4030
+	feret
+
+.org 0x6030
+	feret
+
+
+
+.org 0xb040
+	eiret
+
+.org 0xb050
+	eiret
+
+.org 0xd040
+	eiret
+
+.org 0xd050
+	eiret
 
 
