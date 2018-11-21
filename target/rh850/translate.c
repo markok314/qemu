@@ -3842,8 +3842,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		cont = gen_new_label();
 		excFromEbase = gen_new_label();
 
-		///??valueldsr = decode_register(4, 1);	// INTBP (Base address of the interrupt handler table)
-
 		uint32_t offset;
 		int vector5 = rs1;
 		tcg_gen_addi_i32(cpu_sysRegs[EIPC_register], cpu_pc, 0x4);
