@@ -13,25 +13,37 @@
 	LDSR_ID R10,2,1
 	#RBASE changed to 0x2000
 	
-	mov 0x2000,r10
-	LDSR_ID R10,2,1
+	mov 0x3000,r10
+	LDSR_ID R10,3,1
 	#EBASE changed to 0x3000
 
-	
 	#change PSW.EBV = 0
 	STSR PSW, r20
-	mov 0xFFFFBFFF,r21
-	and r20,r21
-	LDSR r20,PSW
-		
+	mov 0xFFFFBFFF, r21
+	and r21, r20
+	LDSR r20, PSW
 
 	trap  [0x00]
 	STSR PSW, r4
+
+	mov 0x0, r20
+	LDSR r20, PSW
+	mov 0xffffffff, r20
+	LDSR r20, PSW
+	mov 0x0, r20
+	LDSR r20, PSW
+	nop				# bita psw.ep in psw.id edina ostaneta na 1 (0x60)
+
 	trap  [0x01]
 	STSR PSW, r3
+	mov 0x0, r20
+	LDSR r20, PSW
 
 	trap  [0x10]
 	STSR PSW, r6
+	mov 0x0, r20
+	LDSR r20, PSW
+
 	trap  [0x11]
 	
 	#change PSW.EBV = 1
@@ -40,10 +52,9 @@
 	or r20,r21
 	LDSR r20,PSW
 
-	#NEED TO CHECK EIPC, EIPSW,EIIC,WHOLE PSW register
-	#after we move to some location
-
 	Lbl: br Lbl
+
+	# NEED TO CHECK EIPC, EIPSW, EIIC, PSW after we move to some location:
 
 	.org 0x2040
 		br check1
@@ -66,7 +77,7 @@
 		eiret 
 		
 check1:
-	mov 0x1,r30
+	mov 0x1,r30			# šele po tem gre psw na 0x60 ...(?)
 	STSR EIPC, r1
 	STSR EIPSW, r2
 	STSR EIIC, r3
