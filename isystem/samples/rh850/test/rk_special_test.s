@@ -1,6 +1,7 @@
 .include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
+
 #
 # Testing instructions:
 # CAXI, CALL, CTRET, LDSR, STSR
@@ -48,16 +49,15 @@
 	LDSR_ID R1, 20, 0	# CTBP = 0xfee00200
 
 	mov 0x20, r2
-	st.h r2, 0x0[r1]
+	st.h r2, 0x0[r1]	# Mem(0xfee00200) <- 0x20
 
 	# storing CTRET opcode
 	mov 0xfee00220, r1
 	mov 0x014407E0, r2
-	st.w r2, 0x0[r1]
+	st.w r2, 0x0[r1]	# Mem(0xfee00220) <- 0x014407E0
 
-	callt 0x00	# adr<-0xfee00200 (iz tega pobere hw)
-			# PC <-0xfee00200 + hw(load(0xfee00200)
-			# PC <-0xfee00220
+	callt 0x00	# adr <- 0xfee00200 + 2*imm = 0xfee00200 (iz tega pobere halfword 0x0020)
+				# PC <- 0xfee00200 + 0x0020 = 0xfee00220
 
 #--------------------
 
@@ -69,15 +69,15 @@
 
 	mov 0xfee00520, r1
 	mov 0x40, r2
-	st.h r2, 0x0[r1]
+	st.h r2, 0x0[r1]	# Mem(0xfee00520) <- 0x40
 
 	# storing CTRET opcode
 	mov 0xfee00540, r1
 	mov 0x014407E0, r2
-	st.w r2, 0x0[r1]
+	st.w r2, 0x0[r1]	# Mem(0xfee00540) <- 0x014407E0
 
-	callt 0x10	# adr<-0xfee00520 (CTBP+imm)
-			# PC <-0xfee00540 (CTBP+load(adr))
+	callt 0x10	# adr <- CTBP + 2*imm = 0xfee00500 + 2*0x10 = 0xfee00520
+				# PC <- CTBP + ld.h(adr) = 0xfee00500 + 0x40 = 0xfee00540
 
 #--------------------
 
@@ -89,17 +89,16 @@
 
 	mov 0xfee00906, r1
 	mov 0x100, r2
-	st.h r2, 0x0[r1]
+	st.h r2, 0x0[r1]	# Mem(0xfee00906) <- 0x100
 
 	# storing CTRET opcode
 	mov 0xfee00a00, r1
 	mov 0x014407E0, r2
-	st.w r2, 0x0[r1]
+	st.w r2, 0x0[r1]	# Mem(0xfee00a00) <- 0x014407E0
 
-	callt 0x3	# adr<-0xfee00906 (CTBP+imm)
+	callt 0x3	# adr <- 0xfee00906 (CTBP+imm)
 			# PC <-0xfee00a00 (CTBP+load(adr))
 	
-
 
 
 label1: 
@@ -215,8 +214,6 @@ label1:
 	fetrap 3
 
 	fetrap 0xc
-
-
 
 #---------------------TRAP--------------------offset=40/50
 
