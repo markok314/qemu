@@ -3537,6 +3537,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
 		tcg_gen_exit_tb(0);
+        ctx->bstate = BS_BRANCH;
 		break;
 
 	case OPC_RH850_FETRAP_vector4: {
@@ -3566,7 +3567,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		gen_set_label(cont);
 		//branch to exception handler
 		tcg_gen_exit_tb(0);
-
+		ctx->bstate = BS_BRANCH;
 	}	break;
 
 	case OPC_RH850_HALT:

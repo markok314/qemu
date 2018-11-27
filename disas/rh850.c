@@ -2975,7 +2975,6 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
     int status;
     rv_inst instVal = 0;
 
-
     //check if 48, 32 or 16-bit instruction
     status = (*info->read_memory_func)(memaddr, packet, 3, info);
     inst |= ((rv_inst) bfd_getl32(packet));
@@ -3038,16 +3037,16 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 
 	switch(len){
 	case 2:
-		(*info->fprintf_func)(info->stream,  "        %04lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "        %04lx  %s",   instVal, buf);
 		break;
 	case 4:
-		(*info->fprintf_func)(info->stream,  "    %08lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "    %08lx  %s",   instVal, buf);
 		break;
 	case 6:
-		(*info->fprintf_func)(info->stream,  "%012lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "%012lx  %s",   instVal, buf);
 		break;
 	case 8:
-		(*info->fprintf_func)(info->stream,"%016lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "%016lx  %s",   instVal, buf);
 	}
 
 

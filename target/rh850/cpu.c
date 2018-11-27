@@ -460,6 +460,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
 
 	cpu_fprintf(f, " %s " TARGET_FMT_lx,
 				rh850_sys_databuff_regnames[0], env->sysDatabuffRegs[0]);
+	cpu_fprintf(f, "\n");
 }
 
 static void rh850_cpu_set_pc(CPUState *cs, vaddr value)

@@ -2,44 +2,70 @@
 .include "gpr_init.s"
 
 
+	mov 0x4000, r1
+	LDSR_ID R1, 2, 1	# RBASE = 0x4000
+
+	mov 0x6000, r1
+	LDSR_ID R1, 3, 1	# EBASE = 0x6000
+
+	fetrap 1
+
+	fetrap 1
+
+	fetrap 3
+
+	fetrap 0xc
+
+Lbl: br Lbl
+
+.org 0x1060
+	feret
+
+.org 0x4030
+	nop
+	feret
+
+.org 0x6030
+	feret
+
 #
 # Testing instructions:
 # CAXI, CALL, CTRET, LDSR, STSR
 #
 
-#--------------------- Tests for CAXI ---------
+#--------------------- Tests for CAXI --------- OK
 
-	mov 0x5, r1
-	mov 0x5, r2	
-	mov 0xa, r3
-	mov 0xc, r4
+	mov 0x5, r4
+	mov 0x5, r5
+	mov 0xa, r6
+	mov 0xc, r7
 
-	mov 0xfee0006c, r5
-	mov 0xfee00080, r6
-	mov 0xfee00084, r7
-	mov 0xfee00088, r8
+	mov 0xfee0006c, r8
+	mov 0xfee00080, r9
+	mov 0xfee00084, r10
+	mov 0xfee00088, r11
 
-	ST_H R1, 0x0, R5
-	ST_H R2, 0x0, R6
-	ST_H R3, 0x0, R7
-	ST_H R4, 0x0, R8
+	ST_H R4, 0x0, R8	# Mem(r8) = 0x5
+	ST_H R5, 0x0, R9	# Mem(r9) = 0x5
+	ST_H R7, 0x0, R10	# Mem(r10) = 0xc
+	ST_H R6, 0x0, R11	# Mem(r11) = 0xa
 
+	mov 0xabcd, r12
+	mov 0x1234, r13
 	
-	caxi [r5], r2, r10
-	caxi [r6], r1, r11
-	caxi [r7], r4, r12
-	caxi [r8], r3, r13
-	
-	
+	caxi [r8], r4, r12	# if Mem(r8)==r5 then Mem(r8)<-r12 else Mem(r8)<-Mem(r8); r12<-Mem(r8)
+						# je, Mem(r5) <- r10(=0xabcde)
+	LD_HU 0x0, R8, R16
 
+	caxi [r9], r5, r13	# je
+	LD_HU 0x0, R9, R17
+
+	caxi [r10], r6, r14	# ni
+	LD_HU 0x0, R10, R18
+
+	caxi [r11], r7, r15	# ni
+	LD_HU 0x0, R11, R19
 	
-	LD_H 0x0, R5, R10
-
-	ldsr r5, ctbp
-	
-
-	ST_H R0, 0x0, R5
-
 #--------------------Test for CALLT+CTRET -----------
 
 	mov 0x11, r1
@@ -201,19 +227,6 @@ label1:
 
 #--------------------FETRAP------------offset=0x30
 
-	mov 0x4000, r1
-	LDSR_ID R1, 2, 1	# RBASE = 0x4000
-
-	mov 0x6000, r1
-	LDSR_ID R1, 3, 1	# EBASE = 0x6000
-
-	fetrap 1
-
-	fetrap 2
-
-	fetrap 3
-
-	fetrap 0xc
 
 #---------------------TRAP--------------------offset=40/50
 
@@ -244,24 +257,8 @@ label1:
 
 	#rie		# stores this PC as return addr
 
-
 	# rie imm/imm What does this instruciton do on target?
 
-
-
-
-
-
-Lbl: br Lbl
-	
-.org 0x1060
-	feret
-
-.org 0x4030
-	feret
-
-.org 0x6030
-	feret
 
 
 
