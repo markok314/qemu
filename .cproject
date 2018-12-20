@@ -1,188 +1,104 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
-    	
-    <storageModule moduleId="org.eclipse.cdt.core.settings">
-        		
-        <cconfiguration id="cdt.managedbuild.toolchain.gnu.cross.base.440438773">
-            			
-            <storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.toolchain.gnu.cross.base.440438773" moduleId="org.eclipse.cdt.core.settings" name="Default">
-                				
-                <externalSettings/>
-                				
-                <extensions>
-                    					
-                    <extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
-                    					
-                    <extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-                    					
-                    <extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-                    					
-                    <extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-                    					
-                    <extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
-                    					
-                    <extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-                    				
-                </extensions>
-                			
-            </storageModule>
-            			
-            <storageModule moduleId="cdtBuildSystem" version="4.0.0">
-                				
-                <configuration buildProperties="" id="cdt.managedbuild.toolchain.gnu.cross.base.440438773" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
-                    					
-                    <folderInfo id="cdt.managedbuild.toolchain.gnu.cross.base.440438773.79434846" name="/" resourcePath="">
-                        						
-                        <toolChain id="cdt.managedbuild.toolchain.gnu.cross.base.142120395" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.base">
-                            							
-                            <option id="cdt.managedbuild.option.gnu.cross.prefix.1154987038" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix"/>
-                            							
-                            <option id="cdt.managedbuild.option.gnu.cross.path.338240033" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path"/>
-                            							
-                            <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1304736470" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-                            							
-                            <builder id="cdt.managedbuild.builder.gnu.cross.392937575" managedBuildOn="false" name="Gnu Make Builder.Default" superClass="cdt.managedbuild.builder.gnu.cross"/>
-                            							
-                            <tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.91870520" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler"/>
-                            							
-                            <tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.877865068" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler"/>
-                            							
-                            <tool id="cdt.managedbuild.tool.gnu.cross.c.linker.1931310891" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker"/>
-                            							
-                            <tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.1972517087" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker"/>
-                            							
-                            <tool id="cdt.managedbuild.tool.gnu.cross.archiver.664653522" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver"/>
-                            							
-                            <tool id="cdt.managedbuild.tool.gnu.cross.assembler.1777843305" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler"/>
-                            						
-                        </toolChain>
-                        					
-                    </folderInfo>
-                    				
-                </configuration>
-                			
-            </storageModule>
-            			
-            <storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-            		
-        </cconfiguration>
-        	
-    </storageModule>
-    	
-    <storageModule moduleId="org.eclipse.cdt.core.pathentry">
-        		
-        <pathentry base-path="qemu" include="include/block" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/chardev" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/crypto" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/disas" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/exec" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/fpu" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/hw" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/io" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/libdecnumber" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/migration" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/monitor" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/net" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/qapi" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/qemu" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/qom" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/scsi" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/standard-headers" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/sysemu" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include/ui" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="accel/kvm" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="accel/stubs" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="accel/tcg" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/accel" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/accel/stubs" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/accel/tcg" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/fpu" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/9pfs" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/adc" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/arm" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/block" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/block/dataplane" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/char" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/core" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/cpu" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/display" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/dma" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/gpio" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/i2c" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/input" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/intc" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="arm-softmmu/hw/misc" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="disas" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="disas/libvixl" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="disas/libvixl/vixl" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="disas/libvixl/vixl/a64" kind="inc" path="" system="true"/>
-        		
-        <pathentry base-path="qemu" include="include" kind="inc" path="" system="true"/>
-        		
-        <pathentry kind="src" path=""/>
-        		
-        <pathentry kind="out" path=""/>
-        	
-    </storageModule>
-    	
-    <storageModule moduleId="cdtBuildSystem" version="4.0.0">
-        		
-        <project id="qemu.null.567446135" name="qemu"/>
-        	
-    </storageModule>
-    	
-    <storageModule moduleId="scannerConfiguration">
-        		
-        <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-        	
-    </storageModule>
-    	
-    <storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
-    
+	<storageModule moduleId="org.eclipse.cdt.core.settings">
+		<cconfiguration id="cdt.managedbuild.toolchain.gnu.cross.base.440438773">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.toolchain.gnu.cross.base.440438773" moduleId="org.eclipse.cdt.core.settings" name="Default">
+				<externalSettings/>
+				<extensions>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
+					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration buildProperties="" id="cdt.managedbuild.toolchain.gnu.cross.base.440438773" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
+					<folderInfo id="cdt.managedbuild.toolchain.gnu.cross.base.440438773.79434846" name="/" resourcePath="">
+						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.base.142120395" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.base">
+							<option id="cdt.managedbuild.option.gnu.cross.prefix.1154987038" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix"/>
+							<option id="cdt.managedbuild.option.gnu.cross.path.338240033" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path"/>
+							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1304736470" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
+							<builder id="cdt.managedbuild.builder.gnu.cross.392937575" managedBuildOn="false" name="Gnu Make Builder.Default" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.91870520" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
+								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.24588284" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.877865068" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler">
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.778905539" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.cross.c.linker.1931310891" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.1972517087" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker">
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.2120526942" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
+									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
+									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
+								</inputType>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.664653522" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver"/>
+							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.1777843305" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler">
+								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.695597280" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
+							</tool>
+						</toolChain>
+					</folderInfo>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.pathentry">
+		<pathentry base-path="qemu" include="include/block" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/chardev" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/crypto" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/disas" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/exec" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/fpu" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/hw" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/io" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/libdecnumber" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/migration" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/monitor" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/net" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/qapi" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/qemu" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/qom" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/scsi" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/standard-headers" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/sysemu" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include/ui" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="accel/kvm" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="accel/stubs" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="accel/tcg" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/accel" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/accel/stubs" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/accel/tcg" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/fpu" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/9pfs" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/adc" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/arm" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/block" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/block/dataplane" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/char" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/core" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/cpu" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/display" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/dma" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/gpio" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/i2c" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/input" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/intc" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="arm-softmmu/hw/misc" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="disas" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="disas/libvixl" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="disas/libvixl/vixl" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="disas/libvixl/vixl/a64" kind="inc" path="" system="true"/>
+		<pathentry base-path="qemu" include="include" kind="inc" path="" system="true"/>
+		<pathentry kind="src" path=""/>
+		<pathentry kind="out" path=""/>
+	</storageModule>
+	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+		<project id="qemu.null.567446135" name="qemu"/>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="scannerConfiguration"/>
 </cproject>
