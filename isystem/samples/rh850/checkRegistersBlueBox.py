@@ -25,18 +25,18 @@ class BlueBox:
         ideCtrl.removeDynamicOption('/IDE/Debug.DownloadFiles.File', idx)
 
 
-    def _printRegisters(self, debugCtrl):
-        print("----------")
+    def _printRegisters(self, debugCtrl, bbLogFile):
+        print("----------", file=bbLogFile)
         registerName = "pc"
         value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
-        print(registerName, '=', f"{self._unsigned64(value.getLong()):#0{10}x}")
+        print(registerName, '=', f"{self._unsigned64(value.getLong()):#0{10}x}", file=bbLogFile)
         registerName = "psw"
         value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
-        print(registerName, '=', f"{self._unsigned64(value.getLong()):#0{10}x}")
+        print(registerName, '=', f"{self._unsigned64(value.getLong()):#0{10}x}", file=bbLogFile)
         for x in range(32):
             registerName = "r" + str(x)
             value = debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
-            print(registerName, '=', f"{self._unsigned64(value.getLong()):#0{10}x}")
+            print(registerName, '=', f"{self._unsigned64(value.getLong()):#0{10}x}", file=bbLogFile)
 
 
     def openConnection(self):
@@ -44,40 +44,37 @@ class BlueBox:
         cmgr.connectMRU('')
         self.debugCtrl = ic.CDebugFacade(cmgr)
         self.ideCtrl = ic.CIDEController(cmgr)
-        self.ec = ic.CExecutionController(cmgr)
 
 
     def check_registers_blue_box(self, file):
-        sys.stdout = open('log_bluebox_'+file+'.log', 'w')
-        downloadFile = '../test/' + file + '.elf'
-        filetype = "ELF"
-        self._addFileForDownload(downloadFile, filetype, self.ideCtrl)
 
-        self.debugCtrl.download()
+        with open('log_bluebox_'+file+'.log', 'w') as bbLogFile:
 
-        isEnd = True
-        old_pc = -1
-        NUM_OF_INSTRUCTIONS = -1
+            downloadFile = '../test/bin/' + file + '.elf'
+            filetype = "ELF"
+            self._addFileForDownload(downloadFile, filetype, self.ideCtrl)
 
-        while isEnd:
-            registerName = "pc"
-            new_pc = self.debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
-            new_pc = f"{self._unsigned64(new_pc.getLong()):#0{10}x}"
-            #sys.stdout = sys.__stdout__
-            if new_pc == old_pc:
-                self._printRegisters(self.debugCtrl)
+            self.debugCtrl.download()
+
+            isEnd = True
+            old_pc = -1
+            NUM_OF_INSTRUCTIONS = -1
+
+            while isEnd:
+                registerName = "pc"
+                new_pc = self.debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
+                new_pc = f"{self._unsigned64(new_pc.getLong()):#0{10}x}"
+                if new_pc == old_pc:
+                    self._printRegisters(self.debugCtrl, bbLogFile)
+                    self.debugCtrl.stepInst()
+                    isEnd = False
+
+                NUM_OF_INSTRUCTIONS = NUM_OF_INSTRUCTIONS + 1
+                self._printRegisters(self.debugCtrl, bbLogFile)
                 self.debugCtrl.stepInst()
-                isEnd = False
 
-            NUM_OF_INSTRUCTIONS = NUM_OF_INSTRUCTIONS + 1
-            self._printRegisters(self.debugCtrl)
-            self.debugCtrl.stepInst()
+                old_pc = new_pc
 
-            #status = self.ec.getCPUStatus(True)
-            #print(hex(status.getExecutionPoint()))
-            #print(hex(addr.getAddress()))
-            old_pc = new_pc
-
-        self._removeFileForDownload(downloadFile, self.ideCtrl)
-        return NUM_OF_INSTRUCTIONS
+            self._removeFileForDownload(downloadFile, self.ideCtrl)
+            return NUM_OF_INSTRUCTIONS
 

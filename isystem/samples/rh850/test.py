@@ -44,7 +44,7 @@ def buildElf(fileName):
 
 def runQemu(fileName, logFile):
     subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -d"
-                          " nochain,exec,in_asm,cpu -D " + logFile + " -kernel " + fileName + ".elf &", shell=True)
+                          " nochain,exec,in_asm,cpu -D " + logFile + " -kernel bin/" + fileName + ".elf &", shell=True)
 
     # TODO replace with GDB control and exiting nicely
     time.sleep(3)
