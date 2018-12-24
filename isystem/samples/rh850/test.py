@@ -36,19 +36,33 @@ QEMU_LOG_FILE = "../../../../rh850.log"
 RESULT_PASSED = "PASSED"
 RESULT_FAILED = "FAILED"
 
+_g_isVerboseLog = False
+
+def log(msg: str):
+    if _g_isVerboseLog:
+        print(msg)
+
 
 def buildElf(fileName):
-    cmd = ['./build.sh ' + fileName + ' > build_' + fileName + '.log']
+    cmd = ['./build.sh ' + fileName + ' > bin/' + fileName + '_build.log']
     subprocess.check_call(cmd, shell=True, executable='/bin/bash')
 
 
 def runQemu(fileName, logFile):
     subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -d"
-                          " nochain,exec,in_asm,cpu -D " + logFile + " -kernel bin/" + fileName + ".elf &", shell=True)
+                          " nochain,exec,in_asm,cpu -D " + logFile + 
+                          " -kernel bin/" + fileName + ".elf > bin/qemu.stdout &", shell=True)
 
     # TODO replace with GDB control and exiting nicely
     time.sleep(3)
     subprocess.check_call('kill $(pgrep qemu-system)', shell=True, executable='/bin/bash')
+
+
+def getQemuLogFName(asmFileStem):
+    return 'bin/' + asmFileStem + '_qemu.log'
+
+def getBlueBoxLogFName(asmFileStem):
+    return 'bin/' + asmFileStem + '_bluebox.log'
 
 
 def extract_registers(qemuLogFileName, num_of_ints_to_print, asmFileStem):
@@ -57,7 +71,7 @@ def extract_registers(qemuLogFileName, num_of_ints_to_print, asmFileStem):
     prints out PC, instruction, status register PSW, and 32 general purpose 
     registers.
     """
-    with open('log_qemu_' + asmFileStem + '.log', 'w') as qemuRegsFile:
+    with open(getQemuLogFName(asmFileStem), 'w') as qemuRegsFile:
 
         with open(qemuLogFileName, "r") as qemuLogFile:
 
@@ -74,7 +88,7 @@ def extract_registers(qemuLogFileName, num_of_ints_to_print, asmFileStem):
                     raw_line = line.split()
 
                     if len(raw_line) == 4:
-                        print('->->-', raw_line[0], raw_line[1], raw_line[2], raw_line[3], file=qemuRegsFile)
+                        print(raw_line[0], raw_line[1], raw_line[2], raw_line[3], file=qemuRegsFile)
 
                 elif line.startswith(" "):
                     raw_line = line.split()
@@ -85,7 +99,7 @@ def extract_registers(qemuLogFileName, num_of_ints_to_print, asmFileStem):
                                 out[0] = i + ":"
                             else:
                                 out[1] = i
-                                print(f">>>- {out[0]:>5} {out[1]}", file=qemuRegsFile)
+                                print(f"{out[0]:>5} {out[1]}", file=qemuRegsFile)
                             val += 1
 
                 counter += 1
@@ -97,13 +111,13 @@ def extract_registers(qemuLogFileName, num_of_ints_to_print, asmFileStem):
 
 # not used, seems to be redundant, if files are different sizes compare will fail anyway
 def _check_file_sizes(asmFileStem):
-    with open('log_qemu_' + asmFileStem + '.log', 'r') as log_qemu: 
-        with open('log_bluebox_' + asmFileStem + '.log', 'r') as log_blubox: 
+    with open(getQemuLogFName(asmFileStem), 'r') as log_qemu: 
+        with open(getBlueBoxLogFName(asmFileStem), 'r') as log_blubox: 
 
             num_lines_qemu = sum(1 for line in log_qemu)
-            print('num_lines_qem =', unum_lines_qemu)
+            log(f'num_lines_qemu = {num_lines_qemu}')
             num_lines_bluebox = sum(1 for line in log_blubox)
-            print('num_lines_bluebox =', num_lines_bluebox)
+            log('num_lines_bluebox = {num_lines_bluebox}')
             if num_lines_bluebox-(NUM_OF_PRINTED_REGISTERS*2) > num_lines_qemu:
                 return RESULT_FAILED
                 print("files are different size")
@@ -126,61 +140,59 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
     # R2                R2
     # ...               ...
     
-    log_qemu = open('log_qemu_' + asmFileStem + '.log', 'r')
-    log_blubox = open('log_bluebox_' + asmFileStem + '.log', 'r')
-
     index = 0
     start = 0;
     isOkay = True
     result_for_file = RESULT_PASSED
 
-    print("----------")
-    for line1, line2 in zip(log_qemu, log_blubox):
-        if start >= NUM_OF_REGS_TO_NOT_CHECK:
-            if(index == 0):
-                #NAME OF INSTRUCTION
-                print("-----------------")
-                print('@@@> ', line1[:-1])
-            elif(index == 2):
-                #PSW
-                if True:
-                    #print("CHECKING FLAGS ALSO");
-                    if line1[-2:] != line2[-2:]:
-                        # CHECKING JUST LAST 4 BITS OF PSW REG
-                        print("ERROR"  +  line1[:-1]  + " " +  line2[:-1])
-                        isOkay = False
-                    elif ((int(line1[-3]) % 2) != (int(line2[-3]) % 2)):
-                        #CHECKING SAT FLAG
-                        print("ERROR" + line1[:-1]  + " " +  line2[:-1])
-                        isOkay = False
-            else:
-                #PC AND OTHER GPR
-                print('l1 l2\n  ', line1, '\n  ', line2)
-                if line1.split(': ')[1] != line2.split('x')[1]:
-                    print("ERROR" + line1[:-1]  + " " +  line2[:-1])
-                    isOkay = False
+    with open(getQemuLogFName(asmFileStem), 'r') as log_qemu:
 
-            index = index + 1
+        with open(getBlueBoxLogFName(asmFileStem), 'r') as log_blubox:
 
-            if(index == NUM_OF_PRINTED_REGISTERS):
-                if isOkay:
-                    print("OK")
-                    print("-----------------")
-                else:
-                    print("FAILED")
-                    result_for_file = RESULT_FAILED
-                    print("-----------------")
-                index = 0
-                isOkay = True
+            log("----------")
+            for line1, line2 in zip(log_qemu, log_blubox):
+                if start >= NUM_OF_REGS_TO_NOT_CHECK:
+                    if(index == 0):
+                        #NAME OF INSTRUCTION
+                        log("-----------------")
+                        log('@@@> {line1[:-1]}')
+                    elif(index == 2):
+                        #PSW
+                        if True:
+                            #print("CHECKING FLAGS ALSO");
+                            if line1[-2:] != line2[-2:]:
+                                # CHECKING JUST LAST 4 BITS OF PSW REG
+                                print("ERROR:\n - "  +  line1[:-1]  + "\n - " +  line2[:-1])
+                                isOkay = False
+                            elif ((int(line1[-3]) % 2) != (int(line2[-3]) % 2)):
+                                #CHECKING SAT FLAG
+                                print("SERROR:\n - "  +  line1[:-1]  + "\n - " +  line2[:-1])
+                                isOkay = False
+                    else:
+                        #PC AND OTHER GPR
+                        log('lines:\n - {line1}\n - {line2}')
+                        if line1.split(': ')[1] != line2.split('x')[1]:
+                            print("ERROR" + line1[:-1]  + " " +  line2[:-1])
+                            isOkay = False
 
-        start = start + 1
+                    index = index + 1
 
-    log_qemu.close()
-    log_blubox.close()
+                    if(index == NUM_OF_PRINTED_REGISTERS):
+                        if isOkay:
+                            log("OK")
+                        else:
+                            print("FAILED")
+                            result_for_file = RESULT_FAILED
+                        index = 0
+                        isOkay = True
+
+                start = start + 1
+
     return result_for_file
 
 
 def _parseArgs():
+    global _g_isVerboseLog
 
     usage = """
 Usage: %prog [asmFilesToTest]
@@ -193,10 +205,15 @@ $ %prog test/mov*.s
 """
     parser = argparse.ArgumentParser(description=usage)
 
+    parser.add_argument("-v", dest="isVerboseLog", action='store_true', default=False,
+                        help="If specified, debug logging is sent to stdout.")
+
     parser.add_argument('files', metavar='files', type=str, nargs='*',
                         help='list of asm files to test')
 
     args = parser.parse_args()
+
+    _g_isVerboseLog = args.isVerboseLog
 
     return args
 
@@ -217,22 +234,24 @@ def main():
     blueBox = crbb.BlueBox()
     blueBox.openConnection()
 
-    for asmFile in asmFiles:
+    for idx, asmFile in enumerate(asmFiles):
 
         asmFile = os.path.basename(asmFile) # strip away path from files 
                            # specified in cmdLine. Only dir 'test' is allowed.
 
         if asmFile in NOT_TEST_FILES:
+            print(f'- ({idx + 1}/{len(asmFiles)}) Skipped {asmFile}, this is utility file included in other tests.')
             continue
 
         tested_files.append(asmFile)
-        print("Testing:", asmFile)
+        print(f"- ({idx + 1}/{len(asmFiles)})  {asmFile}")
         asmFileStem = asmFile[:-2]  # remove the .s extension
 
         buildElf(asmFileStem)
         runQemu(asmFileStem, QEMU_LOG_FILE)
 
-        num_of_all_inst =  blueBox.check_registers_blue_box(asmFileStem)
+        num_of_all_inst =  blueBox.check_registers_blue_box(asmFileStem, 
+                                                            getBlueBoxLogFName(asmFileStem))
         extract_registers(QEMU_LOG_FILE, num_of_all_inst, asmFileStem)
 
         #_check_file_sizes(asmFileStem)

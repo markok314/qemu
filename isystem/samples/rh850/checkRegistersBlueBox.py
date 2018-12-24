@@ -46,34 +46,36 @@ class BlueBox:
         self.ideCtrl = ic.CIDEController(cmgr)
 
 
-    def check_registers_blue_box(self, file):
+    def check_registers_blue_box(self, asmFileStem, blueBoxLogFName):
 
-        with open('log_bluebox_'+file+'.log', 'w') as bbLogFile:
+        with open(blueBoxLogFName, 'w') as bbLogFile:
 
-            downloadFile = '../test/bin/' + file + '.elf'
+            downloadFile = '../test/bin/' + asmFileStem + '.elf'
             filetype = "ELF"
             self._addFileForDownload(downloadFile, filetype, self.ideCtrl)
 
             self.debugCtrl.download()
 
-            isEnd = True
             old_pc = -1
+            new_pc = 0
             NUM_OF_INSTRUCTIONS = -1
 
-            while isEnd:
-                registerName = "pc"
-                new_pc = self.debugCtrl.readRegister(ic.IConnectDebug.fRealTime, registerName)
-                new_pc = f"{self._unsigned64(new_pc.getLong()):#0{10}x}"
-                if new_pc == old_pc:
-                    self._printRegisters(self.debugCtrl, bbLogFile)
-                    self.debugCtrl.stepInst()
-                    isEnd = False
+            # Test end is signalled with:
+            #     lbl:  br lbl
+            # This means PC does not change after instruction execution.
+            while old_pc != new_pc:
 
                 NUM_OF_INSTRUCTIONS = NUM_OF_INSTRUCTIONS + 1
                 self._printRegisters(self.debugCtrl, bbLogFile)
                 self.debugCtrl.stepInst()
 
                 old_pc = new_pc
+                new_pc = self.debugCtrl.readRegister(ic.IConnectDebug.fRealTime, "pc")
+                new_pc = self._unsigned64(new_pc.getLong())
+                print('#', end='')  # indicate progress
+                sys.stdout.flush()
+
+            print()
 
             self._removeFileForDownload(downloadFile, self.ideCtrl)
             return NUM_OF_INSTRUCTIONS

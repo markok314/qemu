@@ -7,7 +7,7 @@ start = 0xfee00000
 #----------------------------------ld.b(2)--disp23--- OK
 # macro LD_B, since v850-elf-gcc.exe doesn't support 48-bit load insts (ignores
 #   bits above 16 of disp23)
-/*
+
         mov 0xfeb00000, R1
 
 		mov 12, R3
@@ -29,12 +29,12 @@ start = 0xfee00000
 		mov 0xab, R3
         ST_B R3, -1500, R2
         LD_B -1500, R2, R7
-*/
+
 
 #----------------------------------ld.bu(2)--disp23--- OK
 # macro LD_BU, since v850-elf-gcc.exe obviously doesn't support 48-bit load insts (ignores
 #   bits above 16 of disp23)
-/*
+
         mov 0xfeb00000, R1
 
 		mov 12, R3
@@ -56,11 +56,11 @@ start = 0xfee00000
 		mov 0xab, R3
         ST_B R3, -1500, R2
         LD_BU -1500, R2, R7
-*/
+
 
 #----------------------------------ld.h(2)--disp23--- OK
 # macro LD_H
-/*
+
         mov 0xfeb00000, R1
 
 		mov 0x1234, R3
@@ -82,11 +82,11 @@ start = 0xfee00000
 		mov 0xabcd, R3
         ST_H R3, -1500, R2
         LD_H -1500, R2, R7
-*/
+
 
 #----------------------------------ld.hu(2)--disp23--- OK
 # macro LD_HU
-/*
+
         mov 0xfeb00000, R1
 
 		mov 0x1234, R3
@@ -108,7 +108,6 @@ start = 0xfee00000
 		mov 0xabcd, R3
         ST_H R3, -1500, R2
         LD_HU -1500, R2, R7
-*/
 
 #----------------------------------ld.w(2)--disp23--- OK
 # macro LD_W
@@ -134,4 +133,4 @@ start = 0xfee00000
 		mov 0xabcdef00, R3
         ST_W R3, -1500, R2
         LD_W -1500, R2, R7
-
+lblend: br lblend

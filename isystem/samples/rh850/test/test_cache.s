@@ -8,4 +8,6 @@
 	CACHE 0b1100001,R5
 	CACHE 0b1111110,R6
 
+lblend:
+    br lblend
 
