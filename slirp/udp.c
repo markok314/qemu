@@ -171,9 +171,6 @@ udp_input(register struct mbuf *m, int iphlen)
 	   * create one
 	   */
 	  so = socreate(slirp);
-	  if (!so) {
-	      goto bad;
-	  }
 	  if (udp_attach(so, AF_INET) == -1) {
 	    DEBUG_MISC((dfd," udp_attach errno = %d-%s\n",
 			errno,strerror(errno)));
@@ -241,8 +238,8 @@ int udp_output(struct socket *so, struct mbuf *m,
 	DEBUG_CALL("udp_output");
 	DEBUG_ARG("so = %p", so);
 	DEBUG_ARG("m = %p", m);
-	DEBUG_ARG("saddr = %lx", (long)saddr->sin_addr.s_addr);
-	DEBUG_ARG("daddr = %lx", (long)daddr->sin_addr.s_addr);
+	DEBUG_ARG("saddr = %s", inet_ntoa(saddr->sin_addr));
+	DEBUG_ARG("daddr = %s", inet_ntoa(daddr->sin_addr));
 
 	/*
 	 * Adjust for header
@@ -331,9 +328,6 @@ udp_listen(Slirp *slirp, uint32_t haddr, u_int hport, uint32_t laddr,
 	socklen_t addrlen = sizeof(struct sockaddr_in);
 
 	so = socreate(slirp);
-	if (!so) {
-	    return NULL;
-	}
 	so->s = qemu_socket(AF_INET,SOCK_DGRAM,0);
         if (so->s < 0) {
             sofree(so);

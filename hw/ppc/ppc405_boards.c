@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include "qemu/osdep.h"
+#include "qemu/units.h"
 #include "qapi/error.h"
 #include "qemu-common.h"
 #include "cpu.h"
@@ -37,11 +38,10 @@
 #include "qemu/log.h"
 #include "qemu/error-report.h"
 #include "hw/loader.h"
-#include "sysemu/blockdev.h"
 #include "exec/address-spaces.h"
 
 #define BIOS_FILENAME "ppc405_rom.bin"
-#define BIOS_SIZE (2048 * 1024)
+#define BIOS_SIZE (2 * MiB)
 
 #define KERNEL_LOAD_ADDR 0x00000000
 #define INITRD_LOAD_ADDR 0x01800000
@@ -66,7 +66,7 @@ struct ref405ep_fpga_t {
     uint8_t reg1;
 };
 
-static uint32_t ref405ep_fpga_readb (void *opaque, hwaddr addr)
+static uint64_t ref405ep_fpga_readb(void *opaque, hwaddr addr, unsigned size)
 {
     ref405ep_fpga_t *fpga;
     uint32_t ret;
@@ -87,8 +87,8 @@ static uint32_t ref405ep_fpga_readb (void *opaque, hwaddr addr)
     return ret;
 }
 
-static void ref405ep_fpga_writeb (void *opaque,
-                                  hwaddr addr, uint32_t value)
+static void ref405ep_fpga_writeb(void *opaque, hwaddr addr, uint64_t value,
+                                 unsigned size)
 {
     ref405ep_fpga_t *fpga;
 
@@ -105,54 +105,14 @@ static void ref405ep_fpga_writeb (void *opaque,
     }
 }
 
-static uint32_t ref405ep_fpga_readw (void *opaque, hwaddr addr)
-{
-    uint32_t ret;
-
-    ret = ref405ep_fpga_readb(opaque, addr) << 8;
-    ret |= ref405ep_fpga_readb(opaque, addr + 1);
-
-    return ret;
-}
-
-static void ref405ep_fpga_writew (void *opaque,
-                                  hwaddr addr, uint32_t value)
-{
-    ref405ep_fpga_writeb(opaque, addr, (value >> 8) & 0xFF);
-    ref405ep_fpga_writeb(opaque, addr + 1, value & 0xFF);
-}
-
-static uint32_t ref405ep_fpga_readl (void *opaque, hwaddr addr)
-{
-    uint32_t ret;
-
-    ret = ref405ep_fpga_readb(opaque, addr) << 24;
-    ret |= ref405ep_fpga_readb(opaque, addr + 1) << 16;
-    ret |= ref405ep_fpga_readb(opaque, addr + 2) << 8;
-    ret |= ref405ep_fpga_readb(opaque, addr + 3);
-
-    return ret;
-}
-
-static void ref405ep_fpga_writel (void *opaque,
-                                  hwaddr addr, uint32_t value)
-{
-    ref405ep_fpga_writeb(opaque, addr, (value >> 24) & 0xFF);
-    ref405ep_fpga_writeb(opaque, addr + 1, (value >> 16) & 0xFF);
-    ref405ep_fpga_writeb(opaque, addr + 2, (value >> 8) & 0xFF);
-    ref405ep_fpga_writeb(opaque, addr + 3, value & 0xFF);
-}
-
 static const MemoryRegionOps ref405ep_fpga_ops = {
-    .old_mmio = {
-        .read = {
-            ref405ep_fpga_readb, ref405ep_fpga_readw, ref405ep_fpga_readl,
-        },
-        .write = {
-            ref405ep_fpga_writeb, ref405ep_fpga_writew, ref405ep_fpga_writel,
-        },
-    },
-    .endianness = DEVICE_NATIVE_ENDIAN,
+    .read = ref405ep_fpga_readb,
+    .write = ref405ep_fpga_writeb,
+    .impl.min_access_size = 1,
+    .impl.max_access_size = 1,
+    .valid.min_access_size = 1,
+    .valid.max_access_size = 4,
+    .endianness = DEVICE_BIG_ENDIAN,
 };
 
 static void ref405ep_fpga_reset (void *opaque)
@@ -202,13 +162,6 @@ static void ref405ep_init(MachineState *machine)
     DriveInfo *dinfo;
     MemoryRegion *sysmem = get_system_memory();
 
-#ifdef TARGET_PPCEMB
-    if (!qtest_enabled()) {
-        warn_report("qemu-system-ppcemb is deprecated, "
-                    "please use qemu-system-ppc instead.");
-    }
-#endif
-
     /* XXX: fix this */
     memory_region_allocate_system_memory(&ram_memories[0], NULL, "ef405ep.ram",
                                          0x08000000);
@@ -217,14 +170,14 @@ static void ref405ep_init(MachineState *machine)
     memory_region_init(&ram_memories[1], NULL, "ef405ep.ram1", 0);
     ram_bases[1] = 0x00000000;
     ram_sizes[1] = 0x00000000;
-    ram_size = 128 * 1024 * 1024;
+    ram_size = 128 * MiB;
 #ifdef DEBUG_BOARD_INIT
     printf("%s: register cpu\n", __func__);
 #endif
     env = ppc405ep_init(sysmem, ram_memories, ram_bases, ram_sizes,
                         33333333, &pic, kernel_filename == NULL ? 0 : 1);
     /* allocate SRAM */
-    sram_size = 512 * 1024;
+    sram_size = 512 * KiB;
     memory_region_init_ram(sram, NULL, "ef405ep.sram", sram_size,
                            &error_fatal);
     memory_region_add_subregion(sysmem, 0xFFF00000, sram);
@@ -503,13 +456,6 @@ static void taihu_405ep_init(MachineState *machine)
     int fl_idx, fl_sectors;
     DriveInfo *dinfo;
 
-#ifdef TARGET_PPCEMB
-    if (!qtest_enabled()) {
-        warn_report("qemu-system-ppcemb is deprecated, "
-                    "please use qemu-system-ppc instead.");
-    }
-#endif
-
     /* RAM is soldered to the board so the size cannot be changed */
     ram_size = 0x08000000;
     memory_region_allocate_system_memory(ram, NULL, "taihu_405ep.ram",
@@ -590,7 +536,7 @@ static void taihu_405ep_init(MachineState *machine)
 
         bios_size = blk_getlength(blk);
         /* XXX: should check that size is 32MB */
-        bios_size = 32 * 1024 * 1024;
+        bios_size = 32 * MiB;
         fl_sectors = (bios_size + 65535) >> 16;
 #ifdef DEBUG_BOARD_INIT
         printf("Register parallel flash %d size %lx"

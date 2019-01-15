@@ -1610,13 +1610,13 @@ static void musicpal_init(MachineState *machine)
                           pic[MP_TIMER2_IRQ], pic[MP_TIMER3_IRQ],
                           pic[MP_TIMER4_IRQ], NULL);
 
-    if (serial_hds[0]) {
+    if (serial_hd(0)) {
         serial_mm_init(address_space_mem, MP_UART1_BASE, 2, pic[MP_UART1_IRQ],
-                       1825000, serial_hds[0], DEVICE_NATIVE_ENDIAN);
+                       1825000, serial_hd(0), DEVICE_NATIVE_ENDIAN);
     }
-    if (serial_hds[1]) {
+    if (serial_hd(1)) {
         serial_mm_init(address_space_mem, MP_UART2_BASE, 2, pic[MP_UART2_IRQ],
-                       1825000, serial_hds[1], DEVICE_NATIVE_ENDIAN);
+                       1825000, serial_hd(1), DEVICE_NATIVE_ENDIAN);
     }
 
     /* Register flash */
@@ -1693,9 +1693,10 @@ static void musicpal_init(MachineState *machine)
     }
 
     wm8750_dev = i2c_create_slave(i2c, TYPE_WM8750, MP_WM_ADDR);
-    dev = qdev_create(NULL, "mv88w8618_audio");
+    dev = qdev_create(NULL, TYPE_MV88W8618_AUDIO);
     s = SYS_BUS_DEVICE(dev);
-    qdev_prop_set_ptr(dev, "wm8750", wm8750_dev);
+    object_property_set_link(OBJECT(dev), OBJECT(wm8750_dev),
+                             TYPE_WM8750, NULL);
     qdev_init_nofail(dev);
     sysbus_mmio_map(s, 0, MP_AUDIO_BASE);
     sysbus_connect_irq(s, 0, pic[MP_AUDIO_IRQ]);

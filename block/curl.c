@@ -483,6 +483,8 @@ static int curl_init_state(BDRVCURLState *s, CURLState *state)
         curl_easy_setopt(state->curl, CURLOPT_URL, s->url);
         curl_easy_setopt(state->curl, CURLOPT_SSL_VERIFYPEER,
                          (long) s->sslverify);
+        curl_easy_setopt(state->curl, CURLOPT_SSL_VERIFYHOST,
+                         s->sslverify ? 2L : 0L);
         if (s->cookie) {
             curl_easy_setopt(state->curl, CURLOPT_COOKIE, s->cookie);
         }
@@ -682,10 +684,10 @@ static int curl_open(BlockDriverState *bs, QDict *options, int flags,
     const char *protocol_delimiter;
     int ret;
 
-
-    if (flags & BDRV_O_RDWR) {
-        error_setg(errp, "curl block device does not support writes");
-        return -EROFS;
+    ret = bdrv_apply_auto_read_only(bs, "curl driver does not support writes",
+                                    errp);
+    if (ret < 0) {
+        return ret;
     }
 
     if (!libcurl_initialized) {
@@ -804,7 +806,7 @@ static int curl_open(BlockDriverState *bs, QDict *options, int flags,
     }
     /* Prior CURL 7.19.4 return value of 0 could mean that the file size is not
      * know or the size is zero. From 7.19.4 CURL returns -1 if size is not
-     * known and zero if it is realy zero-length file. */
+     * known and zero if it is really zero-length file. */
 #if LIBCURL_VERSION_NUM >= 0x071304
     if (d < 0) {
         pstrcpy(state->errmsg, CURL_ERROR_SIZE,

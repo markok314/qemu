@@ -27,15 +27,6 @@
 #include "ui/egl-context.h"
 #endif
 
-/* Compatibility define to let us build on both Gtk2 and Gtk3 */
-#if GTK_CHECK_VERSION(3, 0, 0)
-static inline void gdk_drawable_get_size(GdkWindow *w, gint *ww, gint *wh)
-{
-    *ww = gdk_window_get_width(w);
-    *wh = gdk_window_get_height(w);
-}
-#endif
-
 typedef struct GtkDisplayState GtkDisplayState;
 
 typedef struct VirtualGfxConsole {
@@ -127,7 +118,7 @@ void gd_egl_release_dmabuf(DisplayChangeListener *dcl,
                            QemuDmaBuf *dmabuf);
 void gd_egl_scanout_flush(DisplayChangeListener *dcl,
                           uint32_t x, uint32_t y, uint32_t w, uint32_t h);
-void gtk_egl_init(void);
+void gtk_egl_init(DisplayGLMode mode);
 int gd_egl_make_current(DisplayChangeListener *dcl,
                         QEMUGLContext ctx);
 

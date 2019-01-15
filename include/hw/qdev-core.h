@@ -29,8 +29,6 @@ typedef enum DeviceCategory {
     DEVICE_CATEGORY_MAX
 } DeviceCategory;
 
-typedef int (*qdev_initfn)(DeviceState *dev);
-typedef int (*qdev_event)(DeviceState *dev);
 typedef void (*DeviceRealize)(DeviceState *dev, Error **errp);
 typedef void (*DeviceUnrealize)(DeviceState *dev, Error **errp);
 typedef void (*DeviceReset)(DeviceState *dev);
@@ -43,13 +41,9 @@ struct VMStateDescription;
  * DeviceClass:
  * @props: Properties accessing state fields.
  * @realize: Callback function invoked when the #DeviceState:realized
- * property is changed to %true. The default invokes @init if not %NULL.
+ * property is changed to %true.
  * @unrealize: Callback function invoked when the #DeviceState:realized
  * property is changed to %false.
- * @init: Callback function invoked when the #DeviceState::realized property
- * is changed to %true. Deprecated, new types inheriting directly from
- * TYPE_DEVICE should use @realize instead, new leaf types should consult
- * their respective parent type.
  * @hotpluggable: indicates if #DeviceClass is hotpluggable, available
  * as readonly "hotpluggable" property of #DeviceState instance
  *
@@ -57,8 +51,9 @@ struct VMStateDescription;
  * Devices are constructed in two stages,
  * 1) object instantiation via object_initialize() and
  * 2) device realization via #DeviceState:realized property.
- * The former may not fail (it might assert or exit), the latter may return
- * error information to the caller and must be re-entrant.
+ * The former may not fail (and must not abort or exit, since it is called
+ * during device introspection already), and the latter may return error
+ * information to the caller and must be re-entrant.
  * Trivial field initializations should go into #TypeInfo.instance_init.
  * Operations depending on @props static properties should go into @realize.
  * After successful realization, setting static properties will fail.
@@ -73,19 +68,15 @@ struct VMStateDescription;
  * object_initialize() in their own #TypeInfo.instance_init and forward the
  * realization events appropriately.
  *
- * The @init callback is considered private to a particular bus implementation
- * (immediate abstract child types of TYPE_DEVICE). Derived leaf types set an
- * "init" callback on their parent class instead.
- *
  * Any type may override the @realize and/or @unrealize callbacks but needs
  * to call the parent type's implementation if keeping their functionality
  * is desired. Refer to QOM documentation for further discussion and examples.
  *
  * <note>
  *   <para>
- * If a type derived directly from TYPE_DEVICE implements @realize, it does
- * not need to implement @init and therefore does not need to store and call
- * #DeviceClass' default @realize callback.
+ * Since TYPE_DEVICE doesn't implement @realize and @unrealize, types
+ * derived directly from it need not call their parent's @realize and
+ * @unrealize.
  * For other types consult the documentation and implementation of the
  * respective parent types.
  *   </para>
@@ -124,8 +115,6 @@ typedef struct DeviceClass {
     const struct VMStateDescription *vmsd;
 
     /* Private to qdev / bus.  */
-    qdev_initfn init; /* TODO remove, once users are converted to realize */
-    qdev_event exit; /* TODO remove, once users are converted to unrealize */
     const char *bus_type;
 } DeviceClass;
 

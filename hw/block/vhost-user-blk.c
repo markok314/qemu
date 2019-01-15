@@ -196,7 +196,6 @@ static uint64_t vhost_user_blk_get_features(VirtIODevice *vdev,
                                             Error **errp)
 {
     VHostUserBlk *s = VHOST_USER_BLK(vdev);
-    uint64_t get_features;
 
     /* Turn on pre-defined features */
     virtio_add_feature(&features, VIRTIO_BLK_F_SEG_MAX);
@@ -204,31 +203,53 @@ static uint64_t vhost_user_blk_get_features(VirtIODevice *vdev,
     virtio_add_feature(&features, VIRTIO_BLK_F_TOPOLOGY);
     virtio_add_feature(&features, VIRTIO_BLK_F_BLK_SIZE);
     virtio_add_feature(&features, VIRTIO_BLK_F_FLUSH);
+    virtio_add_feature(&features, VIRTIO_BLK_F_RO);
 
     if (s->config_wce) {
         virtio_add_feature(&features, VIRTIO_BLK_F_CONFIG_WCE);
-    }
-    if (s->config_ro) {
-        virtio_add_feature(&features, VIRTIO_BLK_F_RO);
     }
     if (s->num_queues > 1) {
         virtio_add_feature(&features, VIRTIO_BLK_F_MQ);
     }
 
-    get_features = vhost_get_features(&s->dev, user_feature_bits, features);
-
-    return get_features;
+    return vhost_get_features(&s->dev, user_feature_bits, features);
 }
 
 static void vhost_user_blk_handle_output(VirtIODevice *vdev, VirtQueue *vq)
 {
+    VHostUserBlk *s = VHOST_USER_BLK(vdev);
+    int i;
 
+    if (!(virtio_host_has_feature(vdev, VIRTIO_F_VERSION_1) &&
+        !virtio_vdev_has_feature(vdev, VIRTIO_F_VERSION_1))) {
+        return;
+    }
+
+    if (s->dev.started) {
+        return;
+    }
+
+    /* Some guests kick before setting VIRTIO_CONFIG_S_DRIVER_OK so start
+     * vhost here instead of waiting for .set_status().
+     */
+    vhost_user_blk_start(vdev);
+
+    /* Kick right away to begin processing requests already in vring */
+    for (i = 0; i < s->dev.nvqs; i++) {
+        VirtQueue *kick_vq = virtio_get_queue(vdev, i);
+
+        if (!virtio_queue_get_desc_addr(vdev, i)) {
+            continue;
+        }
+        event_notifier_set(virtio_queue_get_host_notifier(kick_vq));
+    }
 }
 
 static void vhost_user_blk_device_realize(DeviceState *dev, Error **errp)
 {
     VirtIODevice *vdev = VIRTIO_DEVICE(dev);
     VHostUserBlk *s = VHOST_USER_BLK(vdev);
+    VhostUserState *user;
     int i, ret;
 
     if (!s->chardev.chr) {
@@ -246,6 +267,15 @@ static void vhost_user_blk_device_realize(DeviceState *dev, Error **errp)
         return;
     }
 
+    user = vhost_user_init();
+    if (!user) {
+        error_setg(errp, "vhost-user-blk: failed to init vhost_user");
+        return;
+    }
+
+    user->chr = &s->chardev;
+    s->vhost_user = user;
+
     virtio_init(vdev, "virtio-blk", VIRTIO_ID_BLOCK,
                 sizeof(struct virtio_blk_config));
 
@@ -261,7 +291,7 @@ static void vhost_user_blk_device_realize(DeviceState *dev, Error **errp)
 
     vhost_dev_set_config_notifier(&s->dev, &blk_ops);
 
-    ret = vhost_dev_init(&s->dev, &s->chardev, VHOST_BACKEND_TYPE_USER, 0);
+    ret = vhost_dev_init(&s->dev, s->vhost_user, VHOST_BACKEND_TYPE_USER, 0);
     if (ret < 0) {
         error_setg(errp, "vhost-user-blk: vhost initialization failed: %s",
                    strerror(-ret));
@@ -286,6 +316,10 @@ vhost_err:
 virtio_err:
     g_free(s->dev.vqs);
     virtio_cleanup(vdev);
+
+    vhost_user_cleanup(user);
+    g_free(user);
+    s->vhost_user = NULL;
 }
 
 static void vhost_user_blk_device_unrealize(DeviceState *dev, Error **errp)
@@ -297,6 +331,12 @@ static void vhost_user_blk_device_unrealize(DeviceState *dev, Error **errp)
     vhost_dev_cleanup(&s->dev);
     g_free(s->dev.vqs);
     virtio_cleanup(vdev);
+
+    if (s->vhost_user) {
+        vhost_user_cleanup(s->vhost_user);
+        g_free(s->vhost_user);
+        s->vhost_user = NULL;
+    }
 }
 
 static void vhost_user_blk_instance_init(Object *obj)
@@ -322,7 +362,6 @@ static Property vhost_user_blk_properties[] = {
     DEFINE_PROP_UINT16("num-queues", VHostUserBlk, num_queues, 1),
     DEFINE_PROP_UINT32("queue-size", VHostUserBlk, queue_size, 128),
     DEFINE_PROP_BIT("config-wce", VHostUserBlk, config_wce, 0, true),
-    DEFINE_PROP_BIT("config-ro", VHostUserBlk, config_ro, 0, false),
     DEFINE_PROP_END_OF_LIST(),
 };
 

@@ -15,6 +15,9 @@
 #include "libqos/virtio.h"
 #include "qapi/qmp/qdict.h"
 
+/* TODO actually test the results and get rid of this */
+#define qmp_discard_response(...) qobject_unref(qmp(__VA_ARGS__))
+
 static void drive_add(void)
 {
     char *resp = hmp("drive_add 0 if=none,id=drive0");
@@ -41,7 +44,7 @@ static void device_del(void)
     response = qmp_receive();
     g_assert(response);
     g_assert(qdict_haskey(response, "return"));
-    QDECREF(response);
+    qobject_unref(response);
 }
 
 static void test_drive_without_dev(void)
@@ -62,8 +65,11 @@ static void test_drive_without_dev(void)
 
 static void test_after_failed_device_add(void)
 {
+    char driver[32];
     QDict *response;
-    QDict *error;
+
+    snprintf(driver, sizeof(driver), "virtio-blk-%s",
+             qvirtio_get_dev_type());
 
     qtest_start("-drive if=none,id=drive0");
 
@@ -72,13 +78,11 @@ static void test_after_failed_device_add(void)
      */
     response = qmp("{'execute': 'device_add',"
                    " 'arguments': {"
-                   "   'driver': 'virtio-blk-%s',"
+                   "   'driver': %s,"
                    "   'drive': 'drive0'"
-                   "}}", qvirtio_get_dev_type());
+                   "}}", driver);
     g_assert(response);
-    error = qdict_get_qdict(response, "error");
-    g_assert_cmpstr(qdict_get_try_str(error, "class"), ==, "GenericError");
-    QDECREF(response);
+    qmp_assert_error_class(response, "GenericError");
 
     /* Delete the drive */
     drive_del();

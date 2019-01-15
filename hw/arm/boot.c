@@ -24,6 +24,7 @@
 #include "qemu/config-file.h"
 #include "qemu/option.h"
 #include "exec/address-spaces.h"
+#include "qemu/units.h"
 
 /* Kernel boot protocol is specified in the kernel docs
  * Documentation/arm/Booting and Documentation/arm64/booting.txt
@@ -36,8 +37,10 @@
 #define ARM64_TEXT_OFFSET_OFFSET    8
 #define ARM64_MAGIC_OFFSET          56
 
-static AddressSpace *arm_boot_address_space(ARMCPU *cpu,
-                                            const struct arm_boot_info *info)
+#define BOOTLOADER_MAX_SIZE         (4 * KiB)
+
+AddressSpace *arm_boot_address_space(ARMCPU *cpu,
+                                     const struct arm_boot_info *info)
 {
     /* Return the address space to use for bootloader reads and writes.
      * We prefer the secure address space if the CPU has it and we're
@@ -183,6 +186,8 @@ static void write_bootloader(const char *name, hwaddr addr,
         }
         code[i] = tswap32(insn);
     }
+
+    assert((len * sizeof(uint32_t)) < BOOTLOADER_MAX_SIZE);
 
     rom_add_blob_fixed_as(name, code, len * sizeof(uint32_t), addr, as);
 
@@ -486,36 +491,17 @@ static void fdt_add_psci_node(void *fdt)
     qemu_fdt_setprop_cell(fdt, "/psci", "migrate", migrate_fn);
 }
 
-/**
- * load_dtb() - load a device tree binary image into memory
- * @addr:       the address to load the image at
- * @binfo:      struct describing the boot environment
- * @addr_limit: upper limit of the available memory area at @addr
- * @as:         address space to load image to
- *
- * Load a device tree supplied by the machine or by the user  with the
- * '-dtb' command line option, and put it at offset @addr in target
- * memory.
- *
- * If @addr_limit contains a meaningful value (i.e., it is strictly greater
- * than @addr), the device tree is only loaded if its size does not exceed
- * the limit.
- *
- * Returns: the size of the device tree image on success,
- *          0 if the image size exceeds the limit,
- *          -1 on errors.
- *
- * Note: Must not be called unless have_dtb(binfo) is true.
- */
-static int load_dtb(hwaddr addr, const struct arm_boot_info *binfo,
-                    hwaddr addr_limit, AddressSpace *as)
+int arm_load_dtb(hwaddr addr, const struct arm_boot_info *binfo,
+                 hwaddr addr_limit, AddressSpace *as)
 {
     void *fdt = NULL;
-    int size, rc;
+    int size, rc, n = 0;
     uint32_t acells, scells;
     char *nodename;
     unsigned int i;
     hwaddr mem_base, mem_len;
+    char **node_path;
+    Error *err = NULL;
 
     if (binfo->dtb_filename) {
         char *filename;
@@ -567,12 +553,21 @@ static int load_dtb(hwaddr addr, const struct arm_boot_info *binfo,
         goto fail;
     }
 
+    /* nop all root nodes matching /memory or /memory@unit-address */
+    node_path = qemu_fdt_node_unit_path(fdt, "memory", &err);
+    if (err) {
+        error_report_err(err);
+        goto fail;
+    }
+    while (node_path[n]) {
+        if (g_str_has_prefix(node_path[n], "/memory")) {
+            qemu_fdt_nop_node(fdt, node_path[n]);
+        }
+        n++;
+    }
+    g_strfreev(node_path);
+
     if (nb_numa_nodes > 0) {
-        /*
-         * Turn the /memory node created before into a NOP node, then create
-         * /memory@addr nodes for all numa nodes respectively.
-         */
-        qemu_fdt_nop_node(fdt, "/memory");
         mem_base = binfo->loader_start;
         for (i = 0; i < nb_numa_nodes; i++) {
             mem_len = numa_info[i].node_mem;
@@ -593,24 +588,18 @@ static int load_dtb(hwaddr addr, const struct arm_boot_info *binfo,
             g_free(nodename);
         }
     } else {
-        Error *err = NULL;
+        nodename = g_strdup_printf("/memory@%" PRIx64, binfo->loader_start);
+        qemu_fdt_add_subnode(fdt, nodename);
+        qemu_fdt_setprop_string(fdt, nodename, "device_type", "memory");
 
-        rc = fdt_path_offset(fdt, "/memory");
-        if (rc < 0) {
-            qemu_fdt_add_subnode(fdt, "/memory");
-        }
-
-        if (!qemu_fdt_getprop(fdt, "/memory", "device_type", NULL, &err)) {
-            qemu_fdt_setprop_string(fdt, "/memory", "device_type", "memory");
-        }
-
-        rc = qemu_fdt_setprop_sized_cells(fdt, "/memory", "reg",
+        rc = qemu_fdt_setprop_sized_cells(fdt, nodename, "reg",
                                           acells, binfo->loader_start,
                                           scells, binfo->ram_size);
         if (rc < 0) {
-            fprintf(stderr, "couldn't set /memory/reg\n");
+            fprintf(stderr, "couldn't set %s reg\n", nodename);
             goto fail;
         }
+        g_free(nodename);
     }
 
     rc = fdt_path_offset(fdt, "/chosen");
@@ -752,6 +741,17 @@ static void do_cpu_reset(void *opaque)
                 }
             }
 
+            if (!env->aarch64 && !info->secure_boot &&
+                arm_feature(env, ARM_FEATURE_EL2)) {
+                /*
+                 * This is an AArch32 boot not to Secure state, and
+                 * we have Hyp mode available, so boot the kernel into
+                 * Hyp mode. This is not how the CPU comes out of reset,
+                 * so we need to manually put it there.
+                 */
+                cpsr_write(env, ARM_CPU_MODE_HYP, CPSR_M, CPSRWriteRaw);
+            }
+
             if (cs == first_cpu) {
                 AddressSpace *as = arm_boot_address_space(cpu, info);
 
@@ -834,9 +834,9 @@ static int do_arm_linux_init(Object *obj, void *opaque)
     return 0;
 }
 
-static uint64_t arm_load_elf(struct arm_boot_info *info, uint64_t *pentry,
-                             uint64_t *lowaddr, uint64_t *highaddr,
-                             int elf_machine, AddressSpace *as)
+static int64_t arm_load_elf(struct arm_boot_info *info, uint64_t *pentry,
+                            uint64_t *lowaddr, uint64_t *highaddr,
+                            int elf_machine, AddressSpace *as)
 {
     bool elf_is64;
     union {
@@ -845,7 +845,7 @@ static uint64_t arm_load_elf(struct arm_boot_info *info, uint64_t *pentry,
     } elf_header;
     int data_swab = 0;
     bool big_endian;
-    uint64_t ret = -1;
+    int64_t ret = -1;
     Error *err = NULL;
 
 
@@ -924,6 +924,19 @@ static uint64_t load_aarch64_image(const char *filename, hwaddr mem_base,
         memcpy(&hdrvals, buffer + ARM64_TEXT_OFFSET_OFFSET, sizeof(hdrvals));
         if (hdrvals[1] != 0) {
             kernel_load_offset = le64_to_cpu(hdrvals[0]);
+
+            /*
+             * We write our startup "bootloader" at the very bottom of RAM,
+             * so that bit can't be used for the image. Luckily the Image
+             * format specification is that the image requests only an offset
+             * from a 2MB boundary, not an absolute load address. So if the
+             * image requests an offset that might mean it overlaps with the
+             * bootloader, we can just load it starting at 2MB+offset rather
+             * than 0MB + offset.
+             */
+            if (kernel_load_offset < BOOTLOADER_MAX_SIZE) {
+                kernel_load_offset += 2 * MiB;
+            }
         }
     }
 
@@ -935,7 +948,7 @@ static uint64_t load_aarch64_image(const char *filename, hwaddr mem_base,
     return size;
 }
 
-static void arm_load_kernel_notify(Notifier *notifier, void *data)
+void arm_load_kernel(ARMCPU *cpu, struct arm_boot_info *info)
 {
     CPUState *cs;
     int kernel_size;
@@ -945,12 +958,16 @@ static void arm_load_kernel_notify(Notifier *notifier, void *data)
     int elf_machine;
     hwaddr entry;
     static const ARMInsnFixup *primary_loader;
-    ArmLoadKernelNotifier *n = DO_UPCAST(ArmLoadKernelNotifier,
-                                         notifier, notifier);
-    ARMCPU *cpu = n->cpu;
-    struct arm_boot_info *info =
-        container_of(n, struct arm_boot_info, load_kernel_notifier);
     AddressSpace *as = arm_boot_address_space(cpu, info);
+
+    /* CPU objects (unlike devices) are not automatically reset on system
+     * reset, so we must always register a handler to do so. If we're
+     * actually loading a kernel, the handler is also responsible for
+     * arranging that we start it correctly.
+     */
+    for (cs = first_cpu; cs; cs = CPU_NEXT(cs)) {
+        qemu_register_reset(do_cpu_reset, ARM_CPU(cs));
+    }
 
     /* The board code is not supposed to set secure_board_setup unless
      * running its code in secure mode is actually possible, and KVM
@@ -959,6 +976,7 @@ static void arm_load_kernel_notify(Notifier *notifier, void *data)
     assert(!(info->secure_board_setup && kvm_enabled()));
 
     info->dtb_filename = qemu_opt_get(qemu_get_machine_opts(), "dtb");
+    info->dtb_limit = 0;
 
     /* Load the kernel.  */
     if (!info->kernel_filename || info->firmware_loaded) {
@@ -968,9 +986,7 @@ static void arm_load_kernel_notify(Notifier *notifier, void *data)
              * the kernel is supposed to be loaded by the bootloader), copy the
              * DTB to the base of RAM for the bootloader to pick up.
              */
-            if (load_dtb(info->loader_start, info, 0, as) < 0) {
-                exit(1);
-            }
+            info->dtb_start = info->loader_start;
         }
 
         if (info->kernel_filename) {
@@ -1050,15 +1066,14 @@ static void arm_load_kernel_notify(Notifier *notifier, void *data)
          */
         if (elf_low_addr > info->loader_start
             || elf_high_addr < info->loader_start) {
-            /* Pass elf_low_addr as address limit to load_dtb if it may be
+            /* Set elf_low_addr as address limit for arm_load_dtb if it may be
              * pointing into RAM, otherwise pass '0' (no limit)
              */
             if (elf_low_addr < info->loader_start) {
                 elf_low_addr = 0;
             }
-            if (load_dtb(info->loader_start, info, elf_low_addr, as) < 0) {
-                exit(1);
-            }
+            info->dtb_start = info->loader_start;
+            info->dtb_limit = elf_low_addr;
         }
     }
     entry = elf_entry;
@@ -1116,7 +1131,6 @@ static void arm_load_kernel_notify(Notifier *notifier, void *data)
          */
         if (have_dtb(info)) {
             hwaddr align;
-            hwaddr dtb_start;
 
             if (elf_machine == EM_AARCH64) {
                 /*
@@ -1136,11 +1150,9 @@ static void arm_load_kernel_notify(Notifier *notifier, void *data)
             }
 
             /* Place the DTB after the initrd in memory with alignment. */
-            dtb_start = QEMU_ALIGN_UP(info->initrd_start + initrd_size, align);
-            if (load_dtb(dtb_start, info, 0, as) < 0) {
-                exit(1);
-            }
-            fixupcontext[FIXUP_ARGPTR] = dtb_start;
+            info->dtb_start = QEMU_ALIGN_UP(info->initrd_start + initrd_size,
+                                           align);
+            fixupcontext[FIXUP_ARGPTR] = info->dtb_start;
         } else {
             fixupcontext[FIXUP_ARGPTR] = info->loader_start + KERNEL_ARGS_ADDR;
             if (info->ram_size >= (1ULL << 32)) {
@@ -1170,26 +1182,14 @@ static void arm_load_kernel_notify(Notifier *notifier, void *data)
     }
     info->is_linux = is_linux;
 
-    for (cs = CPU(cpu); cs; cs = CPU_NEXT(cs)) {
+    for (cs = first_cpu; cs; cs = CPU_NEXT(cs)) {
         ARM_CPU(cs)->env.boot_info = info;
     }
-}
 
-void arm_load_kernel(ARMCPU *cpu, struct arm_boot_info *info)
-{
-    CPUState *cs;
-
-    info->load_kernel_notifier.cpu = cpu;
-    info->load_kernel_notifier.notifier.notify = arm_load_kernel_notify;
-    qemu_add_machine_init_done_notifier(&info->load_kernel_notifier.notifier);
-
-    /* CPU objects (unlike devices) are not automatically reset on system
-     * reset, so we must always register a handler to do so. If we're
-     * actually loading a kernel, the handler is also responsible for
-     * arranging that we start it correctly.
-     */
-    for (cs = CPU(cpu); cs; cs = CPU_NEXT(cs)) {
-        qemu_register_reset(do_cpu_reset, ARM_CPU(cs));
+    if (!info->skip_dtb_autoload && have_dtb(info)) {
+        if (arm_load_dtb(info->dtb_start, info, info->dtb_limit, as) < 0) {
+            exit(1);
+        }
     }
 }
 

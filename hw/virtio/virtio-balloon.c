@@ -21,7 +21,6 @@
 #include "hw/mem/pc-dimm.h"
 #include "sysemu/balloon.h"
 #include "hw/virtio/virtio-balloon.h"
-#include "sysemu/kvm.h"
 #include "exec/address-spaces.h"
 #include "qapi/error.h"
 #include "qapi/qapi-events-misc.h"
@@ -36,8 +35,7 @@
 
 static void balloon_page(void *addr, int deflate)
 {
-    if (!qemu_balloon_is_inhibited() && (!kvm_enabled() ||
-                                         kvm_has_sync_mmu())) {
+    if (!qemu_balloon_is_inhibited()) {
         qemu_madvise(addr, BALLOON_PAGE_SIZE,
                 deflate ? QEMU_MADV_WILLNEED : QEMU_MADV_DONTNEED);
     }
@@ -52,6 +50,8 @@ static const char *balloon_stat_names[] = {
    [VIRTIO_BALLOON_S_MEMTOT] = "stat-total-memory",
    [VIRTIO_BALLOON_S_AVAIL] = "stat-available-memory",
    [VIRTIO_BALLOON_S_CACHES] = "stat-disk-caches",
+   [VIRTIO_BALLOON_S_HTLB_PGALLOC] = "stat-htlb-pgalloc",
+   [VIRTIO_BALLOON_S_HTLB_PGFAIL] = "stat-htlb-pgfail",
    [VIRTIO_BALLOON_S_NR] = NULL
 };
 
@@ -365,8 +365,7 @@ static void virtio_balloon_set_config(VirtIODevice *vdev,
     dev->actual = le32_to_cpu(config.actual);
     if (dev->actual != oldactual) {
         qapi_event_send_balloon_change(vm_ram_size -
-                        ((ram_addr_t) dev->actual << VIRTIO_BALLOON_PFN_SHIFT),
-                        &error_abort);
+                        ((ram_addr_t) dev->actual << VIRTIO_BALLOON_PFN_SHIFT));
     }
     trace_virtio_balloon_set_config(dev->actual, oldactual);
 }

@@ -275,15 +275,6 @@ static void init_dsr_dev_caps(PVRDMADev *dev)
     pr_dbg("Initialized\n");
 }
 
-static void free_ports(PVRDMADev *dev)
-{
-    int i;
-
-    for (i = 0; i < MAX_PORTS; i++) {
-        g_free(dev->rdma_dev_res.ports[i].gid_tbl);
-    }
-}
-
 static void init_ports(PVRDMADev *dev, Error **errp)
 {
     int i;
@@ -292,15 +283,81 @@ static void init_ports(PVRDMADev *dev, Error **errp)
 
     for (i = 0; i < MAX_PORTS; i++) {
         dev->rdma_dev_res.ports[i].state = IBV_PORT_DOWN;
-
-        dev->rdma_dev_res.ports[i].pkey_tbl =
-            g_malloc0(sizeof(*dev->rdma_dev_res.ports[i].pkey_tbl) *
-                      MAX_PORT_PKEYS);
     }
+}
+
+static void uninit_msix(PCIDevice *pdev, int used_vectors)
+{
+    PVRDMADev *dev = PVRDMA_DEV(pdev);
+    int i;
+
+    for (i = 0; i < used_vectors; i++) {
+        msix_vector_unuse(pdev, i);
+    }
+
+    msix_uninit(pdev, &dev->msix, &dev->msix);
+}
+
+static int init_msix(PCIDevice *pdev, Error **errp)
+{
+    PVRDMADev *dev = PVRDMA_DEV(pdev);
+    int i;
+    int rc;
+
+    rc = msix_init(pdev, RDMA_MAX_INTRS, &dev->msix, RDMA_MSIX_BAR_IDX,
+                   RDMA_MSIX_TABLE, &dev->msix, RDMA_MSIX_BAR_IDX,
+                   RDMA_MSIX_PBA, 0, NULL);
+
+    if (rc < 0) {
+        error_setg(errp, "Failed to initialize MSI-X");
+        return rc;
+    }
+
+    for (i = 0; i < RDMA_MAX_INTRS; i++) {
+        rc = msix_vector_use(PCI_DEVICE(dev), i);
+        if (rc < 0) {
+            error_setg(errp, "Fail mark MSI-X vector %d", i);
+            uninit_msix(pdev, i);
+            return rc;
+        }
+    }
+
+    return 0;
+}
+
+static void pvrdma_fini(PCIDevice *pdev)
+{
+    PVRDMADev *dev = PVRDMA_DEV(pdev);
+
+    pr_dbg("Closing device %s %x.%x\n", pdev->name, PCI_SLOT(pdev->devfn),
+           PCI_FUNC(pdev->devfn));
+
+    pvrdma_qp_ops_fini();
+
+    rdma_rm_fini(&dev->rdma_dev_res);
+
+    rdma_backend_fini(&dev->backend_dev);
+
+    free_dsr(dev);
+
+    if (msix_enabled(pdev)) {
+        uninit_msix(pdev, RDMA_MAX_INTRS);
+    }
+}
+
+static void pvrdma_stop(PVRDMADev *dev)
+{
+    rdma_backend_stop(&dev->backend_dev);
+}
+
+static void pvrdma_start(PVRDMADev *dev)
+{
+    rdma_backend_start(&dev->backend_dev);
 }
 
 static void activate_device(PVRDMADev *dev)
 {
+    pvrdma_start(dev);
     set_reg_val(dev, PVRDMA_REG_ERR, 0);
     pr_dbg("Device activated\n");
 }
@@ -313,7 +370,10 @@ static int unquiesce_device(PVRDMADev *dev)
 
 static int reset_device(PVRDMADev *dev)
 {
+    pvrdma_stop(dev);
+
     pr_dbg("Device reset complete\n");
+
     return 0;
 }
 
@@ -370,7 +430,7 @@ static void regs_write(void *opaque, hwaddr addr, uint64_t val, unsigned size)
             reset_device(dev);
             break;
         }
-    break;
+        break;
     case PVRDMA_REG_IMR:
         pr_dbg("Interrupt mask=0x%" PRIx64 "\n", val);
         dev->interrupt_mask = val;
@@ -379,7 +439,7 @@ static void regs_write(void *opaque, hwaddr addr, uint64_t val, unsigned size)
         if (val == 0) {
             execute_command(dev);
         }
-    break;
+        break;
     default:
         break;
     }
@@ -462,14 +522,14 @@ static void init_bars(PCIDevice *pdev)
     /* BAR 1 - Registers */
     memset(&dev->regs_data, 0, sizeof(dev->regs_data));
     memory_region_init_io(&dev->regs, OBJECT(dev), &regs_ops, dev,
-                          "pvrdma-regs", RDMA_BAR1_REGS_SIZE);
+                          "pvrdma-regs", sizeof(dev->regs_data));
     pci_register_bar(pdev, RDMA_REG_BAR_IDX, PCI_BASE_ADDRESS_SPACE_MEMORY,
                      &dev->regs);
 
     /* BAR 2 - UAR */
     memset(&dev->uar_data, 0, sizeof(dev->uar_data));
     memory_region_init_io(&dev->uar, OBJECT(dev), &uar_ops, dev, "rdma-uar",
-                          RDMA_BAR2_UAR_SIZE);
+                          sizeof(dev->uar_data));
     pci_register_bar(pdev, RDMA_UAR_BAR_IDX, PCI_BASE_ADDRESS_SPACE_MEMORY,
                      &dev->uar);
 }
@@ -480,45 +540,6 @@ static void init_regs(PCIDevice *pdev)
 
     set_reg_val(dev, PVRDMA_REG_VERSION, PVRDMA_HW_VERSION);
     set_reg_val(dev, PVRDMA_REG_ERR, 0xFFFF);
-}
-
-static void uninit_msix(PCIDevice *pdev, int used_vectors)
-{
-    PVRDMADev *dev = PVRDMA_DEV(pdev);
-    int i;
-
-    for (i = 0; i < used_vectors; i++) {
-        msix_vector_unuse(pdev, i);
-    }
-
-    msix_uninit(pdev, &dev->msix, &dev->msix);
-}
-
-static int init_msix(PCIDevice *pdev, Error **errp)
-{
-    PVRDMADev *dev = PVRDMA_DEV(pdev);
-    int i;
-    int rc;
-
-    rc = msix_init(pdev, RDMA_MAX_INTRS, &dev->msix, RDMA_MSIX_BAR_IDX,
-                   RDMA_MSIX_TABLE, &dev->msix, RDMA_MSIX_BAR_IDX,
-                   RDMA_MSIX_PBA, 0, NULL);
-
-    if (rc < 0) {
-        error_setg(errp, "Failed to initialize MSI-X");
-        return rc;
-    }
-
-    for (i = 0; i < RDMA_MAX_INTRS; i++) {
-        rc = msix_vector_use(PCI_DEVICE(dev), i);
-        if (rc < 0) {
-            error_setg(errp, "Fail mark MSI-X vercor %d", i);
-            uninit_msix(pdev, i);
-            return rc;
-        }
-    }
-
-    return 0;
 }
 
 static void init_dev_caps(PVRDMADev *dev)
@@ -556,6 +577,8 @@ static void pvrdma_realize(PCIDevice *pdev, Error **errp)
     Object *memdev_root;
     bool ram_shared = false;
 
+    init_pr_dbg();
+
     pr_dbg("Initializing device %s %x.%x\n", pdev->name,
            PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
@@ -588,7 +611,7 @@ static void pvrdma_realize(PCIDevice *pdev, Error **errp)
         goto out;
     }
 
-    rc = rdma_backend_init(&dev->backend_dev, &dev->rdma_dev_res,
+    rc = rdma_backend_init(&dev->backend_dev, pdev, &dev->rdma_dev_res,
                            dev->backend_device_name, dev->backend_port_num,
                            dev->backend_gid_idx, &dev->dev_attr, errp);
     if (rc) {
@@ -615,24 +638,7 @@ out:
 
 static void pvrdma_exit(PCIDevice *pdev)
 {
-    PVRDMADev *dev = PVRDMA_DEV(pdev);
-
-    pr_dbg("Closing device %s %x.%x\n", pdev->name, PCI_SLOT(pdev->devfn),
-           PCI_FUNC(pdev->devfn));
-
-    pvrdma_qp_ops_fini();
-
-    free_ports(dev);
-
-    rdma_rm_fini(&dev->rdma_dev_res);
-
-    rdma_backend_fini(&dev->backend_dev);
-
-    free_dsr(dev);
-
-    if (msix_enabled(pdev)) {
-        uninit_msix(pdev, RDMA_MAX_INTRS);
-    }
+    pvrdma_fini(pdev);
 }
 
 static void pvrdma_class_init(ObjectClass *klass, void *data)

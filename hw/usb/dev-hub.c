@@ -26,7 +26,7 @@
 #include "qemu-common.h"
 #include "trace.h"
 #include "hw/usb.h"
-#include "hw/usb/desc.h"
+#include "desc.h"
 #include "qemu/error-report.h"
 
 #define NUM_PORTS 8
@@ -190,6 +190,10 @@ static void usb_hub_detach(USBPort *port1)
     if (port->wPortStatus & PORT_STAT_ENABLE) {
         port->wPortStatus &= ~PORT_STAT_ENABLE;
         port->wPortChange |= PORT_STAT_C_ENABLE;
+    }
+    if (port->wPortStatus & PORT_STAT_SUSPEND) {
+        port->wPortStatus &= ~PORT_STAT_SUSPEND;
+        port->wPortChange |= PORT_STAT_C_SUSPEND;
     }
     usb_wakeup(s->intr, 0);
 }

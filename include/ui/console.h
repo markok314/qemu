@@ -186,6 +186,7 @@ struct QemuDmaBuf {
     uint32_t  stride;
     uint32_t  fourcc;
     uint32_t  texture;
+    bool      y0_top;
 };
 
 typedef struct DisplayChangeListenerOps {
@@ -291,6 +292,7 @@ bool dpy_ui_info_supported(QemuConsole *con);
 int dpy_set_ui_info(QemuConsole *con, QemuUIInfo *info);
 
 void dpy_gfx_update(QemuConsole *con, int x, int y, int w, int h);
+void dpy_gfx_update_full(QemuConsole *con);
 void dpy_gfx_replace_surface(QemuConsole *con,
                              DisplaySurface *surface);
 void dpy_text_cursor(QemuConsole *con, int x, int y);
@@ -451,7 +453,7 @@ void qemu_display_early_init(DisplayOptions *opts);
 void qemu_display_init(DisplayState *ds, DisplayOptions *opts);
 
 /* vnc.c */
-void vnc_display_init(const char *id);
+void vnc_display_init(const char *id, Error **errp);
 void vnc_display_open(const char *id, Error **errp);
 void vnc_display_add_client(const char *id, int csock, bool skipauth);
 int vnc_display_password(const char *id, const char *password);

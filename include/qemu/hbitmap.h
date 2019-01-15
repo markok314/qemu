@@ -73,16 +73,23 @@ void hbitmap_truncate(HBitmap *hb, uint64_t size);
 
 /**
  * hbitmap_merge:
- * @a: The bitmap to store the result in.
- * @b: The bitmap to merge into @a.
- * @return true if the merge was successful,
- *         false if it was not attempted.
  *
- * Merge two bitmaps together.
- * A := A (BITOR) B.
- * B is left unmodified.
+ * Store result of merging @a and @b into @result.
+ * @result is allowed to be equal to @a or @b.
+ *
+ * Return true if the merge was successful,
+ *        false if it was not attempted.
  */
-bool hbitmap_merge(HBitmap *a, const HBitmap *b);
+bool hbitmap_merge(const HBitmap *a, const HBitmap *b, HBitmap *result);
+
+/**
+ * hbitmap_can_merge:
+ *
+ * hbitmap_can_merge(a, b) && hbitmap_can_merge(a, result) is sufficient and
+ * necessary for hbitmap_merge will not fail.
+ *
+ */
+bool hbitmap_can_merge(const HBitmap *a, const HBitmap *b);
 
 /**
  * hbitmap_empty:
@@ -324,11 +331,14 @@ void hbitmap_free_meta(HBitmap *hb);
 /**
  * hbitmap_iter_next:
  * @hbi: HBitmapIter to operate on.
+ * @advance: If true, advance the iterator.  Otherwise, the next call
+ *           of this function will return the same result (if that
+ *           position is still dirty).
  *
  * Return the next bit that is set in @hbi's associated HBitmap,
  * or -1 if all remaining bits are zero.
  */
-int64_t hbitmap_iter_next(HBitmapIter *hbi);
+int64_t hbitmap_iter_next(HBitmapIter *hbi, bool advance);
 
 /**
  * hbitmap_iter_next_word:

@@ -39,6 +39,8 @@
 # @page-size: The number of bytes per page for the various page-based
 #        statistics (since 2.10)
 #
+# @multifd-bytes: The number of bytes sent through multifd (since 3.0)
+#
 # Since: 0.14.0
 ##
 { 'struct': 'MigrationStats',
@@ -46,7 +48,8 @@
            'duplicate': 'int', 'skipped': 'int', 'normal': 'int',
            'normal-bytes': 'int', 'dirty-pages-rate' : 'int',
            'mbps' : 'number', 'dirty-sync-count' : 'int',
-           'postcopy-requests' : 'int', 'page-size' : 'int' } }
+           'postcopy-requests' : 'int', 'page-size' : 'int',
+           'multifd-bytes' : 'uint64' } }
 
 ##
 # @XBZRLECacheStats:
@@ -73,6 +76,27 @@
            'overflow': 'int' } }
 
 ##
+# @CompressionStats:
+#
+# Detailed migration compression statistics
+#
+# @pages: amount of pages compressed and transferred to the target VM
+#
+# @busy: count of times that no free thread was available to compress data
+#
+# @busy-rate: rate of thread busy
+#
+# @compressed-size: amount of bytes after compression
+#
+# @compression-rate: rate of compressed size
+#
+# Since: 3.1
+##
+{ 'struct': 'CompressionStats',
+  'data': {'pages': 'int', 'busy': 'int', 'busy-rate': 'number',
+	   'compressed-size': 'int', 'compression-rate': 'number' } }
+
+##
 # @MigrationStatus:
 #
 # An enumeration of migration status.
@@ -88,6 +112,10 @@
 # @active: in the process of doing migration.
 #
 # @postcopy-active: like active, but now in postcopy mode. (since 2.5)
+#
+# @postcopy-paused: during postcopy but paused. (since 3.0)
+#
+# @postcopy-recover: trying to recover from a paused postcopy. (since 3.0)
 #
 # @completed: migration is finished.
 #
@@ -106,7 +134,8 @@
 ##
 { 'enum': 'MigrationStatus',
   'data': [ 'none', 'setup', 'cancelling', 'cancelled',
-            'active', 'postcopy-active', 'completed', 'failed', 'colo',
+            'active', 'postcopy-active', 'postcopy-paused',
+            'postcopy-recover', 'completed', 'failed', 'colo',
             'pre-switchover', 'device' ] }
 
 ##
@@ -156,6 +185,17 @@
 #              @status is 'failed'. Clients should not attempt to parse the
 #              error strings. (Since 2.7)
 #
+# @postcopy-blocktime: total time when all vCPU were blocked during postcopy
+#           live migration. This is only present when the postcopy-blocktime
+#           migration capability is enabled. (Since 3.0)
+#
+# @postcopy-vcpu-blocktime: list of the postcopy blocktime per vCPU.  This is
+#           only present when the postcopy-blocktime migration capability
+#           is enabled. (Since 3.0)
+#
+# @compression: migration compression statistics, only returned if compression
+#           feature is on and status is 'active' or 'completed' (Since 3.1)
+#
 # Since: 0.14.0
 ##
 { 'struct': 'MigrationInfo',
@@ -167,7 +207,10 @@
            '*downtime': 'int',
            '*setup-time': 'int',
            '*cpu-throttle-percentage': 'int',
-           '*error-desc': 'str'} }
+           '*error-desc': 'str',
+           '*postcopy-blocktime' : 'uint32',
+           '*postcopy-vcpu-blocktime': ['uint32'],
+           '*compression': 'CompressionStats'} }
 
 ##
 # @query-migrate:
@@ -193,13 +236,13 @@
 # -> { "execute": "query-migrate" }
 # <- { "return": {
 #         "status": "completed",
+#         "total-time":12345,
+#         "setup-time":12345,
+#         "downtime":12345,
 #         "ram":{
 #           "transferred":123,
 #           "remaining":123,
 #           "total":246,
-#           "total-time":12345,
-#           "setup-time":12345,
-#           "downtime":12345,
 #           "duplicate":123,
 #           "normal":123,
 #           "normal-bytes":123456,
@@ -219,13 +262,13 @@
 # <- {
 #       "return":{
 #          "status":"active",
+#          "total-time":12345,
+#          "setup-time":12345,
+#          "expected-downtime":12345,
 #          "ram":{
 #             "transferred":123,
 #             "remaining":123,
 #             "total":246,
-#             "total-time":12345,
-#             "setup-time":12345,
-#             "expected-downtime":12345,
 #             "duplicate":123,
 #             "normal":123,
 #             "normal-bytes":123456,
@@ -240,13 +283,13 @@
 # <- {
 #       "return":{
 #          "status":"active",
+#          "total-time":12345,
+#          "setup-time":12345,
+#          "expected-downtime":12345,
 #          "ram":{
 #             "total":1057024,
 #             "remaining":1053304,
 #             "transferred":3720,
-#             "total-time":12345,
-#             "setup-time":12345,
-#             "expected-downtime":12345,
 #             "duplicate":123,
 #             "normal":123,
 #             "normal-bytes":123456,
@@ -266,14 +309,13 @@
 # <- {
 #       "return":{
 #          "status":"active",
-#          "capabilities" : [ { "capability": "xbzrle", "state" : true } ],
+#          "total-time":12345,
+#          "setup-time":12345,
+#          "expected-downtime":12345,
 #          "ram":{
 #             "total":1057024,
 #             "remaining":1053304,
 #             "transferred":3720,
-#             "total-time":12345,
-#             "setup-time":12345,
-#             "expected-downtime":12345,
 #             "duplicate":10,
 #             "normal":3333,
 #             "normal-bytes":3412992,
@@ -357,13 +399,20 @@
 # @dirty-bitmaps: If enabled, QEMU will migrate named dirty bitmaps.
 #                 (since 2.12)
 #
+# @postcopy-blocktime: Calculate downtime for postcopy live migration
+#                     (since 3.0)
+#
+# @late-block-activate: If enabled, the destination will not activate block
+#           devices (and thus take locks) immediately at the end of migration.
+#           (since 3.0)
+#
 # Since: 1.2
 ##
 { 'enum': 'MigrationCapability',
   'data': ['xbzrle', 'rdma-pin-all', 'auto-converge', 'zero-blocks',
            'compress', 'events', 'postcopy-ram', 'x-colo', 'release-ram',
            'block', 'return-path', 'pause-before-switchover', 'x-multifd',
-           'dirty-bitmaps' ] }
+           'dirty-bitmaps', 'postcopy-blocktime', 'late-block-activate' ] }
 
 ##
 # @MigrationCapabilityStatus:
@@ -436,6 +485,11 @@
 # @compress-threads: Set compression thread count to be used in live migration,
 #          the compression thread count is an integer between 1 and 255.
 #
+# @compress-wait-thread: Controls behavior when all compression threads are
+#                        currently busy. If true (default), wait for a free
+#                        compression thread to become available; otherwise,
+#                        send the page uncompressed. (Since 3.1)
+#
 # @decompress-threads: Set decompression thread count to be used in live
 #          migration, the decompression thread count is an integer between 1
 #          and 255. Usually, decompression is at least 4 times as fast as
@@ -494,15 +548,23 @@
 #                     and a power of 2
 #                     (Since 2.11)
 #
+# @max-postcopy-bandwidth: Background transfer bandwidth during postcopy.
+#                     Defaults to 0 (unlimited).  In bytes per second.
+#                     (Since 3.0)
+#
+# @max-cpu-throttle: maximum cpu throttle percentage.
+#                    Defaults to 99. (Since 3.1)
 # Since: 2.4
 ##
 { 'enum': 'MigrationParameter',
   'data': ['compress-level', 'compress-threads', 'decompress-threads',
+           'compress-wait-thread',
            'cpu-throttle-initial', 'cpu-throttle-increment',
            'tls-creds', 'tls-hostname', 'max-bandwidth',
            'downtime-limit', 'x-checkpoint-delay', 'block-incremental',
            'x-multifd-channels', 'x-multifd-page-count',
-           'xbzrle-cache-size' ] }
+           'xbzrle-cache-size', 'max-postcopy-bandwidth',
+           'max-cpu-throttle' ] }
 
 ##
 # @MigrateSetParameters:
@@ -510,6 +572,11 @@
 # @compress-level: compression level
 #
 # @compress-threads: compression thread count
+#
+# @compress-wait-thread: Controls behavior when all compression threads are
+#                        currently busy. If true (default), wait for a free
+#                        compression thread to become available; otherwise,
+#                        send the page uncompressed. (Since 3.1)
 #
 # @decompress-threads: decompression thread count
 #
@@ -570,6 +637,14 @@
 #                     needs to be a multiple of the target page size
 #                     and a power of 2
 #                     (Since 2.11)
+#
+# @max-postcopy-bandwidth: Background transfer bandwidth during postcopy.
+#                     Defaults to 0 (unlimited).  In bytes per second.
+#                     (Since 3.0)
+#
+# @max-cpu-throttle: maximum cpu throttle percentage.
+#                    The default value is 99. (Since 3.1)
+#
 # Since: 2.4
 ##
 # TODO either fuse back into MigrationParameters, or make
@@ -577,6 +652,7 @@
 { 'struct': 'MigrateSetParameters',
   'data': { '*compress-level': 'int',
             '*compress-threads': 'int',
+            '*compress-wait-thread': 'bool',
             '*decompress-threads': 'int',
             '*cpu-throttle-initial': 'int',
             '*cpu-throttle-increment': 'int',
@@ -588,7 +664,9 @@
             '*block-incremental': 'bool',
             '*x-multifd-channels': 'int',
             '*x-multifd-page-count': 'int',
-            '*xbzrle-cache-size': 'size' } }
+            '*xbzrle-cache-size': 'size',
+            '*max-postcopy-bandwidth': 'size',
+	    '*max-cpu-throttle': 'int' } }
 
 ##
 # @migrate-set-parameters:
@@ -614,6 +692,11 @@
 # @compress-level: compression level
 #
 # @compress-threads: compression thread count
+#
+# @compress-wait-thread: Controls behavior when all compression threads are
+#                        currently busy. If true (default), wait for a free
+#                        compression thread to become available; otherwise,
+#                        send the page uncompressed. (Since 3.1)
 #
 # @decompress-threads: decompression thread count
 #
@@ -671,11 +754,21 @@
 #                     needs to be a multiple of the target page size
 #                     and a power of 2
 #                     (Since 2.11)
+#
+# @max-postcopy-bandwidth: Background transfer bandwidth during postcopy.
+#                     Defaults to 0 (unlimited).  In bytes per second.
+#                     (Since 3.0)
+#
+# @max-cpu-throttle: maximum cpu throttle percentage.
+#                    Defaults to 99.
+#                     (Since 3.1)
+#
 # Since: 2.4
 ##
 { 'struct': 'MigrationParameters',
   'data': { '*compress-level': 'uint8',
             '*compress-threads': 'uint8',
+            '*compress-wait-thread': 'bool',
             '*decompress-threads': 'uint8',
             '*cpu-throttle-initial': 'uint8',
             '*cpu-throttle-increment': 'uint8',
@@ -687,7 +780,9 @@
             '*block-incremental': 'bool' ,
             '*x-multifd-channels': 'uint8',
             '*x-multifd-page-count': 'uint32',
-            '*xbzrle-cache-size': 'size' } }
+            '*xbzrle-cache-size': 'size',
+	    '*max-postcopy-bandwidth': 'size',
+            '*max-cpu-throttle':'uint8'} }
 
 ##
 # @query-migrate-parameters:
@@ -828,18 +923,18 @@
 ##
 # @COLOMode:
 #
-# The colo mode
+# The COLO current mode.
 #
-# @unknown: unknown mode
+# @none: COLO is disabled.
 #
-# @primary: master side
+# @primary: COLO node in primary side.
 #
-# @secondary: slave side
+# @secondary: COLO node in slave side.
 #
 # Since: 2.8
 ##
 { 'enum': 'COLOMode',
-  'data': [ 'unknown', 'primary', 'secondary'] }
+  'data': [ 'none', 'primary', 'secondary'] }
 
 ##
 # @FailoverStatus:
@@ -860,6 +955,44 @@
 ##
 { 'enum': 'FailoverStatus',
   'data': [ 'none', 'require', 'active', 'completed', 'relaunch' ] }
+
+##
+# @COLO_EXIT:
+#
+# Emitted when VM finishes COLO mode due to some errors happening or
+# at the request of users.
+#
+# @mode: report COLO mode when COLO exited.
+#
+# @reason: describes the reason for the COLO exit.
+#
+# Since: 3.1
+#
+# Example:
+#
+# <- { "timestamp": {"seconds": 2032141960, "microseconds": 417172},
+#      "event": "COLO_EXIT", "data": {"mode": "primary", "reason": "request" } }
+#
+##
+{ 'event': 'COLO_EXIT',
+  'data': {'mode': 'COLOMode', 'reason': 'COLOExitReason' } }
+
+##
+# @COLOExitReason:
+#
+# The reason for a COLO exit
+#
+# @none: no failover has ever happened. This can't occur in the
+# COLO_EXIT event, only in the result of query-colo-status.
+#
+# @request: COLO exit is due to an external request
+#
+# @error: COLO exit is due to an internal error
+#
+# Since: 3.1
+##
+{ 'enum': 'COLOExitReason',
+  'data': [ 'none', 'request', 'error' ] }
 
 ##
 # @x-colo-lost-heartbeat:
@@ -1015,6 +1148,8 @@
 # @detach: this argument exists only for compatibility reasons and
 #          is ignored by QEMU
 #
+# @resume: resume one paused migration, default "off". (since 3.0)
+#
 # Returns: nothing on success
 #
 # Since: 0.14.0
@@ -1036,7 +1171,8 @@
 #
 ##
 { 'command': 'migrate',
-  'data': {'uri': 'str', '*blk': 'bool', '*inc': 'bool', '*detach': 'bool' } }
+  'data': {'uri': 'str', '*blk': 'bool', '*inc': 'bool',
+           '*detach': 'bool', '*resume': 'bool' } }
 
 ##
 # @migrate-incoming:
@@ -1170,3 +1306,71 @@
 # Since: 2.9
 ##
 { 'command': 'xen-colo-do-checkpoint' }
+
+##
+# @COLOStatus:
+#
+# The result format for 'query-colo-status'.
+#
+# @mode: COLO running mode. If COLO is running, this field will return
+#        'primary' or 'secondary'.
+#
+# @reason: describes the reason for the COLO exit.
+#
+# Since: 3.1
+##
+{ 'struct': 'COLOStatus',
+  'data': { 'mode': 'COLOMode', 'reason': 'COLOExitReason' } }
+
+##
+# @query-colo-status:
+#
+# Query COLO status while the vm is running.
+#
+# Returns: A @COLOStatus object showing the status.
+#
+# Example:
+#
+# -> { "execute": "query-colo-status" }
+# <- { "return": { "mode": "primary", "active": true, "reason": "request" } }
+#
+# Since: 3.1
+##
+{ 'command': 'query-colo-status',
+  'returns': 'COLOStatus' }
+
+##
+# @migrate-recover:
+#
+# Provide a recovery migration stream URI.
+#
+# @uri: the URI to be used for the recovery of migration stream.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "migrate-recover",
+#      "arguments": { "uri": "tcp:192.168.1.200:12345" } }
+# <- { "return": {} }
+#
+# Since: 3.0
+##
+{ 'command': 'migrate-recover', 'data': { 'uri': 'str' },
+  'allow-oob': true }
+
+##
+# @migrate-pause:
+#
+# Pause a migration.  Currently it only supports postcopy.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "migrate-pause" }
+# <- { "return": {} }
+#
+# Since: 3.0
+##
+{ 'command': 'migrate-pause', 'allow-oob': true }

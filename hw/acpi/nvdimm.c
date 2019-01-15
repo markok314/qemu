@@ -170,6 +170,21 @@ struct NvdimmNfitControlRegion {
 typedef struct NvdimmNfitControlRegion NvdimmNfitControlRegion;
 
 /*
+ * NVDIMM Platform Capabilities Structure
+ *
+ * Defined in section 5.2.25.9 of ACPI 6.2 Errata A, September 2017
+ */
+struct NvdimmNfitPlatformCaps {
+    uint16_t type;
+    uint16_t length;
+    uint8_t highest_cap;
+    uint8_t reserved[3];
+    uint32_t capabilities;
+    uint8_t reserved2[4];
+} QEMU_PACKED;
+typedef struct NvdimmNfitPlatformCaps NvdimmNfitPlatformCaps;
+
+/*
  * Module serial number is a unique number for each device. We use the
  * slot id of NVDIMM device to generate this number so that each device
  * associates with a different number.
@@ -351,7 +366,23 @@ static void nvdimm_build_structure_dcr(GArray *structures, DeviceState *dev)
                                          JEDEC Annex L Release 3. */);
 }
 
-static GArray *nvdimm_build_device_structure(void)
+/*
+ * ACPI 6.2 Errata A: 5.2.25.9 NVDIMM Platform Capabilities Structure
+ */
+static void
+nvdimm_build_structure_caps(GArray *structures, uint32_t capabilities)
+{
+    NvdimmNfitPlatformCaps *nfit_caps;
+
+    nfit_caps = acpi_data_push(structures, sizeof(*nfit_caps));
+
+    nfit_caps->type = cpu_to_le16(7 /* NVDIMM Platform Capabilities */);
+    nfit_caps->length = cpu_to_le16(sizeof(*nfit_caps));
+    nfit_caps->highest_cap = 31 - clz32(capabilities);
+    nfit_caps->capabilities = cpu_to_le32(capabilities);
+}
+
+static GArray *nvdimm_build_device_structure(AcpiNVDIMMState *state)
 {
     GSList *device_list = nvdimm_get_device_list();
     GArray *structures = g_array_new(false, true /* clear */, 1);
@@ -373,6 +404,10 @@ static GArray *nvdimm_build_device_structure(void)
     }
     g_slist_free(device_list);
 
+    if (state->persistence) {
+        nvdimm_build_structure_caps(structures, state->persistence);
+    }
+
     return structures;
 }
 
@@ -381,16 +416,18 @@ static void nvdimm_init_fit_buffer(NvdimmFitBuffer *fit_buf)
     fit_buf->fit = g_array_new(false, true /* clear */, 1);
 }
 
-static void nvdimm_build_fit_buffer(NvdimmFitBuffer *fit_buf)
+static void nvdimm_build_fit_buffer(AcpiNVDIMMState *state)
 {
+    NvdimmFitBuffer *fit_buf = &state->fit_buf;
+
     g_array_free(fit_buf->fit, true);
-    fit_buf->fit = nvdimm_build_device_structure();
+    fit_buf->fit = nvdimm_build_device_structure(state);
     fit_buf->dirty = true;
 }
 
 void nvdimm_plug(AcpiNVDIMMState *state)
 {
-    nvdimm_build_fit_buffer(&state->fit_buf);
+    nvdimm_build_fit_buffer(state);
 }
 
 static void nvdimm_build_nfit(AcpiNVDIMMState *state, GArray *table_offsets,
@@ -544,7 +581,7 @@ static void nvdimm_dsm_func_read_fit(AcpiNVDIMMState *state, NvdimmDsmIn *in,
     int size;
 
     read_fit = (NvdimmFuncReadFITIn *)in->arg3;
-    le32_to_cpus(&read_fit->offset);
+    read_fit->offset = le32_to_cpu(read_fit->offset);
 
     fit = fit_buf->fit;
 
@@ -705,8 +742,8 @@ static void nvdimm_dsm_get_label_data(NVDIMMDevice *nvdimm, NvdimmDsmIn *in,
     int size;
 
     get_label_data = (NvdimmFuncGetLabelDataIn *)in->arg3;
-    le32_to_cpus(&get_label_data->offset);
-    le32_to_cpus(&get_label_data->length);
+    get_label_data->offset = le32_to_cpu(get_label_data->offset);
+    get_label_data->length = le32_to_cpu(get_label_data->length);
 
     nvdimm_debug("Read Label Data: offset %#x length %#x.\n",
                  get_label_data->offset, get_label_data->length);
@@ -744,8 +781,8 @@ static void nvdimm_dsm_set_label_data(NVDIMMDevice *nvdimm, NvdimmDsmIn *in,
 
     set_label_data = (NvdimmFuncSetLabelDataIn *)in->arg3;
 
-    le32_to_cpus(&set_label_data->offset);
-    le32_to_cpus(&set_label_data->length);
+    set_label_data->offset = le32_to_cpu(set_label_data->offset);
+    set_label_data->length = le32_to_cpu(set_label_data->length);
 
     nvdimm_debug("Write Label Data: offset %#x length %#x.\n",
                  set_label_data->offset, set_label_data->length);
@@ -840,9 +877,9 @@ nvdimm_dsm_write(void *opaque, hwaddr addr, uint64_t val, unsigned size)
     in = g_new(NvdimmDsmIn, 1);
     cpu_physical_memory_read(dsm_mem_addr, in, sizeof(*in));
 
-    le32_to_cpus(&in->revision);
-    le32_to_cpus(&in->function);
-    le32_to_cpus(&in->handle);
+    in->revision = le32_to_cpu(in->revision);
+    in->function = le32_to_cpu(in->function);
+    in->handle = le32_to_cpu(in->handle);
 
     nvdimm_debug("Revision %#x Handler %#x Function %#x.\n", in->revision,
                  in->handle, in->function);

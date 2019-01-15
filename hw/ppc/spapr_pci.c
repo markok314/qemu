@@ -267,6 +267,7 @@ static void rtas_ibm_change_msi(PowerPCCPU *cpu, sPAPRMachineState *spapr,
                                 target_ulong args, uint32_t nret,
                                 target_ulong rets)
 {
+    sPAPRMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
     uint32_t config_addr = rtas_ld(args, 0);
     uint64_t buid = rtas_ldq(args, 1);
     unsigned int func = rtas_ld(args, 3);
@@ -279,6 +280,7 @@ static void rtas_ibm_change_msi(PowerPCCPU *cpu, sPAPRMachineState *spapr,
     spapr_pci_msi *msi;
     int *config_addr_key;
     Error *err = NULL;
+    int i;
 
     /* Fins sPAPRPHBState */
     phb = spapr_pci_find_phb(spapr, buid);
@@ -333,6 +335,9 @@ static void rtas_ibm_change_msi(PowerPCCPU *cpu, sPAPRMachineState *spapr,
             return;
         }
 
+        if (!smc->legacy_irq_allocation) {
+            spapr_irq_msi_free(spapr, msi->first_irq, msi->num);
+        }
         spapr_irq_free(spapr, msi->first_irq, msi->num);
         if (msi_present(pdev)) {
             spapr_msi_setmsg(pdev, 0, false, 0, 0);
@@ -371,8 +376,13 @@ static void rtas_ibm_change_msi(PowerPCCPU *cpu, sPAPRMachineState *spapr,
     }
 
     /* Allocate MSIs */
-    irq = spapr_irq_alloc_block(spapr, req_num, false,
-                           ret_intr_type == RTAS_TYPE_MSI, &err);
+    if (smc->legacy_irq_allocation) {
+        irq = spapr_irq_find(spapr, req_num, ret_intr_type == RTAS_TYPE_MSI,
+                             &err);
+    } else {
+        irq = spapr_irq_msi_alloc(spapr, req_num,
+                                  ret_intr_type == RTAS_TYPE_MSI, &err);
+    }
     if (err) {
         error_reportf_err(err, "Can't allocate MSIs for device %x: ",
                           config_addr);
@@ -380,8 +390,21 @@ static void rtas_ibm_change_msi(PowerPCCPU *cpu, sPAPRMachineState *spapr,
         return;
     }
 
+    for (i = 0; i < req_num; i++) {
+        spapr_irq_claim(spapr, irq + i, false, &err);
+        if (err) {
+            error_reportf_err(err, "Can't allocate MSIs for device %x: ",
+                              config_addr);
+            rtas_st(rets, 0, RTAS_OUT_HW_ERROR);
+            return;
+        }
+    }
+
     /* Release previous MSIs */
     if (msi) {
+        if (!smc->legacy_irq_allocation) {
+            spapr_irq_msi_free(spapr, msi->first_irq, msi->num);
+        }
         spapr_irq_free(spapr, msi->first_irq, msi->num);
         g_hash_table_remove(phb->msi, &config_addr);
     }
@@ -1536,6 +1559,7 @@ static void spapr_phb_realize(DeviceState *dev, Error **errp)
     sPAPRMachineState *spapr =
         (sPAPRMachineState *) object_dynamic_cast(qdev_get_machine(),
                                                   TYPE_SPAPR_MACHINE);
+    sPAPRMachineClass *smc = spapr ? SPAPR_MACHINE_GET_CLASS(spapr) : NULL;
     SysBusDevice *s = SYS_BUS_DEVICE(dev);
     sPAPRPHBState *sphb = SPAPR_PCI_HOST_BRIDGE(s);
     PCIHostState *phb = PCI_HOST_BRIDGE(s);
@@ -1553,7 +1577,6 @@ static void spapr_phb_realize(DeviceState *dev, Error **errp)
     }
 
     if (sphb->index != (uint32_t)-1) {
-        sPAPRMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
         Error *local_err = NULL;
 
         smc->phb_placement(spapr, sphb->index,
@@ -1695,13 +1718,21 @@ static void spapr_phb_realize(DeviceState *dev, Error **errp)
 
     /* Initialize the LSI table */
     for (i = 0; i < PCI_NUM_PINS; i++) {
-        uint32_t irq;
+        uint32_t irq = SPAPR_IRQ_PCI_LSI + sphb->index * PCI_NUM_PINS + i;
         Error *local_err = NULL;
 
-        irq = spapr_irq_alloc_block(spapr, 1, true, false, &local_err);
+        if (smc->legacy_irq_allocation) {
+            irq = spapr_irq_findone(spapr, &local_err);
+            if (local_err) {
+                error_propagate_prepend(errp, local_err,
+                                        "can't allocate LSIs: ");
+                return;
+            }
+        }
+
+        spapr_irq_claim(spapr, irq, true, &local_err);
         if (local_err) {
-            error_propagate(errp, local_err);
-            error_prepend(errp, "can't allocate LSIs: ");
+            error_propagate_prepend(errp, local_err, "can't allocate LSIs: ");
             return;
         }
 
@@ -1717,13 +1748,6 @@ static void spapr_phb_realize(DeviceState *dev, Error **errp)
     }
 
     /* DMA setup */
-    if (((sphb->page_size_mask & qemu_getrampagesize()) == 0)
-        && kvm_enabled()) {
-        warn_report("System page size 0x%lx is not enabled in page_size_mask "
-                    "(0x%"PRIx64"). Performance may be slow",
-                    qemu_getrampagesize(), sphb->page_size_mask);
-    }
-
     for (i = 0; i < windows_supported; ++i) {
         tcet = spapr_tce_new_table(DEVICE(sphb), sphb->dma_liobn[i]);
         if (!tcet) {
@@ -1858,7 +1882,7 @@ static int spapr_pci_pre_save(void *opaque)
     if (!sphb->msi_devs_num) {
         return 0;
     }
-    sphb->msi_devs = g_malloc(sphb->msi_devs_num * sizeof(spapr_pci_msi_mig));
+    sphb->msi_devs = g_new(spapr_pci_msi_mig, sphb->msi_devs_num);
 
     g_hash_table_iter_init(&iter, sphb->msi);
     for (i = 0; g_hash_table_iter_next(&iter, &key, &value); ++i) {
@@ -2044,9 +2068,8 @@ static void spapr_phb_pci_enumerate(sPAPRPHBState *phb)
 
 }
 
-int spapr_populate_pci_dt(sPAPRPHBState *phb,
-                          uint32_t xics_phandle,
-                          void *fdt)
+int spapr_populate_pci_dt(sPAPRPHBState *phb, uint32_t xics_phandle, void *fdt,
+                          uint32_t nr_msis)
 {
     int bus_off, i, j, ret;
     gchar *nodename;
@@ -2113,7 +2136,7 @@ int spapr_populate_pci_dt(sPAPRPHBState *phb,
     _FDT(fdt_setprop(fdt, bus_off, "ranges", &ranges, sizeof_ranges));
     _FDT(fdt_setprop(fdt, bus_off, "reg", &bus_reg, sizeof(bus_reg)));
     _FDT(fdt_setprop_cell(fdt, bus_off, "ibm,pci-config-space-type", 0x1));
-    _FDT(fdt_setprop_cell(fdt, bus_off, "ibm,pe-total-#msi", XICS_IRQS_SPAPR));
+    _FDT(fdt_setprop_cell(fdt, bus_off, "ibm,pe-total-#msi", nr_msis));
 
     /* Dynamic DMA window */
     if (phb->ddw_enabled) {

@@ -100,14 +100,14 @@ void migrate(QOSState *from, QOSState *to, const char *uri)
     sub = qdict_get_qdict(rsp, "return");
     g_assert(qdict_haskey(sub, "running"));
     running = qdict_get_bool(sub, "running");
-    QDECREF(rsp);
+    qobject_unref(rsp);
 
     /* Issue the migrate command. */
     rsp = qtest_qmp(from->qts,
                     "{ 'execute': 'migrate', 'arguments': { 'uri': %s }}",
                     uri);
     g_assert(qdict_haskey(rsp, "return"));
-    QDECREF(rsp);
+    qobject_unref(rsp);
 
     /* Wait for STOP event, but only if we were running: */
     if (running) {
@@ -132,12 +132,12 @@ void migrate(QOSState *from, QOSState *to, const char *uri)
 
         /* "setup", "active", "completed", "failed", "cancelled" */
         if (strcmp(st, "completed") == 0) {
-            QDECREF(rsp);
+            qobject_unref(rsp);
             break;
         }
 
         if ((strcmp(st, "setup") == 0) || (strcmp(st, "active") == 0)) {
-            QDECREF(rsp);
+            qobject_unref(rsp);
             g_usleep(5000);
             continue;
         }
@@ -185,21 +185,11 @@ void mkimg(const char *file, const char *fmt, unsigned size_mb)
     cli = g_strdup_printf("%s create -f %s %s %uM", qemu_img_abs_path,
                           fmt, file, size_mb);
     ret = g_spawn_command_line_sync(cli, &out, &out2, &rc, &err);
-    if (err) {
+    if (err || !g_spawn_check_exit_status(rc, &err)) {
         fprintf(stderr, "%s\n", err->message);
         g_error_free(err);
     }
     g_assert(ret && !err);
-
-    /* In glib 2.34, we have g_spawn_check_exit_status. in 2.12, we don't.
-     * glib 2.43.91 implementation assumes that any non-zero is an error for
-     * windows, but uses extra precautions for Linux. However,
-     * 0 is only possible if the program exited normally, so that should be
-     * sufficient for our purposes on all platforms, here. */
-    if (rc) {
-        fprintf(stderr, "qemu-img returned status code %d\n", rc);
-    }
-    g_assert(!rc);
 
     g_free(out);
     g_free(out2);

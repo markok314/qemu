@@ -16,6 +16,7 @@
 #ifndef PVRDMA_PVRDMA_H
 #define PVRDMA_PVRDMA_H
 
+#include "qemu/units.h"
 #include "hw/pci/pci.h"
 #include "hw/pci/msix.h"
 
@@ -30,8 +31,8 @@
 #define RDMA_MSIX_BAR_IDX    0
 #define RDMA_REG_BAR_IDX     1
 #define RDMA_UAR_BAR_IDX     2
-#define RDMA_BAR0_MSIX_SIZE  (16 * 1024)
-#define RDMA_BAR1_REGS_SIZE  256
+#define RDMA_BAR0_MSIX_SIZE  (16 * KiB)
+#define RDMA_BAR1_REGS_SIZE  64
 #define RDMA_BAR2_UAR_SIZE   (0x1000 * MAX_UCS) /* each uc gets page */
 
 /* MSIX */
@@ -48,6 +49,9 @@
 #define PVRDMA_HW_NAME       "pvrdma"
 #define PVRDMA_HW_VERSION    17
 #define PVRDMA_FW_VERSION    14
+
+/* Some defaults */
+#define PVRDMA_PKEY          0x7FFF
 
 typedef struct DSRInfo {
     dma_addr_t dma;
@@ -86,7 +90,7 @@ static inline int get_reg_val(PVRDMADev *dev, hwaddr addr, uint32_t *val)
 {
     int idx = addr >> 2;
 
-    if (idx > RDMA_BAR1_REGS_SIZE) {
+    if (idx >= RDMA_BAR1_REGS_SIZE) {
         return -EINVAL;
     }
 
@@ -99,7 +103,7 @@ static inline int set_reg_val(PVRDMADev *dev, hwaddr addr, uint32_t val)
 {
     int idx = addr >> 2;
 
-    if (idx > RDMA_BAR1_REGS_SIZE) {
+    if (idx >= RDMA_BAR1_REGS_SIZE) {
         return -EINVAL;
     }
 

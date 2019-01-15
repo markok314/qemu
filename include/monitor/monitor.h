@@ -6,7 +6,7 @@
 #include "qapi/qapi-types-misc.h"
 #include "qemu/readline.h"
 
-extern Monitor *cur_mon;
+extern __thread Monitor *cur_mon;
 
 /* flags for monitor_init */
 /* 0x01 unused */
@@ -46,5 +46,8 @@ int monitor_fdset_get_fd(int64_t fdset_id, int flags);
 int monitor_fdset_dup_fd_add(int64_t fdset_id, int dup_fd);
 void monitor_fdset_dup_fd_remove(int dup_fd);
 int monitor_fdset_dup_fd_find(int dup_fd);
+
+void monitor_vfprintf(FILE *stream,
+                      const char *fmt, va_list ap) GCC_FMT_ATTR(2, 0);
 
 #endif /* MONITOR_H */

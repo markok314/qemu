@@ -102,6 +102,7 @@ struct USBHostDevice {
     /* callbacks & friends */
     QEMUBH                           *bh_nodev;
     QEMUBH                           *bh_postld;
+    bool                             bh_postld_pending;
     Notifier                         exit;
 
     /* request queues */
@@ -247,7 +248,11 @@ static int usb_host_init(void)
     if (rc != 0) {
         return -1;
     }
+#if LIBUSB_API_VERSION >= 0x01000106
+    libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, loglevel);
+#else
     libusb_set_debug(ctx, loglevel);
+#endif
 #ifdef CONFIG_WIN32
     /* FIXME: add support for Windows. */
 #else
@@ -866,6 +871,10 @@ static int usb_host_open(USBHostDevice *s, libusb_device *dev)
     int rc;
     Error *local_err = NULL;
 
+    if (s->bh_postld_pending) {
+        return -1;
+    }
+
     trace_usb_host_open_started(bus_num, addr);
 
     if (s->dh != NULL) {
@@ -1111,6 +1120,9 @@ static void usb_host_detach_kernel(USBHostDevice *s)
         rc = libusb_kernel_driver_active(s->dh, i);
         usb_host_libusb_error("libusb_kernel_driver_active", rc);
         if (rc != 1) {
+            if (rc == 0) {
+                s->ifs[i].detached = true;
+            }
             continue;
         }
         trace_usb_host_detach_kernel(s->bus_num, s->addr, i);
@@ -1524,6 +1536,7 @@ static void usb_host_post_load_bh(void *opaque)
     if (udev->attached) {
         usb_device_detach(udev);
     }
+    dev->bh_postld_pending = false;
     usb_host_auto_check(NULL);
 }
 
@@ -1535,6 +1548,7 @@ static int usb_host_post_load(void *opaque, int version_id)
         dev->bh_postld = qemu_bh_new(usb_host_post_load_bh, dev);
     }
     qemu_bh_schedule(dev->bh_postld);
+    dev->bh_postld_pending = true;
     return 0;
 }
 

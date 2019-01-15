@@ -18,7 +18,7 @@ from qapi.common import *
 def build_event_send_proto(name, arg_type, boxed):
     return 'void qapi_event_send_%(c_name)s(%(param)s)' % {
         'c_name': c_name(name.lower()),
-        'param': build_params(arg_type, boxed, 'Error **errp')}
+        'param': build_params(arg_type, boxed)}
 
 
 def gen_event_send_decl(name, arg_type, boxed):
@@ -70,7 +70,6 @@ def gen_event_send(name, arg_type, boxed, event_enum_name):
 %(proto)s
 {
     QDict *qmp;
-    Error *err = NULL;
     QMPEventFuncEmit emit;
 ''',
                 proto=build_event_send_proto(name, arg_type, boxed))
@@ -103,46 +102,36 @@ def gen_event_send(name, arg_type, boxed, event_enum_name):
 ''')
         if not arg_type.is_implicit():
             ret += mcgen('''
-    visit_type_%(c_name)s(v, "%(name)s", &arg, &err);
+    visit_type_%(c_name)s(v, "%(name)s", &arg, &error_abort);
 ''',
                          name=name, c_name=arg_type.c_name())
         else:
             ret += mcgen('''
 
-    visit_start_struct(v, "%(name)s", NULL, 0, &err);
-    if (err) {
-        goto out;
-    }
-    visit_type_%(c_name)s_members(v, &param, &err);
-    if (!err) {
-        visit_check_struct(v, &err);
-    }
+    visit_start_struct(v, "%(name)s", NULL, 0, &error_abort);
+    visit_type_%(c_name)s_members(v, &param, &error_abort);
+    visit_check_struct(v, &error_abort);
     visit_end_struct(v, NULL);
 ''',
                          name=name, c_name=arg_type.c_name())
         ret += mcgen('''
-    if (err) {
-        goto out;
-    }
 
     visit_complete(v, &obj);
     qdict_put_obj(qmp, "data", obj);
 ''')
 
     ret += mcgen('''
-    emit(%(c_enum)s, qmp, &err);
+    emit(%(c_enum)s, qmp);
 
 ''',
                  c_enum=c_enum_const(event_enum_name, name))
 
     if arg_type and not arg_type.is_empty():
         ret += mcgen('''
-out:
     visit_free(v);
 ''')
     ret += mcgen('''
-    error_propagate(errp, err);
-    QDECREF(qmp);
+    qobject_unref(qmp);
 }
 ''')
     return ret
@@ -180,12 +169,15 @@ class QAPISchemaGenEventVisitor(QAPISchemaModularCVisitor):
                              types=types))
 
     def visit_end(self):
-        self._genh.add(gen_enum(self._enum_name, self._event_names))
-        self._genc.add(gen_enum_lookup(self._enum_name, self._event_names))
+        (genc, genh) = self._module[self._main_module]
+        genh.add(gen_enum(self._enum_name, self._event_names))
+        genc.add(gen_enum_lookup(self._enum_name, self._event_names))
 
-    def visit_event(self, name, info, arg_type, boxed):
-        self._genh.add(gen_event_send_decl(name, arg_type, boxed))
-        self._genc.add(gen_event_send(name, arg_type, boxed, self._enum_name))
+    def visit_event(self, name, info, ifcond, arg_type, boxed):
+        with ifcontext(ifcond, self._genh, self._genc):
+            self._genh.add(gen_event_send_decl(name, arg_type, boxed))
+            self._genc.add(gen_event_send(name, arg_type, boxed,
+                                          self._enum_name))
         self._event_names.append(name)
 
 

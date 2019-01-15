@@ -333,6 +333,12 @@ static int vmdk_is_cid_valid(BlockDriverState *bs)
     if (!s->cid_checked && bs->backing) {
         BlockDriverState *p_bs = bs->backing->bs;
 
+        if (strcmp(p_bs->drv->format_name, "vmdk")) {
+            /* Backing file is not in vmdk format, so it does not have
+             * a CID, which makes the overlay's parent CID invalid */
+            return 0;
+        }
+
         if (vmdk_read_cid(p_bs, 0, &cur_pcid) != 0) {
             /* read failure: report as not valid */
             return 0;
@@ -1692,6 +1698,27 @@ static int coroutine_fn
 vmdk_co_pwritev_compressed(BlockDriverState *bs, uint64_t offset,
                            uint64_t bytes, QEMUIOVector *qiov)
 {
+    if (bytes == 0) {
+        /* The caller will write bytes 0 to signal EOF.
+         * When receive it, we align EOF to a sector boundary. */
+        BDRVVmdkState *s = bs->opaque;
+        int i, ret;
+        int64_t length;
+
+        for (i = 0; i < s->num_extents; i++) {
+            length = bdrv_getlength(s->extents[i].file->bs);
+            if (length < 0) {
+                return length;
+            }
+            length = QEMU_ALIGN_UP(length, BDRV_SECTOR_SIZE);
+            ret = bdrv_truncate(s->extents[i].file, length,
+                                PREALLOC_MODE_OFF, NULL);
+            if (ret < 0) {
+                return ret;
+            }
+        }
+        return 0;
+    }
     return vmdk_co_pwritev(bs, offset, bytes, qiov, 0);
 }
 

@@ -27,6 +27,7 @@
 #include "hw/i386/ioapic.h"
 #include "hw/pci/msi.h"
 #include "hw/sysbus.h"
+#include "qemu/iova-tree.h"
 
 #define TYPE_INTEL_IOMMU_DEVICE "intel-iommu"
 #define INTEL_IOMMU_DEVICE(obj) \
@@ -65,9 +66,6 @@ typedef struct VTDIOTLBEntry VTDIOTLBEntry;
 typedef struct VTDBus VTDBus;
 typedef union VTD_IR_TableEntry VTD_IR_TableEntry;
 typedef union VTD_IR_MSIAddress VTD_IR_MSIAddress;
-typedef struct VTDIrq VTDIrq;
-typedef struct VTD_MSIMessage VTD_MSIMessage;
-typedef struct IntelIOMMUNotifierNode IntelIOMMUNotifierNode;
 
 /* Context-Entry */
 struct VTDContextEntry {
@@ -93,6 +91,10 @@ struct VTDAddressSpace {
     MemoryRegion iommu_ir;      /* Interrupt region: 0xfeeXXXXX */
     IntelIOMMUState *iommu_state;
     VTDContextCacheEntry context_cache_entry;
+    QLIST_ENTRY(VTDAddressSpace) next;
+    /* Superset of notifier flags that this address space has */
+    IOMMUNotifierFlag notifier_flags;
+    IOVATree *iova_tree;          /* Traces mapped IOVA ranges */
 };
 
 struct VTDBus {
@@ -193,70 +195,8 @@ union VTD_IR_MSIAddress {
     uint32_t data;
 };
 
-/* Generic IRQ entry information */
-struct VTDIrq {
-    /* Used by both IOAPIC/MSI interrupt remapping */
-    uint8_t trigger_mode;
-    uint8_t vector;
-    uint8_t delivery_mode;
-    uint32_t dest;
-    uint8_t dest_mode;
-
-    /* only used by MSI interrupt remapping */
-    uint8_t redir_hint;
-    uint8_t msi_addr_last_bits;
-};
-
-struct VTD_MSIMessage {
-    union {
-        struct {
-#ifdef HOST_WORDS_BIGENDIAN
-            uint32_t __addr_head:12; /* 0xfee */
-            uint32_t dest:8;
-            uint32_t __reserved:8;
-            uint32_t redir_hint:1;
-            uint32_t dest_mode:1;
-            uint32_t __not_used:2;
-#else
-            uint32_t __not_used:2;
-            uint32_t dest_mode:1;
-            uint32_t redir_hint:1;
-            uint32_t __reserved:8;
-            uint32_t dest:8;
-            uint32_t __addr_head:12; /* 0xfee */
-#endif
-            uint32_t __addr_hi;
-        } QEMU_PACKED;
-        uint64_t msi_addr;
-    };
-    union {
-        struct {
-#ifdef HOST_WORDS_BIGENDIAN
-            uint16_t trigger_mode:1;
-            uint16_t level:1;
-            uint16_t __resved:3;
-            uint16_t delivery_mode:3;
-            uint16_t vector:8;
-#else
-            uint16_t vector:8;
-            uint16_t delivery_mode:3;
-            uint16_t __resved:3;
-            uint16_t level:1;
-            uint16_t trigger_mode:1;
-#endif
-            uint16_t __resved1;
-        } QEMU_PACKED;
-        uint32_t msi_data;
-    };
-};
-
 /* When IR is enabled, all MSI/MSI-X data bits should be zero */
 #define VTD_IR_MSI_DATA          (0)
-
-struct IntelIOMMUNotifierNode {
-    VTDAddressSpace *vtd_as;
-    QLIST_ENTRY(IntelIOMMUNotifierNode) next;
-};
 
 /* The iommu (DMAR) device state struct */
 struct IntelIOMMUState {
@@ -295,7 +235,7 @@ struct IntelIOMMUState {
     GHashTable *vtd_as_by_busptr;   /* VTDBus objects indexed by PCIBus* reference */
     VTDBus *vtd_as_by_bus_num[VTD_PCI_BUS_MAX]; /* VTDBus objects indexed by bus number */
     /* list of registered notifiers */
-    QLIST_HEAD(, IntelIOMMUNotifierNode) notifiers_list;
+    QLIST_HEAD(, VTDAddressSpace) vtd_as_with_notifiers;
 
     /* interrupt remapping */
     bool intr_enabled;              /* Whether guest enabled IR */
@@ -305,6 +245,12 @@ struct IntelIOMMUState {
     OnOffAuto intr_eim;             /* Toggle for EIM cabability */
     bool buggy_eim;                 /* Force buggy EIM unless eim=off */
     uint8_t aw_bits;                /* Host/IOVA address width (in bits) */
+
+    /*
+     * Protects IOMMU states in general.  Currently it protects the
+     * per-IOMMU IOTLB cache, and context entry cache in VTDAddressSpace.
+     */
+    QemuMutex iommu_lock;
 };
 
 /* Find the VTD Address space associated with the given bus pointer,

@@ -22,7 +22,7 @@
 #include "exec/helper-proto.h"
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
-
+#include "internal.h"
 #include "helper_regs.h"
 
 //#define DEBUG_OP
@@ -348,19 +348,16 @@ static inline void powerpc_excp(PowerPCCPU *cpu, int excp_model, int excp)
     case POWERPC_EXCP_ITLB:      /* Instruction TLB error                    */
         break;
     case POWERPC_EXCP_DEBUG:     /* Debug interrupt                          */
-        switch (excp_model) {
-        case POWERPC_EXCP_BOOKE:
+        if (env->flags & POWERPC_FLAG_DE) {
             /* FIXME: choose one or the other based on CPU type */
             srr0 = SPR_BOOKE_DSRR0;
             srr1 = SPR_BOOKE_DSRR1;
             asrr0 = SPR_BOOKE_CSRR0;
             asrr1 = SPR_BOOKE_CSRR1;
-            break;
-        default:
-            break;
+            /* DBSR already modified by caller */
+        } else {
+            cpu_abort(cs, "Debug exception triggered on unsupported model\n");
         }
-        /* XXX: TODO */
-        cpu_abort(cs, "Debug exception is not implemented yet !\n");
         break;
     case POWERPC_EXCP_SPEU:      /* SPE/embedded floating-point unavailable  */
         env->spr[SPR_BOOKE_ESR] = ESR_SPV;
@@ -1198,3 +1195,19 @@ void helper_book3s_msgsnd(target_ulong rb)
     qemu_mutex_unlock_iothread();
 }
 #endif
+
+void ppc_cpu_do_unaligned_access(CPUState *cs, vaddr vaddr,
+                                 MMUAccessType access_type,
+                                 int mmu_idx, uintptr_t retaddr)
+{
+    CPUPPCState *env = cs->env_ptr;
+    uint32_t insn;
+
+    /* Restore state and reload the insn we executed, for filling in DSISR.  */
+    cpu_restore_state(cs, retaddr, true);
+    insn = cpu_ldl_code(env, env->nip);
+
+    cs->exception_index = POWERPC_EXCP_ALIGN;
+    env->error_code = insn & 0x03FF0000;
+    cpu_loop_exit(cs);
+}

@@ -45,28 +45,12 @@ static int memfd_create(const char *name, unsigned int flags)
 }
 #endif
 
-#ifndef MFD_CLOEXEC
-#define MFD_CLOEXEC 0x0001U
-#endif
-
-#ifndef MFD_ALLOW_SEALING
-#define MFD_ALLOW_SEALING 0x0002U
-#endif
-
-#ifndef MFD_HUGETLB
-#define MFD_HUGETLB 0x0004U
-#endif
-
-#ifndef MFD_HUGE_SHIFT
-#define MFD_HUGE_SHIFT 26
-#endif
-
 int qemu_memfd_create(const char *name, size_t size, bool hugetlb,
                       uint64_t hugetlbsize, unsigned int seals, Error **errp)
 {
     int htsize = hugetlbsize ? ctz64(hugetlbsize) : 0;
 
-    if (htsize && 1 << htsize != hugetlbsize) {
+    if (htsize && 1ULL << htsize != hugetlbsize) {
         error_setg(errp, "Hugepage size must be a power of 2");
         return -1;
     }
@@ -187,6 +171,7 @@ bool qemu_memfd_alloc_check(void)
         int fd;
         void *ptr;
 
+        fd = -1;
         ptr = qemu_memfd_alloc("test", 4096, 0, &fd, NULL);
         memfd_check = ptr ? MEMFD_OK : MEMFD_KO;
         qemu_memfd_free(ptr, 4096, fd);
@@ -200,23 +185,16 @@ bool qemu_memfd_alloc_check(void)
  *
  * Check if host supports memfd.
  */
-bool qemu_memfd_check(void)
+bool qemu_memfd_check(unsigned int flags)
 {
 #ifdef CONFIG_LINUX
-    static int memfd_check = MEMFD_TODO;
+    int mfd = memfd_create("test", flags);
 
-    if (memfd_check == MEMFD_TODO) {
-        int mfd = memfd_create("test", 0);
-        if (mfd >= 0) {
-            memfd_check = MEMFD_OK;
-            close(mfd);
-        } else {
-            memfd_check = MEMFD_KO;
-        }
+    if (mfd >= 0) {
+        close(mfd);
+        return true;
     }
-
-    return memfd_check == MEMFD_OK;
-#else
-    return false;
 #endif
+
+    return false;
 }

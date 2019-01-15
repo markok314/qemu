@@ -545,6 +545,21 @@ int qemu_strtou64(const char *nptr, const char **endptr, int base,
 }
 
 /**
+ * Searches for the first occurrence of 'c' in 's', and returns a pointer
+ * to the trailing null byte if none was found.
+ */
+#ifndef HAVE_STRCHRNUL
+const char *qemu_strchrnul(const char *s, int c)
+{
+    const char *e = strchr(s, c);
+    if (!e) {
+        e = s + strlen(s);
+    }
+    return e;
+}
+#endif
+
+/**
  * parse_uint:
  *
  * @s: String to parse
@@ -753,4 +768,9 @@ char *size_to_str(uint64_t val)
     div = 1ULL << (i * 10);
 
     return g_strdup_printf("%0.3g %sB", (double)val / div, suffixes[i]);
+}
+
+int qemu_pstrcmp0(const char **str1, const char **str2)
+{
+    return g_strcmp0(*str1, *str2);
 }

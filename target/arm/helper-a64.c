@@ -30,6 +30,7 @@
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 #include "qemu/int128.h"
+#include "qemu/atomic128.h"
 #include "tcg.h"
 #include "fpu/softfloat.h"
 #include <zlib.h> /* For crc32 */
@@ -83,6 +84,16 @@ static inline uint32_t float_rel_to_flags(int res)
         break;
     }
     return flags;
+}
+
+uint64_t HELPER(vfp_cmph_a64)(uint32_t x, uint32_t y, void *fp_status)
+{
+    return float_rel_to_flags(float16_compare_quiet(x, y, fp_status));
+}
+
+uint64_t HELPER(vfp_cmpeh_a64)(uint32_t x, uint32_t y, void *fp_status)
+{
+    return float_rel_to_flags(float16_compare(x, y, fp_status));
 }
 
 uint64_t HELPER(vfp_cmps_a64)(float32 x, float32 y, void *fp_status)
@@ -204,7 +215,7 @@ uint64_t HELPER(neon_cgt_f64)(float64 a, float64 b, void *fpstp)
 #define float64_three make_float64(0x4008000000000000ULL)
 #define float64_one_point_five make_float64(0x3FF8000000000000ULL)
 
-float16 HELPER(recpsf_f16)(float16 a, float16 b, void *fpstp)
+uint32_t HELPER(recpsf_f16)(uint32_t a, uint32_t b, void *fpstp)
 {
     float_status *fpst = fpstp;
 
@@ -249,7 +260,7 @@ float64 HELPER(recpsf_f64)(float64 a, float64 b, void *fpstp)
     return float64_muladd(a, b, float64_two, 0, fpst);
 }
 
-float16 HELPER(rsqrtsf_f16)(float16 a, float16 b, void *fpstp)
+uint32_t HELPER(rsqrtsf_f16)(uint32_t a, uint32_t b, void *fpstp)
 {
     float_status *fpst = fpstp;
 
@@ -356,7 +367,7 @@ uint64_t HELPER(neon_addlp_u16)(uint64_t a)
 }
 
 /* Floating-point reciprocal exponent - see FPRecpX in ARM ARM */
-float16 HELPER(frecpx_f16)(float16 a, void *fpstp)
+uint32_t HELPER(frecpx_f16)(uint32_t a, void *fpstp)
 {
     float_status *fpst = fpstp;
     uint16_t val16, sbit;
@@ -366,13 +377,15 @@ float16 HELPER(frecpx_f16)(float16 a, void *fpstp)
         float16 nan = a;
         if (float16_is_signaling_nan(a, fpst)) {
             float_raise(float_flag_invalid, fpst);
-            nan = float16_maybe_silence_nan(a, fpst);
+            nan = float16_silence_nan(a, fpst);
         }
         if (fpst->default_nan_mode) {
             nan = float16_default_nan(fpst);
         }
         return nan;
     }
+
+    a = float16_squash_input_denormal(a, fpst);
 
     val16 = float16_val(a);
     sbit = 0x8000 & val16;
@@ -395,13 +408,15 @@ float32 HELPER(frecpx_f32)(float32 a, void *fpstp)
         float32 nan = a;
         if (float32_is_signaling_nan(a, fpst)) {
             float_raise(float_flag_invalid, fpst);
-            nan = float32_maybe_silence_nan(a, fpst);
+            nan = float32_silence_nan(a, fpst);
         }
         if (fpst->default_nan_mode) {
             nan = float32_default_nan(fpst);
         }
         return nan;
     }
+
+    a = float32_squash_input_denormal(a, fpst);
 
     val32 = float32_val(a);
     sbit = 0x80000000ULL & val32;
@@ -424,13 +439,15 @@ float64 HELPER(frecpx_f64)(float64 a, void *fpstp)
         float64 nan = a;
         if (float64_is_signaling_nan(a, fpst)) {
             float_raise(float_flag_invalid, fpst);
-            nan = float64_maybe_silence_nan(a, fpst);
+            nan = float64_silence_nan(a, fpst);
         }
         if (fpst->default_nan_mode) {
             nan = float64_default_nan(fpst);
         }
         return nan;
     }
+
+    a = float64_squash_input_denormal(a, fpst);
 
     val64 = float64_val(a);
     sbit = 0x8000000000000000ULL & val64;
@@ -456,7 +473,6 @@ float32 HELPER(fcvtx_f64_to_f32)(float64 a, CPUARMState *env)
     set_float_rounding_mode(float_round_to_zero, &tstat);
     set_float_exception_flags(0, &tstat);
     r = float64_to_float32(a, &tstat);
-    r = float32_maybe_silence_nan(r, &tstat);
     exflags = get_float_exception_flags(&tstat);
     if (exflags & float_flag_inexact) {
         r = make_float32(float32_val(r) | 1);
@@ -494,146 +510,187 @@ uint64_t HELPER(crc32c_64)(uint64_t acc, uint64_t val, uint32_t bytes)
     return crc32c(acc, buf, bytes) ^ 0xffffffff;
 }
 
-/* Returns 0 on success; 1 otherwise.  */
-static uint64_t do_paired_cmpxchg64_le(CPUARMState *env, uint64_t addr,
-                                       uint64_t new_lo, uint64_t new_hi,
-                                       bool parallel, uintptr_t ra)
+uint64_t HELPER(paired_cmpxchg64_le)(CPUARMState *env, uint64_t addr,
+                                     uint64_t new_lo, uint64_t new_hi)
 {
-    Int128 oldv, cmpv, newv;
+    Int128 cmpv = int128_make128(env->exclusive_val, env->exclusive_high);
+    Int128 newv = int128_make128(new_lo, new_hi);
+    Int128 oldv;
+    uintptr_t ra = GETPC();
+    uint64_t o0, o1;
     bool success;
 
-    cmpv = int128_make128(env->exclusive_val, env->exclusive_high);
-    newv = int128_make128(new_lo, new_hi);
-
-    if (parallel) {
-#ifndef CONFIG_ATOMIC128
-        cpu_loop_exit_atomic(ENV_GET_CPU(env), ra);
-#else
-        int mem_idx = cpu_mmu_index(env, false);
-        TCGMemOpIdx oi = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
-        oldv = helper_atomic_cmpxchgo_le_mmu(env, addr, cmpv, newv, oi, ra);
-        success = int128_eq(oldv, cmpv);
-#endif
-    } else {
-        uint64_t o0, o1;
-
 #ifdef CONFIG_USER_ONLY
-        /* ??? Enforce alignment.  */
-        uint64_t *haddr = g2h(addr);
+    /* ??? Enforce alignment.  */
+    uint64_t *haddr = g2h(addr);
 
-        helper_retaddr = ra;
-        o0 = ldq_le_p(haddr + 0);
-        o1 = ldq_le_p(haddr + 1);
-        oldv = int128_make128(o0, o1);
+    helper_retaddr = ra;
+    o0 = ldq_le_p(haddr + 0);
+    o1 = ldq_le_p(haddr + 1);
+    oldv = int128_make128(o0, o1);
 
-        success = int128_eq(oldv, cmpv);
-        if (success) {
-            stq_le_p(haddr + 0, int128_getlo(newv));
-            stq_le_p(haddr + 1, int128_gethi(newv));
-        }
-        helper_retaddr = 0;
-#else
-        int mem_idx = cpu_mmu_index(env, false);
-        TCGMemOpIdx oi0 = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
-        TCGMemOpIdx oi1 = make_memop_idx(MO_LEQ, mem_idx);
-
-        o0 = helper_le_ldq_mmu(env, addr + 0, oi0, ra);
-        o1 = helper_le_ldq_mmu(env, addr + 8, oi1, ra);
-        oldv = int128_make128(o0, o1);
-
-        success = int128_eq(oldv, cmpv);
-        if (success) {
-            helper_le_stq_mmu(env, addr + 0, int128_getlo(newv), oi1, ra);
-            helper_le_stq_mmu(env, addr + 8, int128_gethi(newv), oi1, ra);
-        }
-#endif
+    success = int128_eq(oldv, cmpv);
+    if (success) {
+        stq_le_p(haddr + 0, int128_getlo(newv));
+        stq_le_p(haddr + 1, int128_gethi(newv));
     }
+    helper_retaddr = 0;
+#else
+    int mem_idx = cpu_mmu_index(env, false);
+    TCGMemOpIdx oi0 = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
+    TCGMemOpIdx oi1 = make_memop_idx(MO_LEQ, mem_idx);
+
+    o0 = helper_le_ldq_mmu(env, addr + 0, oi0, ra);
+    o1 = helper_le_ldq_mmu(env, addr + 8, oi1, ra);
+    oldv = int128_make128(o0, o1);
+
+    success = int128_eq(oldv, cmpv);
+    if (success) {
+        helper_le_stq_mmu(env, addr + 0, int128_getlo(newv), oi1, ra);
+        helper_le_stq_mmu(env, addr + 8, int128_gethi(newv), oi1, ra);
+    }
+#endif
 
     return !success;
-}
-
-uint64_t HELPER(paired_cmpxchg64_le)(CPUARMState *env, uint64_t addr,
-                                              uint64_t new_lo, uint64_t new_hi)
-{
-    return do_paired_cmpxchg64_le(env, addr, new_lo, new_hi, false, GETPC());
 }
 
 uint64_t HELPER(paired_cmpxchg64_le_parallel)(CPUARMState *env, uint64_t addr,
                                               uint64_t new_lo, uint64_t new_hi)
 {
-    return do_paired_cmpxchg64_le(env, addr, new_lo, new_hi, true, GETPC());
-}
-
-static uint64_t do_paired_cmpxchg64_be(CPUARMState *env, uint64_t addr,
-                                       uint64_t new_lo, uint64_t new_hi,
-                                       bool parallel, uintptr_t ra)
-{
     Int128 oldv, cmpv, newv;
+    uintptr_t ra = GETPC();
     bool success;
+    int mem_idx;
+    TCGMemOpIdx oi;
 
-    /* high and low need to be switched here because this is not actually a
-     * 128bit store but two doublewords stored consecutively
-     */
-    cmpv = int128_make128(env->exclusive_high, env->exclusive_val);
-    newv = int128_make128(new_hi, new_lo);
+    assert(HAVE_CMPXCHG128);
 
-    if (parallel) {
-#ifndef CONFIG_ATOMIC128
-        cpu_loop_exit_atomic(ENV_GET_CPU(env), ra);
-#else
-        int mem_idx = cpu_mmu_index(env, false);
-        TCGMemOpIdx oi = make_memop_idx(MO_BEQ | MO_ALIGN_16, mem_idx);
-        oldv = helper_atomic_cmpxchgo_be_mmu(env, addr, cmpv, newv, oi, ra);
-        success = int128_eq(oldv, cmpv);
-#endif
-    } else {
-        uint64_t o0, o1;
+    mem_idx = cpu_mmu_index(env, false);
+    oi = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
 
-#ifdef CONFIG_USER_ONLY
-        /* ??? Enforce alignment.  */
-        uint64_t *haddr = g2h(addr);
+    cmpv = int128_make128(env->exclusive_val, env->exclusive_high);
+    newv = int128_make128(new_lo, new_hi);
+    oldv = helper_atomic_cmpxchgo_le_mmu(env, addr, cmpv, newv, oi, ra);
 
-        helper_retaddr = ra;
-        o1 = ldq_be_p(haddr + 0);
-        o0 = ldq_be_p(haddr + 1);
-        oldv = int128_make128(o0, o1);
-
-        success = int128_eq(oldv, cmpv);
-        if (success) {
-            stq_be_p(haddr + 0, int128_gethi(newv));
-            stq_be_p(haddr + 1, int128_getlo(newv));
-        }
-        helper_retaddr = 0;
-#else
-        int mem_idx = cpu_mmu_index(env, false);
-        TCGMemOpIdx oi0 = make_memop_idx(MO_BEQ | MO_ALIGN_16, mem_idx);
-        TCGMemOpIdx oi1 = make_memop_idx(MO_BEQ, mem_idx);
-
-        o1 = helper_be_ldq_mmu(env, addr + 0, oi0, ra);
-        o0 = helper_be_ldq_mmu(env, addr + 8, oi1, ra);
-        oldv = int128_make128(o0, o1);
-
-        success = int128_eq(oldv, cmpv);
-        if (success) {
-            helper_be_stq_mmu(env, addr + 0, int128_gethi(newv), oi1, ra);
-            helper_be_stq_mmu(env, addr + 8, int128_getlo(newv), oi1, ra);
-        }
-#endif
-    }
-
+    success = int128_eq(oldv, cmpv);
     return !success;
 }
 
 uint64_t HELPER(paired_cmpxchg64_be)(CPUARMState *env, uint64_t addr,
                                      uint64_t new_lo, uint64_t new_hi)
 {
-    return do_paired_cmpxchg64_be(env, addr, new_lo, new_hi, false, GETPC());
+    /*
+     * High and low need to be switched here because this is not actually a
+     * 128bit store but two doublewords stored consecutively
+     */
+    Int128 cmpv = int128_make128(env->exclusive_val, env->exclusive_high);
+    Int128 newv = int128_make128(new_lo, new_hi);
+    Int128 oldv;
+    uintptr_t ra = GETPC();
+    uint64_t o0, o1;
+    bool success;
+
+#ifdef CONFIG_USER_ONLY
+    /* ??? Enforce alignment.  */
+    uint64_t *haddr = g2h(addr);
+
+    helper_retaddr = ra;
+    o1 = ldq_be_p(haddr + 0);
+    o0 = ldq_be_p(haddr + 1);
+    oldv = int128_make128(o0, o1);
+
+    success = int128_eq(oldv, cmpv);
+    if (success) {
+        stq_be_p(haddr + 0, int128_gethi(newv));
+        stq_be_p(haddr + 1, int128_getlo(newv));
+    }
+    helper_retaddr = 0;
+#else
+    int mem_idx = cpu_mmu_index(env, false);
+    TCGMemOpIdx oi0 = make_memop_idx(MO_BEQ | MO_ALIGN_16, mem_idx);
+    TCGMemOpIdx oi1 = make_memop_idx(MO_BEQ, mem_idx);
+
+    o1 = helper_be_ldq_mmu(env, addr + 0, oi0, ra);
+    o0 = helper_be_ldq_mmu(env, addr + 8, oi1, ra);
+    oldv = int128_make128(o0, o1);
+
+    success = int128_eq(oldv, cmpv);
+    if (success) {
+        helper_be_stq_mmu(env, addr + 0, int128_gethi(newv), oi1, ra);
+        helper_be_stq_mmu(env, addr + 8, int128_getlo(newv), oi1, ra);
+    }
+#endif
+
+    return !success;
 }
 
 uint64_t HELPER(paired_cmpxchg64_be_parallel)(CPUARMState *env, uint64_t addr,
-                                     uint64_t new_lo, uint64_t new_hi)
+                                              uint64_t new_lo, uint64_t new_hi)
 {
-    return do_paired_cmpxchg64_be(env, addr, new_lo, new_hi, true, GETPC());
+    Int128 oldv, cmpv, newv;
+    uintptr_t ra = GETPC();
+    bool success;
+    int mem_idx;
+    TCGMemOpIdx oi;
+
+    assert(HAVE_CMPXCHG128);
+
+    mem_idx = cpu_mmu_index(env, false);
+    oi = make_memop_idx(MO_BEQ | MO_ALIGN_16, mem_idx);
+
+    /*
+     * High and low need to be switched here because this is not actually a
+     * 128bit store but two doublewords stored consecutively
+     */
+    cmpv = int128_make128(env->exclusive_high, env->exclusive_val);
+    newv = int128_make128(new_hi, new_lo);
+    oldv = helper_atomic_cmpxchgo_be_mmu(env, addr, cmpv, newv, oi, ra);
+
+    success = int128_eq(oldv, cmpv);
+    return !success;
+}
+
+/* Writes back the old data into Rs.  */
+void HELPER(casp_le_parallel)(CPUARMState *env, uint32_t rs, uint64_t addr,
+                              uint64_t new_lo, uint64_t new_hi)
+{
+    Int128 oldv, cmpv, newv;
+    uintptr_t ra = GETPC();
+    int mem_idx;
+    TCGMemOpIdx oi;
+
+    assert(HAVE_CMPXCHG128);
+
+    mem_idx = cpu_mmu_index(env, false);
+    oi = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
+
+    cmpv = int128_make128(env->xregs[rs], env->xregs[rs + 1]);
+    newv = int128_make128(new_lo, new_hi);
+    oldv = helper_atomic_cmpxchgo_le_mmu(env, addr, cmpv, newv, oi, ra);
+
+    env->xregs[rs] = int128_getlo(oldv);
+    env->xregs[rs + 1] = int128_gethi(oldv);
+}
+
+void HELPER(casp_be_parallel)(CPUARMState *env, uint32_t rs, uint64_t addr,
+                              uint64_t new_hi, uint64_t new_lo)
+{
+    Int128 oldv, cmpv, newv;
+    uintptr_t ra = GETPC();
+    int mem_idx;
+    TCGMemOpIdx oi;
+
+    assert(HAVE_CMPXCHG128);
+
+    mem_idx = cpu_mmu_index(env, false);
+    oi = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
+
+    cmpv = int128_make128(env->xregs[rs + 1], env->xregs[rs]);
+    newv = int128_make128(new_lo, new_hi);
+    oldv = helper_atomic_cmpxchgo_be_mmu(env, addr, cmpv, newv, oi, ra);
+
+    env->xregs[rs + 1] = int128_getlo(oldv);
+    env->xregs[rs] = int128_gethi(oldv);
 }
 
 /*
@@ -643,7 +700,7 @@ uint64_t HELPER(paired_cmpxchg64_be_parallel)(CPUARMState *env, uint64_t addr,
 #define ADVSIMD_HELPER(name, suffix) HELPER(glue(glue(advsimd_, name), suffix))
 
 #define ADVSIMD_HALFOP(name) \
-float16 ADVSIMD_HELPER(name, h)(float16 a, float16 b, void *fpstp) \
+uint32_t ADVSIMD_HELPER(name, h)(uint32_t a, uint32_t b, void *fpstp) \
 { \
     float_status *fpst = fpstp; \
     return float16_ ## name(a, b, fpst);    \
@@ -703,7 +760,8 @@ ADVSIMD_HALFOP(mulx)
 ADVSIMD_TWOHALFOP(mulx)
 
 /* fused multiply-accumulate */
-float16 HELPER(advsimd_muladdh)(float16 a, float16 b, float16 c, void *fpstp)
+uint32_t HELPER(advsimd_muladdh)(uint32_t a, uint32_t b, uint32_t c,
+                                 void *fpstp)
 {
     float_status *fpst = fpstp;
     return float16_muladd(a, b, c, 0, fpst);
@@ -734,14 +792,14 @@ uint32_t HELPER(advsimd_muladd2h)(uint32_t two_a, uint32_t two_b,
 
 #define ADVSIMD_CMPRES(test) (test) ? 0xffff : 0
 
-uint32_t HELPER(advsimd_ceq_f16)(float16 a, float16 b, void *fpstp)
+uint32_t HELPER(advsimd_ceq_f16)(uint32_t a, uint32_t b, void *fpstp)
 {
     float_status *fpst = fpstp;
     int compare = float16_compare_quiet(a, b, fpst);
     return ADVSIMD_CMPRES(compare == float_relation_equal);
 }
 
-uint32_t HELPER(advsimd_cge_f16)(float16 a, float16 b, void *fpstp)
+uint32_t HELPER(advsimd_cge_f16)(uint32_t a, uint32_t b, void *fpstp)
 {
     float_status *fpst = fpstp;
     int compare = float16_compare(a, b, fpst);
@@ -749,14 +807,14 @@ uint32_t HELPER(advsimd_cge_f16)(float16 a, float16 b, void *fpstp)
                           compare == float_relation_equal);
 }
 
-uint32_t HELPER(advsimd_cgt_f16)(float16 a, float16 b, void *fpstp)
+uint32_t HELPER(advsimd_cgt_f16)(uint32_t a, uint32_t b, void *fpstp)
 {
     float_status *fpst = fpstp;
     int compare = float16_compare(a, b, fpst);
     return ADVSIMD_CMPRES(compare == float_relation_greater);
 }
 
-uint32_t HELPER(advsimd_acge_f16)(float16 a, float16 b, void *fpstp)
+uint32_t HELPER(advsimd_acge_f16)(uint32_t a, uint32_t b, void *fpstp)
 {
     float_status *fpst = fpstp;
     float16 f0 = float16_abs(a);
@@ -766,7 +824,7 @@ uint32_t HELPER(advsimd_acge_f16)(float16 a, float16 b, void *fpstp)
                           compare == float_relation_equal);
 }
 
-uint32_t HELPER(advsimd_acgt_f16)(float16 a, float16 b, void *fpstp)
+uint32_t HELPER(advsimd_acgt_f16)(uint32_t a, uint32_t b, void *fpstp)
 {
     float_status *fpst = fpstp;
     float16 f0 = float16_abs(a);
@@ -776,12 +834,12 @@ uint32_t HELPER(advsimd_acgt_f16)(float16 a, float16 b, void *fpstp)
 }
 
 /* round to integral */
-float16 HELPER(advsimd_rinth_exact)(float16 x, void *fp_status)
+uint32_t HELPER(advsimd_rinth_exact)(uint32_t x, void *fp_status)
 {
     return float16_round_to_int(x, fp_status);
 }
 
-float16 HELPER(advsimd_rinth)(float16 x, void *fp_status)
+uint32_t HELPER(advsimd_rinth)(uint32_t x, void *fp_status)
 {
     int old_flags = get_float_exception_flags(fp_status), new_flags;
     float16 ret;
@@ -805,7 +863,7 @@ float16 HELPER(advsimd_rinth)(float16 x, void *fp_status)
  * setting the mode appropriately before calling the helper.
  */
 
-uint32_t HELPER(advsimd_f16tosinth)(float16 a, void *fpstp)
+uint32_t HELPER(advsimd_f16tosinth)(uint32_t a, void *fpstp)
 {
     float_status *fpst = fpstp;
 
@@ -817,7 +875,7 @@ uint32_t HELPER(advsimd_f16tosinth)(float16 a, void *fpstp)
     return float16_to_int16(a, fpst);
 }
 
-uint32_t HELPER(advsimd_f16touinth)(float16 a, void *fpstp)
+uint32_t HELPER(advsimd_f16touinth)(uint32_t a, void *fpstp)
 {
     float_status *fpst = fpstp;
 
@@ -833,7 +891,7 @@ uint32_t HELPER(advsimd_f16touinth)(float16 a, void *fpstp)
  * Square Root and Reciprocal square root
  */
 
-float16 HELPER(sqrt_f16)(float16 a, void *fpstp)
+uint32_t HELPER(sqrt_f16)(uint32_t a, void *fpstp)
 {
     float_status *s = fpstp;
 

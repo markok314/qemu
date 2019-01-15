@@ -32,14 +32,6 @@
 #include <linux/virtio_net.h>
 #include <sys/vfs.h>
 
-/* GLIB version compatibility flags */
-#if !GLIB_CHECK_VERSION(2, 26, 0)
-#define G_TIME_SPAN_SECOND              (G_GINT64_CONSTANT(1000000))
-#endif
-
-#if GLIB_CHECK_VERSION(2, 28, 0)
-#define HAVE_MONOTONIC_TIME
-#endif
 
 #define QEMU_CMD_MEM    " -m %d -object memory-backend-file,id=mem,size=%dM," \
                         "mem-path=%s,share=on -numa node,memdev=mem"
@@ -150,8 +142,8 @@ typedef struct TestServer {
     int fds_num;
     int fds[VHOST_MEMORY_MAX_NREGIONS];
     VhostUserMemory memory;
-    CompatGMutex data_mutex;
-    CompatGCond data_cond;
+    GMutex data_mutex;
+    GCond data_cond;
     int log_fd;
     uint64_t rings;
     bool test_fail;
@@ -177,7 +169,7 @@ static char *get_qemu_cmd(TestServer *s,
                           int mem, enum test_memfd memfd, const char *mem_path,
                           const char *chr_opts, const char *extra)
 {
-    if (memfd == TEST_MEMFD_AUTO && qemu_memfd_check()) {
+    if (memfd == TEST_MEMFD_AUTO && qemu_memfd_check(0)) {
         memfd = TEST_MEMFD_YES;
     }
 
@@ -545,6 +537,7 @@ static gboolean _test_server_free(TestServer *server)
     g_free(server->mig_path);
 
     g_free(server->chr_name);
+    g_assert(server->bus);
     qpci_free_pc(server->bus);
 
     g_free(server);
@@ -642,21 +635,7 @@ test_migrate_source_check(GSource *source)
     return FALSE;
 }
 
-#if !GLIB_CHECK_VERSION(2,36,0)
-/* this callback is unnecessary with glib >2.36, the default
- * prepare for the source does the same */
-static gboolean
-test_migrate_source_prepare(GSource *source, gint *timeout)
-{
-    *timeout = -1;
-    return FALSE;
-}
-#endif
-
 GSourceFuncs test_migrate_source_funcs = {
-#if !GLIB_CHECK_VERSION(2,36,0)
-    .prepare = test_migrate_source_prepare,
-#endif
     .check = test_migrate_source_check,
 };
 
@@ -706,6 +685,7 @@ static void test_migrate(void)
     g_free(cmd);
 
     init_virtio_dev(s, 1u << VIRTIO_NET_F_MAC);
+    init_virtio_dev(dest, 1u << VIRTIO_NET_F_MAC);
     wait_for_fds(s);
     size = get_log_size(s);
     g_assert_cmpint(size, ==, (2 * 1024 * 1024) / (VHOST_LOG_PAGE * 8));
@@ -727,15 +707,11 @@ static void test_migrate(void)
     rsp = qmp("{ 'execute': 'migrate_set_speed',"
               "'arguments': { 'value': 10 } }");
     g_assert(qdict_haskey(rsp, "return"));
-    QDECREF(rsp);
+    qobject_unref(rsp);
 
-    cmd = g_strdup_printf("{ 'execute': 'migrate',"
-                          "'arguments': { 'uri': '%s' } }",
-                          uri);
-    rsp = qmp(cmd);
-    g_free(cmd);
+    rsp = qmp("{ 'execute': 'migrate', 'arguments': { 'uri': %s } }", uri);
     g_assert(qdict_haskey(rsp, "return"));
-    QDECREF(rsp);
+    qobject_unref(rsp);
 
     wait_for_log_fd(s);
 
@@ -751,7 +727,7 @@ static void test_migrate(void)
     rsp = qmp("{ 'execute': 'migrate_set_speed',"
               "'arguments': { 'value': 0 } }");
     g_assert(qdict_haskey(rsp, "return"));
-    QDECREF(rsp);
+    qobject_unref(rsp);
 
     qmp_eventwait("STOP");
 
@@ -761,6 +737,7 @@ static void test_migrate(void)
     read_guest_mem_server(dest);
 
     uninit_virtio_dev(s);
+    uninit_virtio_dev(dest);
 
     g_source_destroy(source);
     g_source_unref(source);
@@ -791,7 +768,6 @@ static void wait_for_rings_started(TestServer *s, size_t count)
     g_mutex_unlock(&s->data_mutex);
 }
 
-#if defined(CONFIG_HAS_GLIB_SUBPROCESS_TESTS)
 static inline void test_server_connect(TestServer *server)
 {
     test_server_create_chr(server, ",reconnect=1");
@@ -916,7 +892,6 @@ static void test_flags_mismatch(void)
     g_free(path);
 }
 
-#endif
 
 static void test_multiqueue(void)
 {
@@ -928,7 +903,7 @@ static void test_multiqueue(void)
     s->queues = 2;
     test_server_listen(s);
 
-    if (qemu_memfd_check()) {
+    if (qemu_memfd_check(0)) {
         cmd = g_strdup_printf(
             QEMU_CMD_MEMFD QEMU_CMD_CHR QEMU_CMD_NETDEV ",queues=%d "
             "-device virtio-net-pci,netdev=net0,mq=on,vectors=%d",
@@ -988,7 +963,7 @@ int main(int argc, char **argv)
     /* run the main loop thread so the chardev may operate */
     thread = g_thread_new(NULL, thread_function, loop);
 
-    if (qemu_memfd_check()) {
+    if (qemu_memfd_check(0)) {
         qtest_add_data_func("/vhost-user/read-guest-mem/memfd",
                             GINT_TO_POINTER(TEST_MEMFD_YES),
                             test_read_guest_mem);
@@ -998,7 +973,6 @@ int main(int argc, char **argv)
     qtest_add_func("/vhost-user/migrate", test_migrate);
     qtest_add_func("/vhost-user/multiqueue", test_multiqueue);
 
-#if defined(CONFIG_HAS_GLIB_SUBPROCESS_TESTS)
     /* keeps failing on build-system since Aug 15 2017 */
     if (getenv("QTEST_VHOST_USER_FIXME")) {
         qtest_add_func("/vhost-user/reconnect/subprocess",
@@ -1011,7 +985,6 @@ int main(int argc, char **argv)
                        test_flags_mismatch_subprocess);
         qtest_add_func("/vhost-user/flags-mismatch", test_flags_mismatch);
     }
-#endif
 
     ret = g_test_run();
 

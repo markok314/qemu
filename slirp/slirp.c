@@ -283,10 +283,11 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
                   bool in6_enabled,
                   struct in6_addr vprefix_addr6, uint8_t vprefix_len,
                   struct in6_addr vhost6, const char *vhostname,
+                  const char *tftp_server_name,
                   const char *tftp_path, const char *bootfile,
                   struct in_addr vdhcp_start, struct in_addr vnameserver,
                   struct in6_addr vnameserver6, const char **vdnssearch,
-                  void *opaque)
+                  const char *vdomainname, void *opaque)
 {
     Slirp *slirp = g_malloc0(sizeof(Slirp));
 
@@ -317,9 +318,11 @@ Slirp *slirp_init(int restricted, bool in_enabled, struct in_addr vnetwork,
     }
     slirp->tftp_prefix = g_strdup(tftp_path);
     slirp->bootp_filename = g_strdup(bootfile);
+    slirp->vdomainname = g_strdup(vdomainname);
     slirp->vdhcp_startaddr = vdhcp_start;
     slirp->vnameserver_addr = vnameserver;
     slirp->vnameserver_addr6 = vnameserver6;
+    slirp->tftp_server_name = g_strdup(tftp_server_name);
 
     if (vdnssearch) {
         translate_dnssearch(slirp, vdnssearch);
@@ -349,6 +352,7 @@ void slirp_cleanup(Slirp *slirp)
     g_free(slirp->vdnssearch);
     g_free(slirp->tftp_prefix);
     g_free(slirp->bootp_filename);
+    g_free(slirp->vdomainname);
     g_free(slirp);
 }
 
@@ -676,13 +680,13 @@ void slirp_pollfds_poll(GArray *pollfds, int select_error)
                         /* continue; */
                     } else {
                         ret = sowrite(so);
+                        if (ret > 0) {
+                            /* Call tcp_output in case we need to send a window
+                             * update to the guest, otherwise it will be stuck
+                             * until it sends a window probe. */
+                            tcp_output(sototcpcb(so));
+                        }
                     }
-                    /*
-                     * XXXXX If we wrote something (a lot), there
-                     * could be a need for a window update.
-                     * In the worst case, the remote will send
-                     * a window probe to get things going again
-                     */
                 }
 
                 /*
@@ -1087,6 +1091,17 @@ ssize_t slirp_send(struct socket *so, const void *buf, size_t len, int flags)
         return len;
     }
 
+    if (so->s == -1) {
+        /*
+         * This should in theory not happen but it is hard to be
+         * sure because some code paths will end up with so->s == -1
+         * on a failure but don't dispose of the struct socket.
+         * Check specifically, so we don't pass -1 to send().
+         */
+        errno = EBADF;
+        return -1;
+    }
+
     return send(so->s, buf, len, flags);
 }
 
@@ -1461,9 +1476,6 @@ static int slirp_state_load(QEMUFile *f, void *opaque, int version_id)
     while (qemu_get_byte(f)) {
         int ret;
         struct socket *so = socreate(slirp);
-
-        if (!so)
-            return -ENOMEM;
 
         ret = vmstate_load_state(f, &vmstate_slirp_socket, so, version_id);
 

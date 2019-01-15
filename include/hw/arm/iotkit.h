@@ -28,6 +28,9 @@
  *  + QOM property "EXP_NUMIRQ" sets the number of expansion interrupts
  *  + Named GPIO inputs "EXP_IRQ" 0..n are the expansion interrupts, which
  *    are wired to the NVIC lines 32 .. n+32
+ *  + sysbus MMIO region 0 is the "AHB Slave Expansion" which allows
+ *    bus master devices in the board model to make transactions into
+ *    all the devices and memory areas in the IoTKit
  * Controlling up to 4 AHB expansion PPBs which a system using the IoTKit
  * might provide:
  *  + named GPIO outputs apb_ppcexp{0,1,2,3}_nonsec[0..15]
@@ -42,6 +45,14 @@
  *  + named GPIO outputs ahb_ppcexp{0,1,2,3}_irq_enable
  *  + named GPIO outputs ahb_ppcexp{0,1,2,3}_irq_clear
  *  + named GPIO inputs ahb_ppcexp{0,1,2,3}_irq_status
+ * Controlling each of the 16 expansion MPCs which a system using the IoTKit
+ * might provide:
+ *  + named GPIO inputs mpcexp_status[0..15]
+ * Controlling each of the 16 expansion MSCs which a system using the IoTKit
+ * might provide:
+ *  + named GPIO inputs mscexp_status[0..15]
+ *  + named GPIO outputs mscexp_clear[0..15]
+ *  + named GPIO outputs mscexp_ns[0..15]
  */
 
 #ifndef IOTKIT_H
@@ -51,8 +62,12 @@
 #include "hw/arm/armv7m.h"
 #include "hw/misc/iotkit-secctl.h"
 #include "hw/misc/tz-ppc.h"
+#include "hw/misc/tz-mpc.h"
 #include "hw/timer/cmsdk-apb-timer.h"
-#include "hw/misc/unimp.h"
+#include "hw/timer/cmsdk-apb-dualtimer.h"
+#include "hw/watchdog/cmsdk-apb-watchdog.h"
+#include "hw/misc/iotkit-sysctl.h"
+#include "hw/misc/iotkit-sysinfo.h"
 #include "hw/or-irq.h"
 #include "hw/core/split-irq.h"
 
@@ -74,14 +89,25 @@ typedef struct IoTKit {
     IoTKitSecCtl secctl;
     TZPPC apb_ppc0;
     TZPPC apb_ppc1;
+    TZMPC mpc;
     CMSDKAPBTIMER timer0;
     CMSDKAPBTIMER timer1;
+    CMSDKAPBTIMER s32ktimer;
     qemu_or_irq ppc_irq_orgate;
     SplitIRQ sec_resp_splitter;
     SplitIRQ ppc_irq_splitter[NUM_PPCS];
+    SplitIRQ mpc_irq_splitter[IOTS_NUM_EXP_MPC + IOTS_NUM_MPC];
+    qemu_or_irq mpc_irq_orgate;
+    qemu_or_irq nmi_orgate;
 
-    UnimplementedDeviceState dualtimer;
-    UnimplementedDeviceState s32ktimer;
+    CMSDKAPBDualTimer dualtimer;
+
+    CMSDKAPBWatchdog s32kwatchdog;
+    CMSDKAPBWatchdog nswatchdog;
+    CMSDKAPBWatchdog swatchdog;
+
+    IoTKitSysCtl sysctl;
+    IoTKitSysCtl sysinfo;
 
     MemoryRegion container;
     MemoryRegion alias1;
@@ -97,6 +123,7 @@ typedef struct IoTKit {
     qemu_irq nsc_cfg_in;
 
     qemu_irq irq_status_in[NUM_EXTERNAL_PPCS];
+    qemu_irq mpcexp_status_in[IOTS_NUM_EXP_MPC];
 
     uint32_t nsccfg;
 

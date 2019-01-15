@@ -32,7 +32,7 @@ typedef struct QDictCmpData {
 } QDictCmpData;
 
 TestEventData *test_event_data;
-static CompatGMutex test_event_lock;
+static GMutex test_event_lock;
 
 /* Only compares bool, int, string */
 static
@@ -95,7 +95,7 @@ static bool qdict_cmp_simple(QDict *a, QDict *b)
 
 /* This function is hooked as final emit function, which can verify the
    correctness. */
-static void event_test_emit(test_QAPIEvent event, QDict *d, Error **errp)
+static void event_test_emit(test_QAPIEvent event, QDict *d)
 {
     QDict *t;
     int64_t s, ms;
@@ -133,7 +133,7 @@ static void event_prepare(TestEventData *data,
 static void event_teardown(TestEventData *data,
                            const void *unused)
 {
-    QDECREF(data->expect);
+    qobject_unref(data->expect);
     test_event_data = NULL;
 
     g_mutex_unlock(&test_event_lock);
@@ -156,7 +156,7 @@ static void test_event_a(TestEventData *data,
     QDict *d;
     d = data->expect;
     qdict_put_str(d, "event", "EVENT_A");
-    qapi_event_send_event_a(&error_abort);
+    qapi_event_send_event_a();
 }
 
 static void test_event_b(TestEventData *data,
@@ -165,7 +165,7 @@ static void test_event_b(TestEventData *data,
     QDict *d;
     d = data->expect;
     qdict_put_str(d, "event", "EVENT_B");
-    qapi_event_send_event_b(&error_abort);
+    qapi_event_send_event_b();
 }
 
 static void test_event_c(TestEventData *data,
@@ -191,7 +191,7 @@ static void test_event_c(TestEventData *data,
     qdict_put_str(d, "event", "EVENT_C");
     qdict_put(d, "data", d_data);
 
-    qapi_event_send_event_c(true, 1, true, &b, "test2", &error_abort);
+    qapi_event_send_event_c(true, 1, true, &b, "test2");
 
     g_free(b.string);
 }
@@ -233,8 +233,7 @@ static void test_event_d(TestEventData *data,
     qdict_put_str(d, "event", "EVENT_D");
     qdict_put(d, "data", d_data);
 
-    qapi_event_send_event_d(&a, "test3", false, NULL, true, ENUM_ONE_VALUE3,
-                           &error_abort);
+    qapi_event_send_event_d(&a, "test3", false, NULL, true, ENUM_ONE_VALUE3);
 
     g_free(struct1.string);
     g_free(a.string);
@@ -242,12 +241,6 @@ static void test_event_d(TestEventData *data,
 
 int main(int argc, char **argv)
 {
-#if !GLIB_CHECK_VERSION(2, 31, 0)
-    if (!g_thread_supported()) {
-       g_thread_init(NULL);
-    }
-#endif
-
     qmp_event_set_func_emit(event_test_emit);
 
     g_test_init(&argc, &argv, NULL);

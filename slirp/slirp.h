@@ -193,6 +193,7 @@ struct Slirp {
     char *bootp_filename;
     size_t vdnssearch_len;
     uint8_t *vdnssearch;
+    char *vdomainname;
 
     /* tcp states */
     struct socket tcb;
@@ -211,6 +212,7 @@ struct Slirp {
     /* tftp states */
     char *tftp_prefix;
     struct tftp_session tftp_sessions[TFTP_SESSIONS_MAX];
+    char *tftp_server_name;
 
     ArpTable arp_table;
     NdpTable ndp_table;

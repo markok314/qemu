@@ -21,6 +21,7 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "internal.h"
+#include "tcg_s390x.h"
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 #include "exec/helper-proto.h"
@@ -39,14 +40,6 @@
     (to < from                      \
      ? (mask / (from / to)) & to    \
      : (mask & from) * (to / from))
-
-static void ieee_exception(CPUS390XState *env, uint32_t dxc, uintptr_t retaddr)
-{
-    /* Install the DXC code.  */
-    env->fpc = (env->fpc & ~0xff00) | (dxc << 8);
-    /* Trap.  */
-    s390_program_interrupt(env, PGM_DATA, ILEN_AUTO, retaddr);
-}
 
 /* Should be called after any operation that may raise IEEE exceptions.  */
 static void handle_exceptions(CPUS390XState *env, uintptr_t retaddr)
@@ -75,7 +68,7 @@ static void handle_exceptions(CPUS390XState *env, uintptr_t retaddr)
     /* Send signals for enabled exceptions.  */
     s390_exc &= env->fpc >> 24;
     if (s390_exc) {
-        ieee_exception(env, s390_exc, retaddr);
+        tcg_s390_data_exception(env, s390_exc, retaddr);
     }
 }
 
@@ -269,7 +262,7 @@ uint64_t HELPER(ldeb)(CPUS390XState *env, uint64_t f2)
 {
     float64 ret = float32_to_float64(f2, &env->fpu_status);
     handle_exceptions(env, GETPC());
-    return float64_maybe_silence_nan(ret, &env->fpu_status);
+    return ret;
 }
 
 /* convert 128-bit float to 64-bit float */
@@ -277,7 +270,7 @@ uint64_t HELPER(ldxb)(CPUS390XState *env, uint64_t ah, uint64_t al)
 {
     float64 ret = float128_to_float64(make_float128(ah, al), &env->fpu_status);
     handle_exceptions(env, GETPC());
-    return float64_maybe_silence_nan(ret, &env->fpu_status);
+    return ret;
 }
 
 /* convert 64-bit float to 128-bit float */
@@ -285,7 +278,7 @@ uint64_t HELPER(lxdb)(CPUS390XState *env, uint64_t f2)
 {
     float128 ret = float64_to_float128(f2, &env->fpu_status);
     handle_exceptions(env, GETPC());
-    return RET128(float128_maybe_silence_nan(ret, &env->fpu_status));
+    return RET128(ret);
 }
 
 /* convert 32-bit float to 128-bit float */
@@ -293,7 +286,7 @@ uint64_t HELPER(lxeb)(CPUS390XState *env, uint64_t f2)
 {
     float128 ret = float32_to_float128(f2, &env->fpu_status);
     handle_exceptions(env, GETPC());
-    return RET128(float128_maybe_silence_nan(ret, &env->fpu_status));
+    return RET128(ret);
 }
 
 /* convert 64-bit float to 32-bit float */
@@ -301,7 +294,7 @@ uint64_t HELPER(ledb)(CPUS390XState *env, uint64_t f2)
 {
     float32 ret = float64_to_float32(f2, &env->fpu_status);
     handle_exceptions(env, GETPC());
-    return float32_maybe_silence_nan(ret, &env->fpu_status);
+    return ret;
 }
 
 /* convert 128-bit float to 32-bit float */
@@ -309,7 +302,7 @@ uint64_t HELPER(lexb)(CPUS390XState *env, uint64_t ah, uint64_t al)
 {
     float32 ret = float128_to_float32(make_float128(ah, al), &env->fpu_status);
     handle_exceptions(env, GETPC());
-    return float32_maybe_silence_nan(ret, &env->fpu_status);
+    return ret;
 }
 
 /* 32-bit FP compare */
@@ -773,6 +766,6 @@ void HELPER(sfas)(CPUS390XState *env, uint64_t val)
        is also 1, a simulated-iee-exception trap occurs.  */
     s390_exc = (signalling >> 16) & (source >> 24);
     if (s390_exc) {
-        ieee_exception(env, s390_exc | 3, GETPC());
+        tcg_s390_data_exception(env, s390_exc | 3, GETPC());
     }
 }

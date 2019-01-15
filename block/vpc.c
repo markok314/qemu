@@ -26,6 +26,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "block/block_int.h"
+#include "block/qdict.h"
 #include "sysemu/block-backend.h"
 #include "qemu/module.h"
 #include "qemu/option.h"
@@ -283,9 +284,11 @@ static int vpc_open(BlockDriverState *bs, QDict *options, int flags,
 
     checksum = be32_to_cpu(footer->checksum);
     footer->checksum = 0;
-    if (vpc_checksum(s->footer_buf, HEADER_SIZE) != checksum)
-        fprintf(stderr, "block-vpc: The header checksum of '%s' is "
-            "incorrect.\n", bs->filename);
+    if (vpc_checksum(s->footer_buf, HEADER_SIZE) != checksum) {
+        error_setg(errp, "Incorrect header checksum");
+        ret = -EINVAL;
+        goto fail;
+    }
 
     /* Write 'checksum' back to footer, or else will leave it with zero. */
     footer->checksum = cpu_to_be32(checksum);
@@ -453,10 +456,12 @@ static int vpc_open(BlockDriverState *bs, QDict *options, int flags,
     }
 
     qemu_co_mutex_init(&s->lock);
+    qemu_opts_del(opts);
 
     return 0;
 
 fail:
+    qemu_opts_del(opts);
     qemu_vfree(s->pagetable);
 #ifdef CACHE
     g_free(s->pageentry_u8);
@@ -1080,8 +1085,7 @@ static int coroutine_fn vpc_co_create_opts(const char *filename,
                                            QemuOpts *opts, Error **errp)
 {
     BlockdevCreateOptions *create_options = NULL;
-    QDict *qdict = NULL;
-    QObject *qobj;
+    QDict *qdict;
     Visitor *v;
     BlockDriverState *bs = NULL;
     Error *local_err = NULL;
@@ -1118,15 +1122,12 @@ static int coroutine_fn vpc_co_create_opts(const char *filename,
     qdict_put_str(qdict, "driver", "vpc");
     qdict_put_str(qdict, "file", bs->node_name);
 
-    qobj = qdict_crumple(qdict, errp);
-    QDECREF(qdict);
-    qdict = qobject_to(QDict, qobj);
-    if (qdict == NULL) {
+    v = qobject_input_visitor_new_flat_confused(qdict, errp);
+    if (!v) {
         ret = -EINVAL;
         goto fail;
     }
 
-    v = qobject_input_visitor_new_keyval(QOBJECT(qdict));
     visit_type_BlockdevCreateOptions(v, NULL, &create_options, &local_err);
     visit_free(v);
 
@@ -1157,7 +1158,7 @@ static int coroutine_fn vpc_co_create_opts(const char *filename,
     ret = vpc_co_create(create_options, errp);
 
 fail:
-    QDECREF(qdict);
+    qobject_unref(qdict);
     bdrv_unref(bs);
     qapi_free_BlockdevCreateOptions(create_options);
     return ret;

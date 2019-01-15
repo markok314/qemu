@@ -416,6 +416,8 @@ int tcp_fconnect(struct socket *so, unsigned short af)
     socket_set_fast_reuse(s);
     opt = 1;
     qemu_setsockopt(s, SOL_SOCKET, SO_OOBINLINE, &opt, sizeof(opt));
+    opt = 1;
+    qemu_setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 
     addr = so->fhost.ss;
     DEBUG_CALL(" connect()ing")
@@ -467,13 +469,8 @@ void tcp_connect(struct socket *inso)
         so = inso;
     } else {
         so = socreate(slirp);
-        if (so == NULL) {
-            /* If it failed, get rid of the pending connection */
-            closesocket(accept(inso->s, (struct sockaddr *)&addr, &addrlen));
-            return;
-        }
         if (tcp_attach(so) < 0) {
-            free(so); /* NOT sofree */
+            g_free(so); /* NOT sofree */
             return;
         }
         so->lhost = inso->lhost;

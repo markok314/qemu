@@ -146,7 +146,7 @@ static void cmos_get_date_time(QTestState *s, struct tm *date)
 
 static QTestState *m48t59_qtest_start(void)
 {
-    return qtest_startf("-M %s -rtc clock=vm", base_machine);
+    return qtest_initf("-M %s -rtc clock=vm", base_machine);
 }
 
 static void bcd_check_time(void)
@@ -256,8 +256,6 @@ static void base_setup(void)
 
 int main(int argc, char **argv)
 {
-    int ret;
-
     base_setup();
 
     g_test_init(&argc, &argv, NULL);
@@ -267,7 +265,5 @@ int main(int argc, char **argv)
         qtest_add_func("/rtc/bcd-check-time", bcd_check_time);
     }
     qtest_add_func("/rtc/fuzz-registers", fuzz_registers);
-    ret = g_test_run();
-
-    return ret;
+    return g_test_run();
 }

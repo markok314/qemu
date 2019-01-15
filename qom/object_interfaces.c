@@ -65,12 +65,6 @@ Object *user_creatable_add_type(const char *type, const char *id,
 
     assert(qdict);
     obj = object_new(type);
-    if (object_property_find(obj, "id", NULL)) {
-        object_property_set_str(obj, id, "id", &local_err);
-        if (local_err) {
-            goto out;
-        }
-    }
     visit_start_struct(v, NULL, NULL, 0, &local_err);
     if (local_err) {
         goto out;
@@ -140,27 +134,25 @@ Object *user_creatable_add_opts(QemuOpts *opts, Error **errp)
     qemu_opts_set_id(opts, (char *) id);
     qemu_opt_set(opts, "qom-type", type, &error_abort);
     g_free(type);
-    QDECREF(pdict);
+    qobject_unref(pdict);
     return obj;
 }
 
 
 int user_creatable_add_opts_foreach(void *opaque, QemuOpts *opts, Error **errp)
 {
-    bool (*type_predicate)(const char *) = opaque;
+    bool (*type_opt_predicate)(const char *, QemuOpts *) = opaque;
     Object *obj = NULL;
-    Error *err = NULL;
     const char *type;
 
     type = qemu_opt_get(opts, "qom-type");
-    if (type && type_predicate &&
-        !type_predicate(type)) {
+    if (type && type_opt_predicate &&
+        !type_opt_predicate(type, opts)) {
         return 0;
     }
 
-    obj = user_creatable_add_opts(opts, &err);
+    obj = user_creatable_add_opts(opts, errp);
     if (!obj) {
-        error_report_err(err);
         return -1;
     }
     object_unref(obj);

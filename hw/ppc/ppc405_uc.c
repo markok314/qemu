@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include "qemu/osdep.h"
+#include "qemu/units.h"
 #include "qapi/error.h"
 #include "qemu-common.h"
 #include "cpu.h"
@@ -282,7 +283,7 @@ struct ppc4xx_opba_t {
     uint8_t pr;
 };
 
-static uint32_t opba_readb (void *opaque, hwaddr addr)
+static uint64_t opba_readb(void *opaque, hwaddr addr, unsigned size)
 {
     ppc4xx_opba_t *opba;
     uint32_t ret;
@@ -306,8 +307,8 @@ static uint32_t opba_readb (void *opaque, hwaddr addr)
     return ret;
 }
 
-static void opba_writeb (void *opaque,
-                         hwaddr addr, uint32_t value)
+static void opba_writeb(void *opaque, hwaddr addr, uint64_t value,
+                        unsigned size)
 {
     ppc4xx_opba_t *opba;
 
@@ -327,61 +328,14 @@ static void opba_writeb (void *opaque,
         break;
     }
 }
-
-static uint32_t opba_readw (void *opaque, hwaddr addr)
-{
-    uint32_t ret;
-
-#ifdef DEBUG_OPBA
-    printf("%s: addr " TARGET_FMT_plx "\n", __func__, addr);
-#endif
-    ret = opba_readb(opaque, addr) << 8;
-    ret |= opba_readb(opaque, addr + 1);
-
-    return ret;
-}
-
-static void opba_writew (void *opaque,
-                         hwaddr addr, uint32_t value)
-{
-#ifdef DEBUG_OPBA
-    printf("%s: addr " TARGET_FMT_plx " val %08" PRIx32 "\n", __func__, addr,
-           value);
-#endif
-    opba_writeb(opaque, addr, value >> 8);
-    opba_writeb(opaque, addr + 1, value);
-}
-
-static uint32_t opba_readl (void *opaque, hwaddr addr)
-{
-    uint32_t ret;
-
-#ifdef DEBUG_OPBA
-    printf("%s: addr " TARGET_FMT_plx "\n", __func__, addr);
-#endif
-    ret = opba_readb(opaque, addr) << 24;
-    ret |= opba_readb(opaque, addr + 1) << 16;
-
-    return ret;
-}
-
-static void opba_writel (void *opaque,
-                         hwaddr addr, uint32_t value)
-{
-#ifdef DEBUG_OPBA
-    printf("%s: addr " TARGET_FMT_plx " val %08" PRIx32 "\n", __func__, addr,
-           value);
-#endif
-    opba_writeb(opaque, addr, value >> 24);
-    opba_writeb(opaque, addr + 1, value >> 16);
-}
-
 static const MemoryRegionOps opba_ops = {
-    .old_mmio = {
-        .read = { opba_readb, opba_readw, opba_readl, },
-        .write = { opba_writeb, opba_writew, opba_writel, },
-    },
-    .endianness = DEVICE_NATIVE_ENDIAN,
+    .read = opba_readb,
+    .write = opba_writeb,
+    .impl.min_access_size = 1,
+    .impl.max_access_size = 1,
+    .valid.min_access_size = 1,
+    .valid.max_access_size = 4,
+    .endianness = DEVICE_BIG_ENDIAN,
 };
 
 static void ppc4xx_opba_reset (void *opaque)
@@ -749,65 +703,27 @@ struct ppc405_gpio_t {
     uint32_t isr1l;
 };
 
-static uint32_t ppc405_gpio_readb (void *opaque, hwaddr addr)
+static uint64_t ppc405_gpio_read(void *opaque, hwaddr addr, unsigned size)
 {
 #ifdef DEBUG_GPIO
-    printf("%s: addr " TARGET_FMT_plx "\n", __func__, addr);
+    printf("%s: addr " TARGET_FMT_plx " size %d\n", __func__, addr, size);
 #endif
 
     return 0;
 }
 
-static void ppc405_gpio_writeb (void *opaque,
-                                hwaddr addr, uint32_t value)
+static void ppc405_gpio_write(void *opaque, hwaddr addr, uint64_t value,
+                              unsigned size)
 {
 #ifdef DEBUG_GPIO
-    printf("%s: addr " TARGET_FMT_plx " val %08" PRIx32 "\n", __func__, addr,
-           value);
-#endif
-}
-
-static uint32_t ppc405_gpio_readw (void *opaque, hwaddr addr)
-{
-#ifdef DEBUG_GPIO
-    printf("%s: addr " TARGET_FMT_plx "\n", __func__, addr);
-#endif
-
-    return 0;
-}
-
-static void ppc405_gpio_writew (void *opaque,
-                                hwaddr addr, uint32_t value)
-{
-#ifdef DEBUG_GPIO
-    printf("%s: addr " TARGET_FMT_plx " val %08" PRIx32 "\n", __func__, addr,
-           value);
-#endif
-}
-
-static uint32_t ppc405_gpio_readl (void *opaque, hwaddr addr)
-{
-#ifdef DEBUG_GPIO
-    printf("%s: addr " TARGET_FMT_plx "\n", __func__, addr);
-#endif
-
-    return 0;
-}
-
-static void ppc405_gpio_writel (void *opaque,
-                                hwaddr addr, uint32_t value)
-{
-#ifdef DEBUG_GPIO
-    printf("%s: addr " TARGET_FMT_plx " val %08" PRIx32 "\n", __func__, addr,
-           value);
+    printf("%s: addr " TARGET_FMT_plx " size %d val %08" PRIx32 "\n",
+           __func__, addr, size, value);
 #endif
 }
 
 static const MemoryRegionOps ppc405_gpio_ops = {
-    .old_mmio = {
-        .read = { ppc405_gpio_readb, ppc405_gpio_readw, ppc405_gpio_readl, },
-        .write = { ppc405_gpio_writeb, ppc405_gpio_writew, ppc405_gpio_writel, },
-    },
+    .read = ppc405_gpio_read,
+    .write = ppc405_gpio_write,
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
@@ -983,10 +899,10 @@ static void ppc405_ocm_init(CPUPPCState *env)
 
     ocm = g_malloc0(sizeof(ppc405_ocm_t));
     /* XXX: Size is 4096 or 0x04000000 */
-    memory_region_init_ram(&ocm->isarc_ram, NULL, "ppc405.ocm", 4096,
+    memory_region_init_ram(&ocm->isarc_ram, NULL, "ppc405.ocm", 4 * KiB,
                            &error_fatal);
-    memory_region_init_alias(&ocm->dsarc_ram, NULL, "ppc405.dsarc", &ocm->isarc_ram,
-                             0, 4096);
+    memory_region_init_alias(&ocm->dsarc_ram, NULL, "ppc405.dsarc",
+                             &ocm->isarc_ram, 0, 4 * KiB);
     qemu_register_reset(&ocm_reset, ocm);
     ppc_dcr_register(env, OCM0_ISARC,
                      ocm, &dcr_read_ocm, &dcr_write_ocm);
@@ -1015,44 +931,6 @@ struct ppc4xx_gpt_t {
     uint32_t comp[5];
     uint32_t mask[5];
 };
-
-static uint32_t ppc4xx_gpt_readb (void *opaque, hwaddr addr)
-{
-#ifdef DEBUG_GPT
-    printf("%s: addr " TARGET_FMT_plx "\n", __func__, addr);
-#endif
-    /* XXX: generate a bus fault */
-    return -1;
-}
-
-static void ppc4xx_gpt_writeb (void *opaque,
-                               hwaddr addr, uint32_t value)
-{
-#ifdef DEBUG_I2C
-    printf("%s: addr " TARGET_FMT_plx " val %08" PRIx32 "\n", __func__, addr,
-           value);
-#endif
-    /* XXX: generate a bus fault */
-}
-
-static uint32_t ppc4xx_gpt_readw (void *opaque, hwaddr addr)
-{
-#ifdef DEBUG_GPT
-    printf("%s: addr " TARGET_FMT_plx "\n", __func__, addr);
-#endif
-    /* XXX: generate a bus fault */
-    return -1;
-}
-
-static void ppc4xx_gpt_writew (void *opaque,
-                               hwaddr addr, uint32_t value)
-{
-#ifdef DEBUG_I2C
-    printf("%s: addr " TARGET_FMT_plx " val %08" PRIx32 "\n", __func__, addr,
-           value);
-#endif
-    /* XXX: generate a bus fault */
-}
 
 static int ppc4xx_gpt_compare (ppc4xx_gpt_t *gpt, int n)
 {
@@ -1106,7 +984,7 @@ static void ppc4xx_gpt_compute_timer (ppc4xx_gpt_t *gpt)
     /* XXX: TODO */
 }
 
-static uint32_t ppc4xx_gpt_readl (void *opaque, hwaddr addr)
+static uint64_t ppc4xx_gpt_read(void *opaque, hwaddr addr, unsigned size)
 {
     ppc4xx_gpt_t *gpt;
     uint32_t ret;
@@ -1161,8 +1039,8 @@ static uint32_t ppc4xx_gpt_readl (void *opaque, hwaddr addr)
     return ret;
 }
 
-static void ppc4xx_gpt_writel (void *opaque,
-                               hwaddr addr, uint32_t value)
+static void ppc4xx_gpt_write(void *opaque, hwaddr addr, uint64_t value,
+                             unsigned size)
 {
     ppc4xx_gpt_t *gpt;
     int idx;
@@ -1224,10 +1102,10 @@ static void ppc4xx_gpt_writel (void *opaque,
 }
 
 static const MemoryRegionOps gpt_ops = {
-    .old_mmio = {
-        .read = { ppc4xx_gpt_readb, ppc4xx_gpt_readw, ppc4xx_gpt_readl, },
-        .write = { ppc4xx_gpt_writeb, ppc4xx_gpt_writew, ppc4xx_gpt_writel, },
-    },
+    .read = ppc4xx_gpt_read,
+    .write = ppc4xx_gpt_write,
+    .valid.min_access_size = 4,
+    .valid.max_access_size = 4,
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
@@ -1660,14 +1538,14 @@ CPUPPCState *ppc405cr_init(MemoryRegion *address_space_mem,
     dma_irqs[3] = pic[23];
     ppc405_dma_init(env, dma_irqs);
     /* Serial ports */
-    if (serial_hds[0] != NULL) {
+    if (serial_hd(0) != NULL) {
         serial_mm_init(address_space_mem, 0xef600300, 0, pic[0],
-                       PPC_SERIAL_MM_BAUDBASE, serial_hds[0],
+                       PPC_SERIAL_MM_BAUDBASE, serial_hd(0),
                        DEVICE_BIG_ENDIAN);
     }
-    if (serial_hds[1] != NULL) {
+    if (serial_hd(1) != NULL) {
         serial_mm_init(address_space_mem, 0xef600400, 0, pic[1],
-                       PPC_SERIAL_MM_BAUDBASE, serial_hds[1],
+                       PPC_SERIAL_MM_BAUDBASE, serial_hd(1),
                        DEVICE_BIG_ENDIAN);
     }
     /* IIC controller */
@@ -2023,14 +1901,14 @@ CPUPPCState *ppc405ep_init(MemoryRegion *address_space_mem,
     /* GPIO */
     ppc405_gpio_init(0xef600700);
     /* Serial ports */
-    if (serial_hds[0] != NULL) {
+    if (serial_hd(0) != NULL) {
         serial_mm_init(address_space_mem, 0xef600300, 0, pic[0],
-                       PPC_SERIAL_MM_BAUDBASE, serial_hds[0],
+                       PPC_SERIAL_MM_BAUDBASE, serial_hd(0),
                        DEVICE_BIG_ENDIAN);
     }
-    if (serial_hds[1] != NULL) {
+    if (serial_hd(1) != NULL) {
         serial_mm_init(address_space_mem, 0xef600400, 0, pic[1],
-                       PPC_SERIAL_MM_BAUDBASE, serial_hds[1],
+                       PPC_SERIAL_MM_BAUDBASE, serial_hd(1),
                        DEVICE_BIG_ENDIAN);
     }
     /* OCM */

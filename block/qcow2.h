@@ -27,6 +27,7 @@
 
 #include "crypto/block.h"
 #include "qemu/coroutine.h"
+#include "qemu/units.h"
 
 //#define DEBUG_ALLOC
 //#define DEBUG_ALLOC2
@@ -41,13 +42,19 @@
 #define QCOW_MAX_CRYPT_CLUSTERS 32
 #define QCOW_MAX_SNAPSHOTS 65536
 
+/* Field widths in qcow2 mean normal cluster offsets cannot reach
+ * 64PB; depending on cluster size, compressed clusters can have a
+ * smaller limit (64PB for up to 16k clusters, then ramps down to
+ * 512TB for 2M clusters).  */
+#define QCOW_MAX_CLUSTER_OFFSET ((1ULL << 56) - 1)
+
 /* 8 MB refcount table is enough for 2 PB images at 64k cluster size
  * (128 GB for 512 byte clusters, 2 EB for 2 MB clusters) */
-#define QCOW_MAX_REFTABLE_SIZE 0x800000
+#define QCOW_MAX_REFTABLE_SIZE S_8MiB
 
 /* 32 MB L1 table is enough for 2 PB images at 64k cluster size
  * (128 GB for 512 byte clusters, 2 EB for 2 MB clusters) */
-#define QCOW_MAX_L1_SIZE 0x2000000
+#define QCOW_MAX_L1_SIZE S_32MiB
 
 /* Allow for an average of 1k per snapshot table entry, should be plenty of
  * space for snapshot names and IDs */
@@ -73,16 +80,16 @@
 /* Must be at least 4 to cover all cases of refcount table growth */
 #define MIN_REFCOUNT_CACHE_SIZE 4 /* clusters */
 
-/* Whichever is more */
-#define DEFAULT_L2_CACHE_CLUSTERS 8 /* clusters */
-#define DEFAULT_L2_CACHE_BYTE_SIZE 1048576 /* bytes */
+#ifdef CONFIG_LINUX
+#define DEFAULT_L2_CACHE_MAX_SIZE S_32MiB
+#define DEFAULT_CACHE_CLEAN_INTERVAL 600  /* seconds */
+#else
+#define DEFAULT_L2_CACHE_MAX_SIZE S_8MiB
+/* Cache clean interval is currently available only on Linux, so must be 0 */
+#define DEFAULT_CACHE_CLEAN_INTERVAL 0
+#endif
 
-/* The refblock cache needs only a fourth of the L2 cache size to cover as many
- * clusters */
-#define DEFAULT_L2_REFCOUNT_SIZE_RATIO 4
-
-#define DEFAULT_CLUSTER_SIZE 65536
-
+#define DEFAULT_CLUSTER_SIZE S_64KiB
 
 #define QCOW2_OPT_LAZY_REFCOUNTS "lazy-refcounts"
 #define QCOW2_OPT_DISCARD_REQUEST "pass-discard-request"
@@ -98,6 +105,7 @@
 #define QCOW2_OPT_OVERLAP_SNAPSHOT_TABLE "overlap-check.snapshot-table"
 #define QCOW2_OPT_OVERLAP_INACTIVE_L1 "overlap-check.inactive-l1"
 #define QCOW2_OPT_OVERLAP_INACTIVE_L2 "overlap-check.inactive-l2"
+#define QCOW2_OPT_OVERLAP_BITMAP_DIRECTORY "overlap-check.bitmap-directory"
 #define QCOW2_OPT_CACHE_SIZE "cache-size"
 #define QCOW2_OPT_L2_CACHE_SIZE "l2-cache-size"
 #define QCOW2_OPT_L2_CACHE_ENTRY_SIZE "l2-cache-entry-size"
@@ -329,6 +337,9 @@ typedef struct BDRVQcow2State {
      * override) */
     char *image_backing_file;
     char *image_backing_format;
+
+    CoQueue compress_wait_queue;
+    int nb_compress_threads;
 } BDRVQcow2State;
 
 typedef struct Qcow2COWRegion {
@@ -400,34 +411,36 @@ typedef enum QCow2ClusterType {
 } QCow2ClusterType;
 
 typedef enum QCow2MetadataOverlap {
-    QCOW2_OL_MAIN_HEADER_BITNR    = 0,
-    QCOW2_OL_ACTIVE_L1_BITNR      = 1,
-    QCOW2_OL_ACTIVE_L2_BITNR      = 2,
-    QCOW2_OL_REFCOUNT_TABLE_BITNR = 3,
-    QCOW2_OL_REFCOUNT_BLOCK_BITNR = 4,
-    QCOW2_OL_SNAPSHOT_TABLE_BITNR = 5,
-    QCOW2_OL_INACTIVE_L1_BITNR    = 6,
-    QCOW2_OL_INACTIVE_L2_BITNR    = 7,
+    QCOW2_OL_MAIN_HEADER_BITNR      = 0,
+    QCOW2_OL_ACTIVE_L1_BITNR        = 1,
+    QCOW2_OL_ACTIVE_L2_BITNR        = 2,
+    QCOW2_OL_REFCOUNT_TABLE_BITNR   = 3,
+    QCOW2_OL_REFCOUNT_BLOCK_BITNR   = 4,
+    QCOW2_OL_SNAPSHOT_TABLE_BITNR   = 5,
+    QCOW2_OL_INACTIVE_L1_BITNR      = 6,
+    QCOW2_OL_INACTIVE_L2_BITNR      = 7,
+    QCOW2_OL_BITMAP_DIRECTORY_BITNR = 8,
 
-    QCOW2_OL_MAX_BITNR            = 8,
+    QCOW2_OL_MAX_BITNR              = 9,
 
-    QCOW2_OL_NONE           = 0,
-    QCOW2_OL_MAIN_HEADER    = (1 << QCOW2_OL_MAIN_HEADER_BITNR),
-    QCOW2_OL_ACTIVE_L1      = (1 << QCOW2_OL_ACTIVE_L1_BITNR),
-    QCOW2_OL_ACTIVE_L2      = (1 << QCOW2_OL_ACTIVE_L2_BITNR),
-    QCOW2_OL_REFCOUNT_TABLE = (1 << QCOW2_OL_REFCOUNT_TABLE_BITNR),
-    QCOW2_OL_REFCOUNT_BLOCK = (1 << QCOW2_OL_REFCOUNT_BLOCK_BITNR),
-    QCOW2_OL_SNAPSHOT_TABLE = (1 << QCOW2_OL_SNAPSHOT_TABLE_BITNR),
-    QCOW2_OL_INACTIVE_L1    = (1 << QCOW2_OL_INACTIVE_L1_BITNR),
+    QCOW2_OL_NONE             = 0,
+    QCOW2_OL_MAIN_HEADER      = (1 << QCOW2_OL_MAIN_HEADER_BITNR),
+    QCOW2_OL_ACTIVE_L1        = (1 << QCOW2_OL_ACTIVE_L1_BITNR),
+    QCOW2_OL_ACTIVE_L2        = (1 << QCOW2_OL_ACTIVE_L2_BITNR),
+    QCOW2_OL_REFCOUNT_TABLE   = (1 << QCOW2_OL_REFCOUNT_TABLE_BITNR),
+    QCOW2_OL_REFCOUNT_BLOCK   = (1 << QCOW2_OL_REFCOUNT_BLOCK_BITNR),
+    QCOW2_OL_SNAPSHOT_TABLE   = (1 << QCOW2_OL_SNAPSHOT_TABLE_BITNR),
+    QCOW2_OL_INACTIVE_L1      = (1 << QCOW2_OL_INACTIVE_L1_BITNR),
     /* NOTE: Checking overlaps with inactive L2 tables will result in bdrv
      * reads. */
-    QCOW2_OL_INACTIVE_L2    = (1 << QCOW2_OL_INACTIVE_L2_BITNR),
+    QCOW2_OL_INACTIVE_L2      = (1 << QCOW2_OL_INACTIVE_L2_BITNR),
+    QCOW2_OL_BITMAP_DIRECTORY = (1 << QCOW2_OL_BITMAP_DIRECTORY_BITNR),
 } QCow2MetadataOverlap;
 
 /* Perform all overlap checks which can be done in constant time */
 #define QCOW2_OL_CONSTANT \
     (QCOW2_OL_MAIN_HEADER | QCOW2_OL_ACTIVE_L1 | QCOW2_OL_REFCOUNT_TABLE | \
-     QCOW2_OL_SNAPSHOT_TABLE)
+     QCOW2_OL_SNAPSHOT_TABLE | QCOW2_OL_BITMAP_DIRECTORY)
 
 /* Perform all overlap checks which don't require disk access */
 #define QCOW2_OL_CACHED \
@@ -617,6 +630,7 @@ uint64_t qcow2_alloc_compressed_cluster_offset(BlockDriverState *bs,
                                          int compressed_size);
 
 int qcow2_alloc_cluster_link_l2(BlockDriverState *bs, QCowL2Meta *m);
+void qcow2_alloc_cluster_abort(BlockDriverState *bs, QCowL2Meta *m);
 int qcow2_cluster_discard(BlockDriverState *bs, uint64_t offset,
                           uint64_t bytes, enum qcow2_discard_type type,
                           bool full_discard);

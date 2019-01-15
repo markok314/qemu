@@ -19,6 +19,7 @@
 #include <grp.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include "qapi/error.h"
 #include "qemu/xattr.h"
 #include "qemu/cutils.h"
 #include "qemu/error-report.h"
@@ -559,19 +560,13 @@ static int handle_unlinkat(FsContext *ctx, V9fsPath *dir,
 {
     int dirfd, ret;
     HandleData *data = (HandleData *) ctx->private;
-    int rflags;
 
     dirfd = open_by_handle(data->mountfd, dir->data, O_PATH);
     if (dirfd < 0) {
         return dirfd;
     }
 
-    rflags = 0;
-    if (flags & P9_DOTL_AT_REMOVEDIR) {
-        rflags |= AT_REMOVEDIR;
-    }
-
-    ret = unlinkat(dirfd, name, rflags);
+    ret = unlinkat(dirfd, name, flags);
 
     close(dirfd);
     return ret;
@@ -661,12 +656,13 @@ static int handle_parse_opts(QemuOpts *opts, FsDriverEntry *fse, Error **errp)
     warn_report("handle backend is deprecated");
 
     if (sec_model) {
-        error_report("Invalid argument security_model specified with handle fsdriver");
+        error_setg(errp,
+                   "Invalid argument security_model specified with handle fsdriver");
         return -1;
     }
 
     if (!path) {
-        error_report("fsdev: No path specified");
+        error_setg(errp, "fsdev: No path specified");
         return -1;
     }
     fse->path = g_strdup(path);

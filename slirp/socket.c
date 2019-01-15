@@ -46,17 +46,15 @@ struct socket *solookup(struct socket **last, struct socket *head,
 struct socket *
 socreate(Slirp *slirp)
 {
-  struct socket *so;
+    struct socket *so = g_new(struct socket, 1);
 
-  so = (struct socket *)malloc(sizeof(struct socket));
-  if(so) {
     memset(so, 0, sizeof(struct socket));
     so->so_state = SS_NOFDREF;
     so->s = -1;
     so->slirp = slirp;
     so->pollfds_idx = -1;
-  }
-  return(so);
+
+    return so;
 }
 
 /*
@@ -110,7 +108,7 @@ sofree(struct socket *so)
   if (so->so_tcpcb) {
       free(so->so_tcpcb);
   }
-  free(so);
+  g_free(so);
 }
 
 size_t sopreprbuf(struct socket *so, struct iovec *iov, int *np)
@@ -204,12 +202,19 @@ soread(struct socket *so)
 			return 0;
 		else {
 			int err;
-			socklen_t slen = sizeof err;
+			socklen_t elen = sizeof err;
+			struct sockaddr_storage addr;
+			struct sockaddr *paddr = (struct sockaddr *) &addr;
+			socklen_t alen = sizeof addr;
 
 			err = errno;
 			if (nn == 0) {
-				getsockopt(so->s, SOL_SOCKET, SO_ERROR,
-					   &err, &slen);
+				if (getpeername(so->s, paddr, &alen) < 0) {
+					err = errno;
+				} else {
+					getsockopt(so->s, SOL_SOCKET, SO_ERROR,
+						&err, &elen);
+				}
 			}
 
 			DEBUG_MISC((dfd, " --- soread() disconnected, nn = %d, errno = %d-%s\n", nn, errno,strerror(errno)));
@@ -340,7 +345,7 @@ sosendoob(struct socket *so)
 	struct sbuf *sb = &so->so_rcv;
 	char buff[2048]; /* XXX Shouldn't be sending more oob data than this */
 
-	int n, len;
+	int n;
 
 	DEBUG_CALL("sosendoob");
 	DEBUG_ARG("so = %p", so);
@@ -359,7 +364,7 @@ sosendoob(struct socket *so)
 		 * send it all
 		 */
 		uint32_t urgc = so->so_urgc;
-		len = (sb->sb_data + sb->sb_datalen) - sb->sb_rptr;
+		int len = (sb->sb_data + sb->sb_datalen) - sb->sb_rptr;
 		if (len > urgc) {
 			len = urgc;
 		}
@@ -374,13 +379,13 @@ sosendoob(struct socket *so)
 			len += n;
 		}
 		n = slirp_send(so, buff, len, (MSG_OOB)); /* |MSG_DONTWAIT)); */
+#ifdef DEBUG
+		if (n != len) {
+			DEBUG_ERROR((dfd, "Didn't send all data urgently XXXXX\n"));
+		}
+#endif
 	}
 
-#ifdef DEBUG
-	if (n != len) {
-		DEBUG_ERROR((dfd, "Didn't send all data urgently XXXXX\n"));
-	}
-#endif
 	if (n < 0) {
 		return n;
 	}
@@ -701,21 +706,18 @@ tcp_listen(Slirp *slirp, uint32_t haddr, u_int hport, uint32_t laddr,
 	memset(&addr, 0, addrlen);
 
 	DEBUG_CALL("tcp_listen");
-	DEBUG_ARG("haddr = %x", haddr);
-	DEBUG_ARG("hport = %d", hport);
-	DEBUG_ARG("laddr = %x", laddr);
-	DEBUG_ARG("lport = %d", lport);
+	DEBUG_ARG("haddr = %s", inet_ntoa((struct in_addr){.s_addr = haddr}));
+	DEBUG_ARG("hport = %d", ntohs(hport));
+	DEBUG_ARG("laddr = %s", inet_ntoa((struct in_addr){.s_addr = laddr}));
+	DEBUG_ARG("lport = %d", ntohs(lport));
 	DEBUG_ARG("flags = %x", flags);
 
 	so = socreate(slirp);
-	if (!so) {
-	  return NULL;
-	}
 
 	/* Don't tcp_attach... we don't need so_snd nor so_rcv */
 	if ((so->so_tcpcb = tcp_newtcpcb(so)) == NULL) {
-		free(so);
-		return NULL;
+            g_free(so);
+            return NULL;
 	}
 	insque(so, &slirp->tcb);
 
@@ -754,6 +756,8 @@ tcp_listen(Slirp *slirp, uint32_t haddr, u_int hport, uint32_t laddr,
 		return NULL;
 	}
 	qemu_setsockopt(s, SOL_SOCKET, SO_OOBINLINE, &opt, sizeof(int));
+	opt = 1;
+	qemu_setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int));
 
 	getsockname(s,(struct sockaddr *)&addr,&addrlen);
 	so->so_ffamily = AF_INET;

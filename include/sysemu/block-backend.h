@@ -166,9 +166,9 @@ BlockErrorAction blk_get_error_action(BlockBackend *blk, bool is_read,
                                       int error);
 void blk_error_action(BlockBackend *blk, BlockErrorAction action,
                       bool is_read, int error);
-int blk_is_read_only(BlockBackend *blk);
-int blk_is_sg(BlockBackend *blk);
-int blk_enable_write_cache(BlockBackend *blk);
+bool blk_is_read_only(BlockBackend *blk);
+bool blk_is_sg(BlockBackend *blk);
+bool blk_enable_write_cache(BlockBackend *blk);
 void blk_set_enable_write_cache(BlockBackend *blk, bool wce);
 void blk_invalidate_cache(BlockBackend *blk, Error **errp);
 bool blk_is_inserted(BlockBackend *blk);
@@ -231,5 +231,10 @@ void blk_set_force_allow_inactivate(BlockBackend *blk);
 
 void blk_register_buf(BlockBackend *blk, void *host, size_t size);
 void blk_unregister_buf(BlockBackend *blk, void *host);
+
+int coroutine_fn blk_co_copy_range(BlockBackend *blk_in, int64_t off_in,
+                                   BlockBackend *blk_out, int64_t off_out,
+                                   int bytes, BdrvRequestFlags read_flags,
+                                   BdrvRequestFlags write_flags);
 
 #endif

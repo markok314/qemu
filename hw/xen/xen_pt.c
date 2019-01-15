@@ -830,7 +830,7 @@ static void xen_pt_realize(PCIDevice *d, Error **errp)
     xen_pt_config_init(s, &err);
     if (err) {
         error_append_hint(&err, "PCI Config space initialisation failed");
-        error_report_err(err);
+        error_propagate(errp, err);
         rc = -1;
         goto err_out;
     }
@@ -907,7 +907,7 @@ out:
         }
     }
 
-    memory_listener_register(&s->memory_listener, &s->dev.bus_master_as);
+    memory_listener_register(&s->memory_listener, &address_space_memory);
     memory_listener_register(&s->io_listener, &address_space_io);
     s->listener_set = true;
     XEN_PT_LOG(d,

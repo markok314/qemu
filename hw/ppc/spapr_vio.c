@@ -22,6 +22,7 @@
 #include "qemu/osdep.h"
 #include "qemu/error-report.h"
 #include "qapi/error.h"
+#include "qapi/visitor.h"
 #include "hw/hw.h"
 #include "qemu/log.h"
 #include "sysemu/sysemu.h"
@@ -32,17 +33,46 @@
 #include "sysemu/kvm.h"
 #include "sysemu/device_tree.h"
 #include "kvm_ppc.h"
+#include "sysemu/qtest.h"
 
 #include "hw/ppc/spapr.h"
 #include "hw/ppc/spapr_vio.h"
-#include "hw/ppc/xics.h"
 #include "hw/ppc/fdt.h"
 #include "trace.h"
 
 #include <libfdt.h>
 
+#define SPAPR_VIO_REG_BASE 0x71000000
+
+static void spapr_vio_get_irq(Object *obj, Visitor *v, const char *name,
+                              void *opaque, Error **errp)
+{
+    Property *prop = opaque;
+    uint32_t *ptr = qdev_get_prop_ptr(DEVICE(obj), prop);
+
+    visit_type_uint32(v, name, ptr, errp);
+}
+
+static void spapr_vio_set_irq(Object *obj, Visitor *v, const char *name,
+                              void *opaque, Error **errp)
+{
+    Property *prop = opaque;
+    uint32_t *ptr = qdev_get_prop_ptr(DEVICE(obj), prop);
+
+    if (!qtest_enabled()) {
+        warn_report(TYPE_VIO_SPAPR_DEVICE " '%s' property is deprecated", name);
+    }
+    visit_type_uint32(v, name, ptr, errp);
+}
+
+static const PropertyInfo spapr_vio_irq_propinfo = {
+    .name = "irq",
+    .get = spapr_vio_get_irq,
+    .set = spapr_vio_set_irq,
+};
+
 static Property spapr_vio_props[] = {
-    DEFINE_PROP_UINT32("irq", VIOsPAPRDevice, irq, 0), \
+    DEFINE_PROP("irq", VIOsPAPRDevice, irq, spapr_vio_irq_propinfo, uint32_t),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -416,6 +446,55 @@ static void spapr_vio_busdev_reset(DeviceState *qdev)
     }
 }
 
+/*
+ * The register property of a VIO device is defined in livirt using
+ * 0x1000 as a base register number plus a 0x1000 increment. For the
+ * VIO tty device, the base number is changed to 0x30000000. QEMU uses
+ * a base register number of 0x71000000 and then a simple increment.
+ *
+ * The formula below tries to compute a unique index number from the
+ * register value that will be used to define the IRQ number of the
+ * VIO device.
+ *
+ * A maximum of 256 VIO devices is covered. Collisions are possible
+ * but they will be detected when the IRQ is claimed.
+ */
+static inline uint32_t spapr_vio_reg_to_irq(uint32_t reg)
+{
+    uint32_t irq;
+
+    if (reg >= SPAPR_VIO_REG_BASE) {
+        /*
+         * VIO device register values when allocated by QEMU. For
+         * these, we simply mask the high bits to fit the overall
+         * range: [0x00 - 0xff].
+         *
+         * The nvram VIO device (reg=0x71000000) is a static device of
+         * the pseries machine and so is always allocated by QEMU. Its
+         * IRQ number is 0x0.
+         */
+        irq = reg & 0xff;
+
+    } else if (reg >= 0x30000000) {
+        /*
+         * VIO tty devices register values, when allocated by livirt,
+         * are mapped in range [0xf0 - 0xff], gives us a maximum of 16
+         * vtys.
+         */
+        irq = 0xf0 | ((reg >> 12) & 0xf);
+
+    } else {
+        /*
+         * Other VIO devices register values, when allocated by
+         * livirt, should be mapped in range [0x00 - 0xef]. Conflicts
+         * will be detected when IRQ is claimed.
+         */
+        irq = (reg >> 12) & 0xff;
+    }
+
+    return SPAPR_IRQ_VIO | irq;
+}
+
 static void spapr_vio_busdev_realize(DeviceState *qdev, Error **errp)
 {
     sPAPRMachineState *spapr = SPAPR_MACHINE(qdev_get_machine());
@@ -455,7 +534,19 @@ static void spapr_vio_busdev_realize(DeviceState *qdev, Error **errp)
         dev->qdev.id = id;
     }
 
-    dev->irq = spapr_irq_alloc(spapr, dev->irq, false, &local_err);
+    if (!dev->irq) {
+        dev->irq = spapr_vio_reg_to_irq(dev->reg);
+
+        if (SPAPR_MACHINE_GET_CLASS(spapr)->legacy_irq_allocation) {
+            dev->irq = spapr_irq_findone(spapr, &local_err);
+            if (local_err) {
+                error_propagate(errp, local_err);
+                return;
+            }
+        }
+    }
+
+    spapr_irq_claim(spapr, dev->irq, false, &local_err);
     if (local_err) {
         error_propagate(errp, local_err);
         return;
@@ -520,7 +611,7 @@ VIOsPAPRBus *spapr_vio_bus_init(void)
     /* Create bus on bridge device */
     qbus = qbus_create(TYPE_SPAPR_VIO_BUS, dev, "spapr-vio");
     bus = SPAPR_VIO_BUS(qbus);
-    bus->next_reg = 0x71000000;
+    bus->next_reg = SPAPR_VIO_REG_BASE;
 
     /* hcall-vio */
     spapr_register_hypercall(H_VIO_SIGNAL, h_vio_signal);

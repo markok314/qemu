@@ -30,7 +30,7 @@
 #include "qemu/cutils.h"
 
 #include "block/block_int.h"
-#include "block/qcow2.h"
+#include "qcow2.h"
 
 /* NOTICE: BME here means Bitmaps Extension and used as a namespace for
  * _internal_ constants. Please do not use this _internal_ abbreviation for
@@ -118,7 +118,7 @@ static inline void bitmap_table_to_be(uint64_t *bitmap_table, size_t size)
     size_t i;
 
     for (i = 0; i < size; ++i) {
-        cpu_to_be64s(&bitmap_table[i]);
+        bitmap_table[i] = cpu_to_be64(bitmap_table[i]);
     }
 }
 
@@ -231,7 +231,7 @@ static int bitmap_table_load(BlockDriverState *bs, Qcow2BitmapTable *tb,
     }
 
     for (i = 0; i < tb->size; ++i) {
-        be64_to_cpus(&table[i]);
+        table[i] = be64_to_cpu(table[i]);
         ret = check_table_entry(table[i], s->cluster_size);
         if (ret < 0) {
             goto fail;
@@ -254,7 +254,6 @@ static int free_bitmap_clusters(BlockDriverState *bs, Qcow2BitmapTable *tb)
 
     ret = bitmap_table_load(bs, tb, &bitmap_table);
     if (ret < 0) {
-        assert(bitmap_table == NULL);
         return ret;
     }
 
@@ -395,20 +394,20 @@ fail:
 
 static inline void bitmap_dir_entry_to_cpu(Qcow2BitmapDirEntry *entry)
 {
-    be64_to_cpus(&entry->bitmap_table_offset);
-    be32_to_cpus(&entry->bitmap_table_size);
-    be32_to_cpus(&entry->flags);
-    be16_to_cpus(&entry->name_size);
-    be32_to_cpus(&entry->extra_data_size);
+    entry->bitmap_table_offset = be64_to_cpu(entry->bitmap_table_offset);
+    entry->bitmap_table_size = be32_to_cpu(entry->bitmap_table_size);
+    entry->flags = be32_to_cpu(entry->flags);
+    entry->name_size = be16_to_cpu(entry->name_size);
+    entry->extra_data_size = be32_to_cpu(entry->extra_data_size);
 }
 
 static inline void bitmap_dir_entry_to_be(Qcow2BitmapDirEntry *entry)
 {
-    cpu_to_be64s(&entry->bitmap_table_offset);
-    cpu_to_be32s(&entry->bitmap_table_size);
-    cpu_to_be32s(&entry->flags);
-    cpu_to_be16s(&entry->name_size);
-    cpu_to_be32s(&entry->extra_data_size);
+    entry->bitmap_table_offset = cpu_to_be64(entry->bitmap_table_offset);
+    entry->bitmap_table_size = cpu_to_be32(entry->bitmap_table_size);
+    entry->flags = cpu_to_be32(entry->flags);
+    entry->name_size = cpu_to_be16(entry->name_size);
+    entry->extra_data_size = cpu_to_be32(entry->extra_data_size);
 }
 
 static inline int calc_dir_entry_size(size_t name_size, size_t extra_data_size)
@@ -776,7 +775,12 @@ static int bitmap_list_store(BlockDriverState *bs, Qcow2BitmapList *bm_list,
         }
     }
 
-    ret = qcow2_pre_write_overlap_check(bs, 0, dir_offset, dir_size);
+    /* Actually, even in in-place case ignoring QCOW2_OL_BITMAP_DIRECTORY is not
+     * necessary, because we drop QCOW2_AUTOCLEAR_BITMAPS when updating bitmap
+     * directory in-place (actually, turn-off the extension), which is checked
+     * in qcow2_check_metadata_overlap() */
+    ret = qcow2_pre_write_overlap_check(
+            bs, in_place ? QCOW2_OL_BITMAP_DIRECTORY : 0, dir_offset, dir_size);
     if (ret < 0) {
         goto fail;
     }
@@ -1412,6 +1416,22 @@ void qcow2_store_persistent_dirty_bitmaps(BlockDriverState *bs, Error **errp)
     QSIMPLEQ_FOREACH_SAFE(tb, &drop_tables, entry, tb_next) {
         free_bitmap_clusters(bs, tb);
         g_free(tb);
+    }
+
+    QSIMPLEQ_FOREACH(bm, bm_list, entry) {
+        /* For safety, we remove bitmap after storing.
+         * We may be here in two cases:
+         * 1. bdrv_close. It's ok to drop bitmap.
+         * 2. inactivation. It means migration without 'dirty-bitmaps'
+         *    capability, so bitmaps are not marked with
+         *    BdrvDirtyBitmap.migration flags. It's not bad to drop them too,
+         *    and reload on invalidation.
+         */
+        if (bm->dirty_bitmap == NULL) {
+            continue;
+        }
+
+        bdrv_release_dirty_bitmap(bs, bm->dirty_bitmap);
     }
 
     bitmap_list_free(bm_list);

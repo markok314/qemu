@@ -46,6 +46,7 @@
 #include "hw/acpi/vmgenid.h"
 #include "sysemu/tpm_backend.h"
 #include "hw/timer/mc146818rtc_regs.h"
+#include "hw/mem/memory-device.h"
 #include "sysemu/numa.h"
 
 /* Supported chipsets: */
@@ -198,21 +199,21 @@ static void acpi_get_pm_info(AcpiPmInfo *pm)
     } else {
         pm->s3_disabled = false;
     }
-    qobject_decref(o);
+    qobject_unref(o);
     o = object_property_get_qobject(obj, ACPI_PM_PROP_S4_DISABLED, NULL);
     if (o) {
         pm->s4_disabled = qnum_get_uint(qobject_to(QNum, o));
     } else {
         pm->s4_disabled = false;
     }
-    qobject_decref(o);
+    qobject_unref(o);
     o = object_property_get_qobject(obj, ACPI_PM_PROP_S4_VAL, NULL);
     if (o) {
         pm->s4_val = qnum_get_uint(qobject_to(QNum, o));
     } else {
         pm->s4_val = false;
     }
-    qobject_decref(o);
+    qobject_unref(o);
 
     pm->pcihp_bridge_en =
         object_property_get_bool(obj, "acpi-pci-hotplug-with-bridge-support",
@@ -570,7 +571,7 @@ static void build_append_pci_bus_devices(Aml *parent_scope, PCIBus *bus,
         }
     }
     aml_append(parent_scope, method);
-    qobject_decref(bsel);
+    qobject_unref(bsel);
 }
 
 /**
@@ -2247,57 +2248,8 @@ build_tpm2(GArray *table_data, BIOSLinker *linker, GArray *tcpalog)
                  (void *)tpm2_ptr, "TPM2", sizeof(*tpm2_ptr), 4, NULL, NULL);
 }
 
-#define HOLE_640K_START  (640 * 1024)
-#define HOLE_640K_END   (1024 * 1024)
-
-static void build_srat_hotpluggable_memory(GArray *table_data, uint64_t base,
-                                           uint64_t len, int default_node)
-{
-    MemoryDeviceInfoList *info_list = qmp_pc_dimm_device_list();
-    MemoryDeviceInfoList *info;
-    MemoryDeviceInfo *mi;
-    PCDIMMDeviceInfo *di;
-    uint64_t end = base + len, cur, size;
-    bool is_nvdimm;
-    AcpiSratMemoryAffinity *numamem;
-    MemoryAffinityFlags flags;
-
-    for (cur = base, info = info_list;
-         cur < end;
-         cur += size, info = info->next) {
-        numamem = acpi_data_push(table_data, sizeof *numamem);
-
-        if (!info) {
-            build_srat_memory(numamem, cur, end - cur, default_node,
-                              MEM_AFFINITY_HOTPLUGGABLE | MEM_AFFINITY_ENABLED);
-            break;
-        }
-
-        mi = info->value;
-        is_nvdimm = (mi->type == MEMORY_DEVICE_INFO_KIND_NVDIMM);
-        di = !is_nvdimm ? mi->u.dimm.data : mi->u.nvdimm.data;
-
-        if (cur < di->addr) {
-            build_srat_memory(numamem, cur, di->addr - cur, default_node,
-                              MEM_AFFINITY_HOTPLUGGABLE | MEM_AFFINITY_ENABLED);
-            numamem = acpi_data_push(table_data, sizeof *numamem);
-        }
-
-        size = di->size;
-
-        flags = MEM_AFFINITY_ENABLED;
-        if (di->hotpluggable) {
-            flags |= MEM_AFFINITY_HOTPLUGGABLE;
-        }
-        if (is_nvdimm) {
-            flags |= MEM_AFFINITY_NON_VOLATILE;
-        }
-
-        build_srat_memory(numamem, di->addr, size, di->node, flags);
-    }
-
-    qapi_free_MemoryDeviceInfoList(info_list);
-}
+#define HOLE_640K_START  (640 * KiB)
+#define HOLE_640K_END   (1 * MiB)
 
 static void
 build_srat(GArray *table_data, BIOSLinker *linker, MachineState *machine)
@@ -2312,7 +2264,7 @@ build_srat(GArray *table_data, BIOSLinker *linker, MachineState *machine)
     const CPUArchIdList *apic_ids = mc->possible_cpu_arch_ids(machine);
     PCMachineState *pcms = PC_MACHINE(machine);
     ram_addr_t hotplugabble_address_space_size =
-        object_property_get_int(OBJECT(pcms), PC_MACHINE_MEMHP_REGION_SIZE,
+        object_property_get_int(OBJECT(pcms), PC_MACHINE_DEVMEM_REGION_SIZE,
                                 NULL);
 
     srat_start = table_data->len;
@@ -2391,9 +2343,12 @@ build_srat(GArray *table_data, BIOSLinker *linker, MachineState *machine)
             mem_len = next_base - pcms->below_4g_mem_size;
             next_base = mem_base + mem_len;
         }
-        numamem = acpi_data_push(table_data, sizeof *numamem);
-        build_srat_memory(numamem, mem_base, mem_len, i - 1,
-                          MEM_AFFINITY_ENABLED);
+
+        if (mem_len > 0) {
+            numamem = acpi_data_push(table_data, sizeof *numamem);
+            build_srat_memory(numamem, mem_base, mem_len, i - 1,
+                              MEM_AFFINITY_ENABLED);
+        }
     }
     slots = (table_data->len - numa_start) / sizeof *numamem;
     for (; slots < pcms->numa_nodes + 2; slots++) {
@@ -2410,9 +2365,10 @@ build_srat(GArray *table_data, BIOSLinker *linker, MachineState *machine)
      * providing _PXM method if necessary.
      */
     if (hotplugabble_address_space_size) {
-        build_srat_hotpluggable_memory(table_data, pcms->hotplug_memory.base,
-                                       hotplugabble_address_space_size,
-                                       pcms->numa_nodes - 1);
+        numamem = acpi_data_push(table_data, sizeof *numamem);
+        build_srat_memory(numamem, machine->device_memory->base,
+                          hotplugabble_address_space_size, pcms->numa_nodes - 1,
+                          MEM_AFFINITY_HOTPLUGGABLE | MEM_AFFINITY_ENABLED);
     }
 
     build_header(linker, table_data,
@@ -2511,9 +2467,12 @@ build_dmar_q35(GArray *table_data, BIOSLinker *linker)
  *   IVRS table as specified in AMD IOMMU Specification v2.62, Section 5.2
  *   accessible here http://support.amd.com/TechDocs/48882_IOMMU.pdf
  */
+#define IOAPIC_SB_DEVID   (uint64_t)PCI_BUILD_BDF(0, PCI_DEVFN(0x14, 0))
+
 static void
 build_amd_iommu(GArray *table_data, BIOSLinker *linker)
 {
+    int ivhd_table_len = 28;
     int iommu_start = table_data->len;
     AMDVIState *s = AMD_IOMMU_DEVICE(x86_iommu_get_default());
 
@@ -2535,8 +2494,16 @@ build_amd_iommu(GArray *table_data, BIOSLinker *linker)
                              (1UL << 6) | /* PrefSup      */
                              (1UL << 7),  /* PPRSup       */
                              1);
+
+    /*
+     * When interrupt remapping is supported, we add a special IVHD device
+     * for type IO-APIC.
+     */
+    if (x86_iommu_get_default()->intr_supported) {
+        ivhd_table_len += 8;
+    }
     /* IVHD length */
-    build_append_int_noprefix(table_data, 0x24, 2);
+    build_append_int_noprefix(table_data, ivhd_table_len, 2);
     /* DeviceID */
     build_append_int_noprefix(table_data, s->devid, 2);
     /* Capability offset */
@@ -2551,7 +2518,8 @@ build_amd_iommu(GArray *table_data, BIOSLinker *linker)
     build_append_int_noprefix(table_data,
                              (48UL << 30) | /* HATS   */
                              (48UL << 28) | /* GATS   */
-                             (1UL << 2),    /* GTSup  */
+                             (1UL << 2)   | /* GTSup  */
+                             (1UL << 6),    /* GASup  */
                              4);
     /*
      *   Type 1 device entry reporting all devices
@@ -2559,6 +2527,21 @@ build_amd_iommu(GArray *table_data, BIOSLinker *linker)
      *   Refer to Spec - Table 95:IVHD Device Entry Type Codes(4-byte)
      */
     build_append_int_noprefix(table_data, 0x0000001, 4);
+
+    /*
+     * Add a special IVHD device type.
+     * Refer to spec - Table 95: IVHD device entry type codes
+     *
+     * Linux IOMMU driver checks for the special IVHD device (type IO-APIC).
+     * See Linux kernel commit 'c2ff5cf5294bcbd7fa50f7d860e90a66db7e5059'
+     */
+    if (x86_iommu_get_default()->intr_supported) {
+        build_append_int_noprefix(table_data,
+                                 (0x1ull << 56) |           /* type IOAPIC */
+                                 (IOAPIC_SB_DEVID << 40) |  /* IOAPIC devid */
+                                 0x48,                      /* special device */
+                                 8);
+    }
 
     build_header(linker, table_data, (void *)(table_data->data + iommu_start),
                  "IVRS", table_data->len - iommu_start, 1, NULL, NULL);
@@ -2614,12 +2597,12 @@ static bool acpi_get_mcfg(AcpiMcfgInfo *mcfg)
         return false;
     }
     mcfg->mcfg_base = qnum_get_uint(qobject_to(QNum, o));
-    qobject_decref(o);
+    qobject_unref(o);
 
     o = object_property_get_qobject(pci_host, PCIE_HOST_MCFG_SIZE, NULL);
     assert(o);
     mcfg->mcfg_size = qnum_get_uint(qobject_to(QNum, o));
-    qobject_decref(o);
+    qobject_unref(o);
     return true;
 }
 

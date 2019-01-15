@@ -43,7 +43,6 @@ DEF("machine", HAS_ARG, QEMU_OPTION_machine, \
     "                suppress-vmdesc=on|off disables self-describing migration (default=off)\n"
     "                nvdimm=on|off controls NVDIMM support (default=off)\n"
     "                enforce-config-section=on|off enforce configuration section migration (default=off)\n"
-    "                s390-squash-mcss=on|off (deprecated) controls support for squashing into default css (default=off)\n"
     "                memory-encryption=@var{} memory encryption object to use (default=none)\n",
     QEMU_ARCH_ALL)
 STEXI
@@ -96,15 +95,6 @@ controls whether DEA wrapping keys will be created to allow
 execution of DEA cryptographic functions.  The default is on.
 @item nvdimm=on|off
 Enables or disables NVDIMM support. The default is off.
-@item s390-squash-mcss=on|off
-Enables or disables squashing subchannels into the default css.
-The default is off.
-NOTE: This property is deprecated and will be removed in future releases.
-The ``s390-squash-mcss=on`` property has been obsoleted by allowing the
-cssid to be chosen freely. Instead of squashing subchannels into the
-default channel subsystem image for guests that do not support multiple
-channel subsystems, all devices can be put into the default channel
-subsystem image.
 @item enforce-config-section=on|off
 If @option{enforce-config-section} is set to @var{on}, force migration
 code to send configuration section even if the machine-type sets the
@@ -130,7 +120,7 @@ ETEXI
 DEF("accel", HAS_ARG, QEMU_OPTION_accel,
     "-accel [accel=]accelerator[,thread=single|multi]\n"
     "                select accelerator (kvm, xen, hax, hvf, whpx or tcg; use 'help' for a list)\n"
-    "                thread=single|multi (enable multi-threaded TCG)", QEMU_ARCH_ALL)
+    "                thread=single|multi (enable multi-threaded TCG)\n", QEMU_ARCH_ALL)
 STEXI
 @item -accel @var{name}[,prop=@var{value}[,...]]
 @findex -accel
@@ -464,16 +454,6 @@ modprobe i810_audio clocking=48000
 @end example
 ETEXI
 
-DEF("balloon", HAS_ARG, QEMU_OPTION_balloon,
-    "-balloon virtio[,addr=str]\n"
-    "                enable virtio balloon device (deprecated)\n", QEMU_ARCH_ALL)
-STEXI
-@item -balloon virtio[,addr=@var{addr}]
-@findex -balloon
-Enable virtio balloon device, optionally with PCI address @var{addr}. This
-option is deprecated, use @option{--device virtio-balloon} instead.
-ETEXI
-
 DEF("device", HAS_ARG, QEMU_OPTION_device,
     "-device driver[,prop[=value][,...]]\n"
     "                add device (based on driver)\n"
@@ -752,19 +732,23 @@ image file)
 
 @item cache-size
 The maximum total size of the L2 table and refcount block caches in bytes
-(default: 1048576 bytes or 8 clusters, whichever is larger)
+(default: the sum of l2-cache-size and refcount-cache-size)
 
 @item l2-cache-size
 The maximum size of the L2 table cache in bytes
-(default: 4/5 of the total cache size)
+(default: if cache-size is not specified - 32M on Linux platforms, and 8M on
+non-Linux platforms; otherwise, as large as possible within the cache-size,
+while permitting the requested or the minimal refcount cache size)
 
 @item refcount-cache-size
 The maximum size of the refcount block cache in bytes
-(default: 1/5 of the total cache size)
+(default: 4 times the cluster size; or if cache-size is specified, the part of
+it which is not used for the L2 cache)
 
 @item cache-clean-interval
 Clean unused entries in the L2 and refcount caches. The interval is in seconds.
-The default value is 0 and it disables this feature.
+The default value is 600 on supporting platforms, and 0 on other platforms.
+Setting it to 0 disables this feature.
 
 @item pass-discard-request
 Whether discard requests to the qcow2 device should be forwarded to the data
@@ -804,9 +788,8 @@ ETEXI
 
 DEF("drive", HAS_ARG, QEMU_OPTION_drive,
     "-drive [file=file][,if=type][,bus=n][,unit=m][,media=d][,index=i]\n"
-    "       [,cyls=c,heads=h,secs=s[,trans=t]][,snapshot=on|off]\n"
     "       [,cache=writethrough|writeback|none|directsync|unsafe][,format=f]\n"
-    "       [,serial=s][,addr=A][,rerror=ignore|stop|report]\n"
+    "       [,snapshot=on|off][,rerror=ignore|stop|report]\n"
     "       [,werror=ignore|stop|report|enospc][,id=name][,aio=threads|native]\n"
     "       [,readonly=on|off][,copy-on-read=on|off]\n"
     "       [,discard=ignore|unmap][,detect-zeroes=on|off|unmap]\n"
@@ -847,10 +830,6 @@ This option defines where is connected the drive by using an index in the list
 of available connectors of a given interface type.
 @item media=@var{media}
 This option defines the type of the media: disk or cdrom.
-@item cyls=@var{c},heads=@var{h},secs=@var{s}[,trans=@var{t}]
-Force disk physical geometry and the optional BIOS translation (trans=none or
-lba). These parameters are deprecated, use the corresponding parameters
-of @code{-device} instead.
 @item snapshot=@var{snapshot}
 @var{snapshot} is "on" or "off" and controls snapshot mode for the given drive
 (see @option{-snapshot}).
@@ -884,13 +863,6 @@ The default mode is @option{cache=writeback}.
 Specify which disk @var{format} will be used rather than detecting
 the format.  Can be used to specify format=raw to avoid interpreting
 an untrusted format header.
-@item serial=@var{serial}
-This option specifies the serial number to assign to the device. This
-parameter is deprecated, use the corresponding parameter of @code{-device}
-instead.
-@item addr=@var{addr}
-Specify the controller's PCI address (if=virtio only). This parameter is
-deprecated, use the corresponding parameter of @code{-device} instead.
 @item werror=@var{action},rerror=@var{action}
 Specify which @var{action} to take on write and read errors. Valid actions are:
 "ignore" (ignore the error and try to continue), "stop" (pause QEMU),
@@ -1240,11 +1212,12 @@ ETEXI
 
 DEF("display", HAS_ARG, QEMU_OPTION_display,
     "-display sdl[,frame=on|off][,alt_grab=on|off][,ctrl_grab=on|off]\n"
-    "            [,window_close=on|off][,gl=on|off]\n"
+    "            [,window_close=on|off][,gl=on|core|es|off]\n"
     "-display gtk[,grab_on_hover=on|off][,gl=on|off]|\n"
     "-display vnc=<display>[,<optargs>]\n"
     "-display curses\n"
-    "-display none"
+    "-display none\n"
+    "-display egl-headless[,rendernode=<file>]"
     "                select display type\n"
     "The default display is equivalent to\n"
 #if defined(CONFIG_GTK)
@@ -1286,6 +1259,9 @@ menus and other UI elements to configure and control the VM during
 runtime.
 @item vnc
 Start a VNC server on display <arg>
+@item egl-headless
+Offload all OpenGL operations to a local DRI device. For any graphical display,
+this display needs to be paired with either VNC or SPICE displays.
 @end table
 ETEXI
 
@@ -1654,49 +1630,6 @@ will cause the VNC server socket to enable the VeNCrypt auth
 mechanism.  The credentials should have been previously created
 using the @option{-object tls-creds} argument.
 
-The @option{tls-creds} parameter obsoletes the @option{tls},
-@option{x509}, and @option{x509verify} options, and as such
-it is not permitted to set both new and old type options at
-the same time.
-
-@item tls
-
-Require that client use TLS when communicating with the VNC server. This
-uses anonymous TLS credentials so is susceptible to a man-in-the-middle
-attack. It is recommended that this option be combined with either the
-@option{x509} or @option{x509verify} options.
-
-This option is now deprecated in favor of using the @option{tls-creds}
-argument.
-
-@item x509=@var{/path/to/certificate/dir}
-
-Valid if @option{tls} is specified. Require that x509 credentials are used
-for negotiating the TLS session. The server will send its x509 certificate
-to the client. It is recommended that a password be set on the VNC server
-to provide authentication of the client when this is used. The path following
-this option specifies where the x509 certificates are to be loaded from.
-See the @ref{vnc_security} section for details on generating certificates.
-
-This option is now deprecated in favour of using the @option{tls-creds}
-argument.
-
-@item x509verify=@var{/path/to/certificate/dir}
-
-Valid if @option{tls} is specified. Require that x509 credentials are used
-for negotiating the TLS session. The server will send its x509 certificate
-to the client, and request that the client send its own x509 certificate.
-The server will validate the client's certificate against the CA certificate,
-and reject clients when validation fails. If the certificate authority is
-trusted, this is a sufficient authentication mechanism. You may still wish
-to set a password on the VNC server as a second authentication layer. The
-path following this option specifies where the x509 certificates are to
-be loaded from. See the @ref{vnc_security} section for details on generating
-certificates.
-
-This option is now deprecated in favour of using the @option{tls-creds}
-argument.
-
 @item sasl
 
 Require that the client use SASL to authenticate with the VNC server.
@@ -1785,9 +1718,6 @@ Use it when installing Windows 2000 to avoid a disk full bug. After
 Windows 2000 is installed, you no longer need this option (this option
 slows down the IDE transfers).
 ETEXI
-
-HXCOMM Deprecated by -rtc
-DEF("rtc-td-hack", 0, QEMU_OPTION_rtc_td_hack, "", QEMU_ARCH_I386)
 
 DEF("no-fd-bootchk", 0, QEMU_OPTION_no_fd_bootchk,
     "-no-fd-bootchk  disable boot signature checking for floppy disks\n",
@@ -1891,23 +1821,13 @@ STEXI
 @table @option
 ETEXI
 
-HXCOMM Legacy slirp options (now moved to -net user):
-#ifdef CONFIG_SLIRP
-DEF("tftp", HAS_ARG, QEMU_OPTION_tftp, "", QEMU_ARCH_ALL)
-DEF("bootp", HAS_ARG, QEMU_OPTION_bootp, "", QEMU_ARCH_ALL)
-DEF("redir", HAS_ARG, QEMU_OPTION_redir, "", QEMU_ARCH_ALL)
-#ifndef _WIN32
-DEF("smb", HAS_ARG, QEMU_OPTION_smb, "", QEMU_ARCH_ALL)
-#endif
-#endif
-
 DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
 #ifdef CONFIG_SLIRP
     "-netdev user,id=str[,ipv4[=on|off]][,net=addr[/mask]][,host=addr]\n"
     "         [,ipv6[=on|off]][,ipv6-net=addr[/int]][,ipv6-host=addr]\n"
     "         [,restrict=on|off][,hostname=host][,dhcpstart=addr]\n"
-    "         [,dns=addr][,ipv6-dns=addr][,dnssearch=domain][,tftp=dir]\n"
-    "         [,bootfile=f][,hostfwd=rule][,guestfwd=rule]"
+    "         [,dns=addr][,ipv6-dns=addr][,dnssearch=domain][,domainname=domain]\n"
+    "         [,tftp=dir][,tftp-server-name=name][,bootfile=f][,hostfwd=rule][,guestfwd=rule]"
 #ifndef _WIN32
                                              "[,smb=dir[,smbserver=addr]]\n"
 #endif
@@ -2003,9 +1923,9 @@ DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
     "                configure a vhost-user network, backed by a chardev 'dev'\n"
 #endif
     "-netdev hubport,id=str,hubid=n[,netdev=nd]\n"
-    "                configure a hub port on QEMU VLAN 'n'\n", QEMU_ARCH_ALL)
+    "                configure a hub port on the hub with ID 'n'\n", QEMU_ARCH_ALL)
 DEF("nic", HAS_ARG, QEMU_OPTION_nic,
-    "--nic [tap|bridge|"
+    "-nic [tap|bridge|"
 #ifdef CONFIG_SLIRP
     "user|"
 #endif
@@ -2024,14 +1944,13 @@ DEF("nic", HAS_ARG, QEMU_OPTION_nic,
     "socket][,option][,...][mac=macaddr]\n"
     "                initialize an on-board / default host NIC (using MAC address\n"
     "                macaddr) and connect it to the given host network backend\n"
-    "--nic none      use it alone to have zero network devices (the default is to\n"
+    "-nic none       use it alone to have zero network devices (the default is to\n"
     "                provided a 'user' network connection)\n",
     QEMU_ARCH_ALL)
 DEF("net", HAS_ARG, QEMU_OPTION_net,
-    "-net nic[,vlan=n][,netdev=nd][,macaddr=mac][,model=type][,name=str][,addr=str][,vectors=v]\n"
+    "-net nic[,macaddr=mac][,model=type][,name=str][,addr=str][,vectors=v]\n"
     "                configure or create an on-board (or machine default) NIC and\n"
-    "                connect it either to VLAN 'n' or the netdev 'nd' (for pluggable\n"
-    "                NICs please use '-device devtype,netdev=nd' instead)\n"
+    "                connect it to hub 0 (please use -nic unless you need a hub)\n"
     "-net ["
 #ifdef CONFIG_SLIRP
     "user|"
@@ -2044,7 +1963,7 @@ DEF("net", HAS_ARG, QEMU_OPTION_net,
 #ifdef CONFIG_NETMAP
     "netmap|"
 #endif
-    "socket][,vlan=n][,option][,option][,...]\n"
+    "socket][,option][,option][,...]\n"
     "                old way to initialize a host network interface\n"
     "                (use the -netdev option if possible instead)\n", QEMU_ARCH_ALL)
 STEXI
@@ -2136,11 +2055,19 @@ Example:
 qemu-system-i386 -nic user,dnssearch=mgmt.example.org,dnssearch=example.org
 @end example
 
+@item domainname=@var{domain}
+Specifies the client domain name reported by the built-in DHCP server.
+
 @item tftp=@var{dir}
 When using the user mode network stack, activate a built-in TFTP
 server. The files in @var{dir} will be exposed as the root of a TFTP server.
 The TFTP client on the guest must be configured in binary mode (use the command
 @code{bin} of the Unix TFTP client).
+
+@item tftp-server-name=@var{name}
+In BOOTP reply, broadcast @var{name} as the "TFTP server name" (RFC2132 option
+66). This can be used to advise the guest to load boot files or configurations
+from a different server than the host address.
 
 @item bootfile=@var{file}
 When using the user mode network stack, broadcast @var{file} as the BOOTP
@@ -2225,11 +2152,6 @@ qemu-system-i386 -nic  'user,id=n1,guestfwd=tcp:10.0.2.100:1234-cmd:netcat 10.10
 @end example
 
 @end table
-
-Note: Legacy stand-alone options -tftp, -bootp, -smb and -redir are still
-processed and applied to -net user. Mixing them with the new configuration
-syntax gives undefined results. Their use for new applications is discouraged
-as they will be removed from future versions.
 
 @item -netdev tap,id=@var{id}[,fd=@var{h}][,ifname=@var{name}][,script=@var{file}][,downscript=@var{dfile}][,br=@var{bridge}][,helper=@var{helper}]
 Configure a host TAP network backend with ID @var{id}.
@@ -2343,7 +2265,7 @@ qemu-system-i386 linux.img \
                  -netdev socket,id=n2,mcast=230.0.0.1:1234
 # launch yet another QEMU instance on same "bus"
 qemu-system-i386 linux.img \
-                 -device e1000,netdev=n3,macaddr=52:54:00:12:34:58 \
+                 -device e1000,netdev=n3,mac=52:54:00:12:34:58 \
                  -netdev socket,id=n3,mcast=230.0.0.1:1234
 @end example
 
@@ -2462,17 +2384,14 @@ qemu -m 512 -object memory-backend-file,id=mem,size=512M,mem-path=/hugetlbfs,sha
 Create a hub port on the emulated hub with ID @var{hubid}.
 
 The hubport netdev lets you connect a NIC to a QEMU emulated hub instead of a
-single netdev. @code{-net} and @code{-device} with the parameter @option{vlan}
-(deprecated), or @code{-nic hubport} can also be used to connect a
-network device or a NIC to a hub. Alternatively, you can also connect the
-hubport to another netdev with ID @var{nd} by using the @option{netdev=@var{nd}}
-option.
+single netdev. Alternatively, you can also connect the hubport to another
+netdev with ID @var{nd} by using the @option{netdev=@var{nd}} option.
 
-@item -net nic[,vlan=@var{n}][,netdev=@var{nd}][,macaddr=@var{mac}][,model=@var{type}] [,name=@var{name}][,addr=@var{addr}][,vectors=@var{v}]
+@item -net nic[,netdev=@var{nd}][,macaddr=@var{mac}][,model=@var{type}] [,name=@var{name}][,addr=@var{addr}][,vectors=@var{v}]
 @findex -net
 Legacy option to configure or create an on-board (or machine default) Network
-Interface Card(NIC) and connect it either to the emulated hub port ("vlan")
-with number @var{n} (@var{n} = 0 is the default), or to the netdev @var{nd}.
+Interface Card(NIC) and connect it either to the emulated hub with ID 0 (i.e.
+the default hub), or to the netdev @var{nd}.
 The NIC is an e1000 by default on the PC target. Optionally, the MAC address
 can be changed to @var{mac}, the device address set to @var{addr} (PCI cards
 only), and a @var{name} can be assigned for use in monitor commands.
@@ -2482,11 +2401,10 @@ that the card should have; this option currently only affects virtio cards; set
 NIC is created.  QEMU can emulate several different models of network card.
 Use @code{-net nic,model=help} for a list of available devices for your target.
 
-@item -net user|tap|bridge|socket|l2tpv3|vde[,...][,vlan=@var{n}][,name=@var{name}]
+@item -net user|tap|bridge|socket|l2tpv3|vde[,...][,name=@var{name}]
 Configure a host network backend (with the options corresponding to the same
-@option{-netdev} option) and connect it to the emulated hub ("vlan") with the
-number @var{n} (default is number 0). Use @var{name} to specify the name of the
-hub port.
+@option{-netdev} option) and connect it to the emulated hub 0 (the default
+hub). Use @var{name} to specify the name of the hub port.
 ETEXI
 
 STEXI
@@ -2500,9 +2418,9 @@ DEF("chardev", HAS_ARG, QEMU_OPTION_chardev,
     "-chardev help\n"
     "-chardev null,id=id[,mux=on|off][,logfile=PATH][,logappend=on|off]\n"
     "-chardev socket,id=id[,host=host],port=port[,to=to][,ipv4][,ipv6][,nodelay][,reconnect=seconds]\n"
-    "         [,server][,nowait][,telnet][,reconnect=seconds][,mux=on|off]\n"
+    "         [,server][,nowait][,telnet][,websocket][,reconnect=seconds][,mux=on|off]\n"
     "         [,logfile=PATH][,logappend=on|off][,tls-creds=ID] (tcp)\n"
-    "-chardev socket,id=id,path=path[,server][,nowait][,telnet][,reconnect=seconds]\n"
+    "-chardev socket,id=id,path=path[,server][,nowait][,telnet][,websocket][,reconnect=seconds]\n"
     "         [,mux=on|off][,logfile=PATH][,logappend=on|off] (unix)\n"
     "-chardev udp,id=id[,host=host],port=port[,localaddr=localaddr]\n"
     "         [,localport=localport][,ipv4][,ipv6][,mux=on|off]\n"
@@ -2630,7 +2548,7 @@ The available backends are:
 A void device. This device will not emit any data, and will drop any data it
 receives. The null backend does not take any options.
 
-@item -chardev socket,id=@var{id}[,@var{TCP options} or @var{unix options}][,server][,nowait][,telnet][,reconnect=@var{seconds}][,tls-creds=@var{id}]
+@item -chardev socket,id=@var{id}[,@var{TCP options} or @var{unix options}][,server][,nowait][,telnet][,websocket][,reconnect=@var{seconds}][,tls-creds=@var{id}]
 
 Create a two-way stream socket, which can be either a TCP or a unix socket. A
 unix socket will be created if @option{path} is specified. Behaviour is
@@ -2643,6 +2561,9 @@ connect to a listening socket.
 
 @option{telnet} specifies that traffic on the socket should interpret telnet
 escape sequences.
+
+@option{websocket} specifies that the socket uses WebSocket protocol for
+communication.
 
 @option{reconnect} sets the timeout for reconnecting on non-server sockets when
 the remote end goes away.  qemu will delay this many seconds and then attempt
@@ -2854,6 +2775,10 @@ the first @code{-bt hci[...]} option is valid and defines the HCI's
 logic.  The Transport Layer is decided by the machine type.  Currently
 the machines @code{n800} and @code{n810} have one HCI and all other
 machines have none.
+
+Note: This option and the whole bluetooth subsystem is considered as deprecated.
+If you still use it, please send a mail to @email{qemu-devel@@nongnu.org} where
+you describe your usecase.
 
 @anchor{bt-hcis}
 The following three types are recognized:
@@ -3192,6 +3117,10 @@ MAGIC_SYSRQ sequence if you use a telnet that supports sending the break
 sequence.  Typically in unix telnet you do it with Control-] and then
 type "send break" followed by pressing the enter key.
 
+@item websocket:@var{host}:@var{port},server[,nowait][,nodelay]
+The WebSocket protocol is used instead of raw tcp socket. The port acts as
+a WebSocket server. Client mode is not supported.
+
 @item unix:@var{path}[,server][,nowait][,reconnect=@var{seconds}]
 A unix domain socket is used instead of a tcp socket.  The option works the
 same as if you had specified @code{-serial tcp} except the unix domain socket
@@ -3304,6 +3233,20 @@ STEXI
 Run the emulation in single step mode.
 ETEXI
 
+DEF("preconfig", 0, QEMU_OPTION_preconfig, \
+    "--preconfig     pause QEMU before machine is initialized (experimental)\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item --preconfig
+@findex --preconfig
+Pause QEMU for interactive configuration before the machine is created,
+which allows querying and configuring properties that will affect
+machine initialization.  Use QMP command 'x-exit-preconfig' to exit
+the preconfig state and move to the next state (i.e. run guest if -S
+isn't used or pause the second time if -S is used).  This option is
+experimental.
+ETEXI
+
 DEF("S", 0, QEMU_OPTION_S, \
     "-S              freeze CPU at startup (use 'c' to start execution)\n",
     QEMU_ARCH_ALL)
@@ -3324,6 +3267,30 @@ STEXI
 Run qemu with realtime features.
 mlocking qemu and guest memory can be enabled via @option{mlock=on}
 (enabled by default).
+ETEXI
+
+DEF("overcommit", HAS_ARG, QEMU_OPTION_overcommit,
+    "-overcommit [mem-lock=on|off][cpu-pm=on|off]\n"
+    "                run qemu with overcommit hints\n"
+    "                mem-lock=on|off controls memory lock support (default: off)\n"
+    "                cpu-pm=on|off controls cpu power management (default: off)\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -overcommit mem-lock=on|off
+@item -overcommit cpu-pm=on|off
+@findex -overcommit
+Run qemu with hints about host resource overcommit. The default is
+to assume that host overcommits all resources.
+
+Locking qemu and guest memory can be enabled via @option{mem-lock=on} (disabled
+by default).  This works when host memory is not overcommitted and reduces the
+worst-case latency for guest.  This is equivalent to @option{realtime}.
+
+Guest ability to manage power state of host cpus (increasing latency for other
+processes on the same host cpu, but decreasing latency for guest) can be
+enabled via @option{cpu-pm=on} (disabled by default).  This works best when
+host CPU is not overcommitted. When used, host estimates of CPU cycle and power
+utilization will be incorrect, not taking into account guest idle time.
 ETEXI
 
 DEF("gdb", HAS_ARG, QEMU_OPTION_gdb, \
@@ -3422,7 +3389,7 @@ STEXI
 Enable HAX (Hardware-based Acceleration eXecution) support. This option
 is only available if HAX support is enabled when compiling. HAX is only
 applicable to MAC and Windows platform, and thus does not conflict with
-KVM.
+KVM. This option is deprecated, use @option{-accel hax} instead.
 ETEXI
 
 DEF("xen-domid", HAS_ARG, QEMU_OPTION_xen_domid,
@@ -3510,30 +3477,30 @@ ETEXI
 HXCOMM Silently ignored for compatibility
 DEF("clock", HAS_ARG, QEMU_OPTION_clock, "", QEMU_ARCH_ALL)
 
-HXCOMM Options deprecated by -rtc
-DEF("localtime", 0, QEMU_OPTION_localtime, "", QEMU_ARCH_ALL)
-DEF("startdate", HAS_ARG, QEMU_OPTION_startdate, "", QEMU_ARCH_ALL)
-
 DEF("rtc", HAS_ARG, QEMU_OPTION_rtc, \
-    "-rtc [base=utc|localtime|date][,clock=host|rt|vm][,driftfix=none|slew]\n" \
+    "-rtc [base=utc|localtime|<datetime>][,clock=host|rt|vm][,driftfix=none|slew]\n" \
     "                set the RTC base and clock, enable drift fix for clock ticks (x86 only)\n",
     QEMU_ARCH_ALL)
 
 STEXI
 
-@item -rtc [base=utc|localtime|@var{date}][,clock=host|vm][,driftfix=none|slew]
+@item -rtc [base=utc|localtime|@var{datetime}][,clock=host|rt|vm][,driftfix=none|slew]
 @findex -rtc
 Specify @option{base} as @code{utc} or @code{localtime} to let the RTC start at the current
 UTC or local time, respectively. @code{localtime} is required for correct date in
-MS-DOS or Windows. To start at a specific point in time, provide @var{date} in the
+MS-DOS or Windows. To start at a specific point in time, provide @var{datetime} in the
 format @code{2006-06-17T16:01:21} or @code{2006-06-17}. The default base is UTC.
 
 By default the RTC is driven by the host system time. This allows using of the
 RTC as accurate reference clock inside the guest, specifically if the host
 time is smoothly following an accurate external reference clock, e.g. via NTP.
 If you want to isolate the guest time from the host, you can set @option{clock}
-to @code{rt} instead.  To even prevent it from progressing during suspension,
-you can set it to @code{vm}.
+to @code{rt} instead, which provides a host monotonic clock if host support it.
+To even prevent the RTC from progressing during suspension, you can set @option{clock}
+to @code{vm} (virtual clock). @samp{clock=vm} is recommended especially in
+icount mode in order to preserve determinism; however, note that in icount mode
+the speed of the virtual clock is variable and can in general differ from the
+host clock.
 
 Enable @option{driftfix} (i386 targets only) if you experience time drift problems,
 specifically with Windows' ACPI HAL. This option will try to figure out how
@@ -3675,10 +3642,7 @@ STEXI
 @item -virtioconsole @var{c}
 @findex -virtioconsole
 Set virtio console.
-
-This option is maintained for backward compatibility.
-
-Please use @code{-device virtconsole} for the new way of invocation.
+This option is deprecated, please use @option{-device virtconsole} instead.
 ETEXI
 
 DEF("show-cursor", 0, QEMU_OPTION_show_cursor, \
@@ -3765,7 +3729,8 @@ ETEXI
 
 #ifndef _WIN32
 DEF("runas", HAS_ARG, QEMU_OPTION_runas, \
-    "-runas user     change to user id user just before starting the VM\n",
+    "-runas user     change to user id user just before starting the VM\n" \
+    "                user can be numeric uid:gid instead\n",
     QEMU_ARCH_ALL)
 #endif
 STEXI
@@ -3874,8 +3839,7 @@ Write device configuration to @var{file}. The @var{file} can be either filename 
 command line and device configuration into file or dash @code{-}) character to print the
 output to stdout. This can be later used as input file for @code{-readconfig} option.
 ETEXI
-HXCOMM Deprecated, same as -no-user-config
-DEF("nodefconfig", 0, QEMU_OPTION_nodefconfig, "", QEMU_ARCH_ALL)
+
 DEF("no-user-config", 0, QEMU_OPTION_nouserconfig,
     "-no-user-config\n"
     "                do not load default user-provided config files at startup\n",
@@ -3886,6 +3850,7 @@ STEXI
 The @code{-no-user-config} option makes QEMU not load any of the user-provided
 config files on @var{sysconfdir}.
 ETEXI
+
 DEF("trace", HAS_ARG, QEMU_OPTION_trace,
     "-trace [[enable=]<pattern>][,events=<file>][,file=<file>]\n"
     "                specify tracing options\n",
@@ -3916,16 +3881,6 @@ ETEXI
 HXCOMM Deprecated by -machine accel=tcg property
 DEF("no-kvm", 0, QEMU_OPTION_no_kvm, "", QEMU_ARCH_I386)
 
-HXCOMM Deprecated by kvm-pit driver properties
-DEF("no-kvm-pit-reinjection", 0, QEMU_OPTION_no_kvm_pit_reinjection,
-    "", QEMU_ARCH_I386)
-
-HXCOMM Deprecated by -machine kernel_irqchip=on|off property
-DEF("no-kvm-irqchip", 0, QEMU_OPTION_no_kvm_irqchip, "", QEMU_ARCH_I386)
-
-HXCOMM Deprecated (ignored)
-DEF("tdf", 0, QEMU_OPTION_tdf,"", QEMU_ARCH_ALL)
-
 DEF("msg", HAS_ARG, QEMU_OPTION_msg,
     "-msg timestamp[=on|off]\n"
     "                change the format of messages\n"
@@ -3949,6 +3904,16 @@ STEXI
 @findex -dump-vmstate
 Dump json-encoded vmstate information for current machine type to file
 in @var{file}
+ETEXI
+
+DEF("enable-sync-profile", 0, QEMU_OPTION_enable_sync_profile,
+    "-enable-sync-profile\n"
+    "                enable synchronization profiling\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -enable-sync-profile
+@findex -enable-sync-profile
+Enable synchronization profiling.
 ETEXI
 
 STEXI
@@ -4046,6 +4011,13 @@ requires an alignment different than the default one used by QEMU, eg
 the device DAX /dev/dax0.0 requires 2M alignment rather than 4K. In
 such cases, users can specify the required alignment via this option.
 
+The @option{pmem} option specifies whether the backing file specified
+by @option{mem-path} is in host persistent memory that can be accessed
+using the SNIA NVM programming model (e.g. Intel NVDIMM).
+If @option{pmem} is set to 'on', QEMU will take necessary operations to
+guarantee the persistence of its own writes to @option{mem-path}
+(e.g. in vNVDIMM label emulation and live migration).
+
 @item -object memory-backend-ram,id=@var{id},merge=@var{on|off},dump=@var{on|off},share=@var{on|off},prealloc=@var{on|off},size=@var{size},host-nodes=@var{host-nodes},policy=@var{default|preferred|bind|interleave}
 
 Creates a memory backend object, which can be used to back the guest RAM.
@@ -4053,7 +4025,7 @@ Memory backend objects offer more control than the @option{-m} option that is
 traditionally used to define guest RAM. Please refer to
 @option{memory-backend-file} for a description of the options.
 
-@item -object memory-backend-memfd,id=@var{id},merge=@var{on|off},dump=@var{on|off},prealloc=@var{on|off},size=@var{size},host-nodes=@var{host-nodes},policy=@var{default|preferred|bind|interleave},seal=@var{on|off},hugetlb=@var{on|off},hugetlbsize=@var{size}
+@item -object memory-backend-memfd,id=@var{id},merge=@var{on|off},dump=@var{on|off},share=@var{on|off},prealloc=@var{on|off},size=@var{size},host-nodes=@var{host-nodes},policy=@var{default|preferred|bind|interleave},seal=@var{on|off},hugetlb=@var{on|off},hugetlbsize=@var{size}
 
 Creates an anonymous memory file backend object, which allows QEMU to
 share the memory with an external process (e.g. when using
@@ -4074,6 +4046,8 @@ with the @option{seal} option (requires at least Linux 4.16).
 
 Please refer to @option{memory-backend-file} for a description of the
 other options.
+
+The @option{share} boolean option is @var{on} by default with memfd.
 
 @item -object rng-random,id=@var{id},filename=@var{/dev/random}
 
@@ -4111,6 +4085,30 @@ a set of DH parameters at startup. This is a computationally
 expensive operation that consumes random pool entropy, so it is
 recommended that a persistent set of parameters be generated
 upfront and saved.
+
+@item -object tls-creds-psk,id=@var{id},endpoint=@var{endpoint},dir=@var{/path/to/keys/dir}[,username=@var{username}]
+
+Creates a TLS Pre-Shared Keys (PSK) credentials object, which can be used to provide
+TLS support on network backends. The @option{id} parameter is a unique
+ID which network backends will use to access the credentials. The
+@option{endpoint} is either @option{server} or @option{client} depending
+on whether the QEMU network backend that uses the credentials will be
+acting as a client or as a server. For clients only, @option{username}
+is the username which will be sent to the server.  If omitted
+it defaults to ``qemu''.
+
+The @var{dir} parameter tells QEMU where to find the keys file.
+It is called ``@var{dir}/keys.psk'' and contains ``username:key''
+pairs.  This file can most easily be created using the GnuTLS
+@code{psktool} program.
+
+For server endpoints, @var{dir} may also contain a file
+@var{dh-params.pem} providing diffie-hellman parameters to use
+for the TLS server. If the file is missing, QEMU will generate
+a set of DH parameters at startup. This is a computationally
+expensive operation that consumes random pool entropy, so it is
+recommended that a persistent set of parameters be generated
+up front and saved.
 
 @item -object tls-creds-x509,id=@var{id},endpoint=@var{endpoint},dir=@var{/path/to/cred/dir},priority=@var{priority},verify-peer=@var{on|off},passwordid=@var{id}
 
