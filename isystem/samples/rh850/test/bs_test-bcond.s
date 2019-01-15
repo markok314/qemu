@@ -1,7 +1,8 @@
-.text
+.include "RH850G3M_insts.s"
+.include "gpr_init.s"
 
 #----------------BGE----(S xor OV) = 0--------------------OK
-/*
+
         mov 5, r2
         mov 6, r3
         add r2, r3
@@ -25,303 +26,294 @@ lab3:	mov 0x80abcdef, r4
         bge lab2	# S=0, OV=1: no branch
         nop
         mov 1, r1
-Lbl:	br Lbl
-*/
+		nop
 
 #----------------BGT----((S xor OV) or Z) = 0--------------------OK
-/*
+
         mov 5, r2
         mov 6, r3
         add r2, r3
-        bgt lab2	# S=0, OV=0: branch
+        bgt lab5	# S=0, OV=0: branch
 		nop
-lab1:	mov 3, r4
+lab4:	mov 3, r4
 		mov -4, r5
 		add r5, r4
-		bgt lab1	# S=1, OV=0: no branch
-		br lab3
+		bgt lab4	# S=1, OV=0: no branch
+		br lab6
 		nop
-lab2:	mov 0x70000000, r4
+lab5:	mov 0x70000000, r4
 		mov 0x60000000, r5
 		add r4, r5
-		bgt lab1	# S=1, OV=1: branch
+		bgt lab4	# S=1, OV=1: branch
 		nop
 		nop
-lab3:	mov 0x80abcdef, r4
+lab6:	mov 0x80abcdef, r4
 		mov 0x8000abcd, r5
 		add r4, r5
-        bgt lab2	# S=0, OV=1: no branch
+        bgt lab5	# S=0, OV=1: no branch
         nop
         mov 1, r1
         mov 5, r2
         mov -5, r3
         add r2, r3
-		bgt lab3	# Z=1: no branch
+		bgt lab6	# Z=1: no branch
         mov 4, r3
         add r2, r3
-		bgt lab4	# Z=0: branch
+		bgt lab7	# Z=0: branch
 		nop
 		nop
-lab4:	mov 1, r4
-Lbl:	br Lbl
-*/
+lab7:	mov 1, r4
+		nop
 
 #----------------BLE----((S xor OV) or Z) = 1--------------------OK
-/*
+
         mov 5, r2
         mov -6, r3
         add r2, r3
-        ble lab2	# S=1, OV=0: branch
+        ble lab9	# S=1, OV=0: branch
 		nop
-lab1:	mov 3, r4
+lab8:	mov 3, r4
 		mov 4, r5
 		add r5, r4
-		ble lab1	# S=0, OV=0: no branch
-		br lab3
+		ble lab8	# S=0, OV=0: no branch
+		br lab10
 		nop
-lab2:	mov 0x80abcdef, r4
+lab9:	mov 0x80abcdef, r4
 		mov 0x8000abcd, r5
 		add r4, r5
-		ble lab1	# S=0, OV=1: branch
+		ble lab8	# S=0, OV=1: branch
 		nop
 		nop
-lab3:	mov 0x70000000, r4
+lab10:	mov 0x70000000, r4
 		mov 0x60000000, r5
 		add r4, r5
-        ble lab2	# S=1, OV=1: no branch
+        ble lab9	# S=1, OV=1: no branch
         nop
         mov 1, r1
         mov 5, r2
         mov 6, r3
         add r2, r3
-		ble lab3	# Z=0: no branch
+		ble lab10	# Z=0: no branch
         mov -5, r3
         add r2, r3
-		ble lab4	# Z=1: branch
+		ble lab11	# Z=1: branch
 		nop
 		nop
-lab4:	mov 1, r4
-Lbl:	br Lbl
-*/
+lab11:	mov 1, r4
+		nop
 
 #----------------BLT----(S xor OV) = 1--------------------OK
-/*
+
         mov 5, r2
         mov -8, r3
         add r2, r3
-        blt lab2	# S=1, OV=0: branch
+        blt lab13	# S=1, OV=0: branch
 		nop
-lab1:	mov 3, r4
+lab12:	mov 3, r4
 		mov 4, r5
 		add r5, r4
-		blt lab1	# S=0, OV=0: no branch
-		br lab3
+		blt lab12	# S=0, OV=0: no branch
+		br lab14
 		nop
-lab2:	mov 0x80abcdef, r4
+lab13:	mov 0x80abcdef, r4
 		mov 0x8000abcd, r5
 		add r4, r5
-		blt lab1	# S=0, OV=1: branch
+		blt lab12	# S=0, OV=1: branch
 		nop
 		nop
-lab3:	mov 0x70000000, r4
+lab14:	mov 0x70000000, r4
 		mov 0x60000000, r5
 		add r4, r5
-        blt lab2	# S=1, OV=1: no branch
+        blt lab13	# S=1, OV=1: no branch
         nop
         mov 1, r1
-Lbl:	br Lbl
-*/
+		nop
 
 #----------------BH----(CY or Z) = 0--------------------OK
-/*
+
         mov 5, r2
         mov -8, r3
         add r2, r3
-        BH lab1			# CY=0, Z=0 -> branch
+        BH lab15			# CY=0, Z=0 -> branch
 		nop
 		nop
-lab1:	mov 3, r4
+lab15:	mov 3, r4
 		mov -3, r5
 		add r5, r4
-		BH lab1			# CY=0, Z=1 -> no branch
-lab2:	mov 0x80abcdef, r4
+		BH lab15			# CY=0, Z=1 -> no branch
+lab16:	mov 0x80abcdef, r4
 		mov 0x8000abcd, r5
 		add r4, r5
-		BH lab1			# CY=1, Z=0 -> no branch
-lab3:	mov 0x90000000, r4
+		BH lab15			# CY=1, Z=0 -> no branch
+lab17:	mov 0x90000000, r4
 		mov 0x70000000, r5
 		add r4, r5
-        BH lab2			# CY=1, Z=1 -> no branch
+        BH lab16			# CY=1, Z=1 -> no branch
         mov 1, r1
-Lbl:	br Lbl
-*/
+		nop
 
 #----------------BL----CY = 1--------------------OK
 # Note: BL is treated as BC (also has CY = 1)
-/*
+
         mov 5, r2
         mov 8, r3
         add r2, r3
-        BL Lbl			# CY=0 -> no branch
+        BL lab17			# CY=0 -> no branch
         mov 0xb0000000, r5
-lab1:	mov 0x90000000, r4
+lab18:	mov 0x90000000, r4
 		add r4, r5
-		BL lab1			# CY=1 -> branch, CY=0 -> no branch
-Lbl:	br Lbl
-*/
+		BL lab18			# CY=1 -> branch, CY=0 -> no branch
+		nop
 
 #----------------BNH----(CY or Z) = 1--------------------OK
-/*
+
         mov 0xa0000000, r2
         mov 0x60000000, r3
         add r2, r3
-        BNH lab2			# CY=1, Z=1 -> branch
-lab1:	mov 0, r4
+        BNH lab20			# CY=1, Z=1 -> branch
+lab19:	mov 0, r4
 		mov 0, r5
 		add r5, r4
-		BNH lab3			# CY=0, Z=1 -> branch
-lab2:	mov 0x80abcdef, r4
+		BNH lab21			# CY=0, Z=1 -> branch
+lab20:	mov 0x80abcdef, r4
 		mov 0x8000abcd, r5
 		add r4, r5
-		BNH lab1			# CY=1, Z=0 -> branch
-lab3:	mov 0x90000, r4
+		BNH lab19			# CY=1, Z=0 -> branch
+lab21:	mov 0x90000, r4
 		mov 0x700, r5
 		add r4, r5
-        BNH lab2			# CY=0, Z=0 -> no branch
+        BNH lab20			# CY=0, Z=0 -> no branch
         nop
-Lbl:	br Lbl
-*/
 
 #----------------BNL----CY = 0--------------------OK
 # Treated as BNC
-/*
+
         mov 0xb0000000, r5
         mov 0x90000000, r4
         add r4, r5
-        BNL Lbl			# CY=1 -> no branch
+        BNL lab21			# CY=1 -> no branch
         mov 0x90000000, r3
-lab1:	mov 0x40000000, r2
+lab22:	mov 0x40000000, r2
 		add r2, r3
-		BNL lab1		# CY=0 -> branch, CY=1 -> no branch
+		BNL lab22		# CY=0 -> branch, CY=1 -> no branch
 		nop
-Lbl:	br Lbl
-*/
 
 #----------------BE----Z = 1--------------------OK
 # Treated as BZ
-/*
+
         mov 1234, r5
         mov -123, r4
         add r4, r5
-        BE Lbl			# Z=0 -> no branch
+        BE lab22			# Z=0 -> no branch
         mov 2345, r3
-lab1:	mov -2345, r2
+lab23:	mov -2345, r2
 		add r2, r3
-		BE lab1		# Z=1 -> branch, Z=0 -> no branch
-Lbl:	br Lbl
-*/
+		BE lab23		# Z=1 -> branch, Z=0 -> no branch
+		nop
 
 #----------------BNE----Z = 0--------------------OK
-/*
+
         mov 1234, r5
         mov -1234, r4
         add r4, r5
-        BNE Lbl			# Z=1 -> no branch
+        BNE lab23			# Z=1 -> no branch
         mov 1000, r3
-lab1:	mov -500, r2
+lab24:	mov -500, r2
 		add r2, r3
-		BNE lab1			# Z=0 -> branch, Z=1 -> no branch
-Lbl:	br Lbl
-*/
+		BNE lab24			# Z=0 -> branch, Z=1 -> no branch
+		nop
 
 #----------------BC = BL
 
 #----------------BF = BNE
 
 #----------------BN----S = 1--------------------OK
-/*
+
         mov 1234, r5
         mov -234, r4
         add r4, r5
-        BN Lbl			# S=0 -> no branch
+        BN lab24			# S=0 -> no branch
         mov -1000, r3
-lab1:	mov 700, r2
+lab25:	mov 700, r2
 		add r2, r3
-		BN lab1		# S=1 -> branch, S=0 -> no branch
-Lbl:	br Lbl
-*/
+		BN lab25		# S=1 -> branch, S=0 -> no branch
 
 #----------------BNC = BNL
 
 #----------------BNV----OV = 0--------------------OK
-/*
+
         mov 0x70000000, r5
         mov 0x20000000, r4
         add r4, r5
-        BNV Lbl			# OV=1 -> no branch
+        BNV lab25			# OV=1 -> no branch
         mov 0x50000000, r3
-lab1:	mov 0x20000000, r2
+lab26:	mov 0x20000000, r2
 		add r2, r3
-		BNV lab1		# OV=0 -> branch, OV=1 -> no branch
-Lbl:	br Lbl
-*/
+		BNV lab26		# OV=0 -> branch, OV=1 -> no branch
+		nop
 
 #----------------BNZ = BF = BNE
 
 #----------------BP----S = 0--------------------OK
-/*
+
         mov -1234, r5
         mov 234, r4
         add r4, r5
-        BP Lbl			# S=1 -> no branch
+        BP lab26			# S=1 -> no branch
         mov 1000, r3
-lab1:	mov -700, r2
+lab27:	mov -700, r2
 		add r2, r3
-		BP lab1		# S=0 -> branch, S=1 -> no branch
-Lbl:	br Lbl
-*/
+		BP lab27		# S=0 -> branch, S=1 -> no branch
+		nop
 
 #----------------BR-----always-------------------OK
-/*
+
         mov -1234, r5
         mov 234, r4
         add r4, r5
-        BR lab2
+        BR lab29
         mov 1000, r3
-lab1:	mov -700, r2
+lab28:	mov -700, r2
 		add r2, r3
-		BR lab3
-lab2:	BR lab1
-lab3:	mov 1, r1
-*/
+		BR lab30
+lab29:	BR lab28
+lab30:	mov 1, r1
+		nop
 
 #----------------BSA-----SAT = 1-------------------OK
-/*
+
         mov 0x30000000, r5
         mov 0x30000000, r4
         satadd r4, r5
-        BSA lab1			# SAT=0 -> no branch
+        BSA lab31			# SAT=0 -> no branch
         mov 0x40000000, r3
-lab1:	mov 0x50000000, r2
+		mov 0x50000000, r2
 		satadd r2, r3
-		BSA lab1			# SAT=1 -> branch
-*/
+		BSA lab31			# SAT=1 -> branch
+		nop
+        mov 0x1234, r11
+lab31:	nop
 
 #----------------BT = BE = BZ
 
 #----------------BV-----OV = 1-------------------OK
-/*
+
         mov 0x40000000, r5
         mov 0x20000000, r4
         add r4, r5
-        BV lab1			# OV=0 -> no branch
+        BV lab32			# OV=0 -> no branch
         mov 0x60000000, r3
-lab1:	mov 0x40000000, r2
+		mov 0x40000000, r2
 		add r2, r3
-		BV lab1			# OV=1 -> branch
+		BV lab32			# OV=1 -> branch
+        mov 0x1234, r11
 		nop
-*/
+lab32:	nop
+		nop
+
 #----------------BZ = BT
 
+Lbl:	BR Lbl
 
 # Note: Bcond(2) with disp17 has not been tested
+

@@ -66,6 +66,9 @@
 	feret
 
 .org 0x4030
+	mov 5, R5
+	nop
+	nop
 	feret
 
 .org 0x6030

@@ -1,42 +1,39 @@
 .include "RH850G3M_insts.s"
+.include "gpr_init.s"
 
-.text
+#-----JARL(1)-----32bit------------------------- OK
 
-#-----JARL(1)------------------------------ OK
-/*
-			mov 1, R3
-	        mov 2, R3
-	        JARL 6, R2
-	        mov 3, R3
-	        mov 4, R3
-	        mov 5, R3
-	        mov 6, R3
-	        mov 7, R3
-	        JARL -8, R2
-*/
+	        mov -1, R4
+	        JARL lab1a, R2
+lab1b:      add 1, R4
+			bne out1
+	        JARL lab1b, R2
+lab1a:		jmp [R2]
+out1:		nop
 
-#-----JARL(2)------------------------------ OK
-/*
-			mov 1, R3
-	        mov 2, R3
-	        JARL_ 6, R2
-	        mov 3, R3
-	        mov 4, R3
-	        mov 5, R3
-	        mov 6, R3
-	        mov 7, R3
-	        JARL_ -8, R2
-*/
+#-----JARL(2)---48bit--------------------------- OK
 
-#-----JARL(3)------------------------------ OK
+	        mov -1, R4
+	        #JARL_ lab2a-.text, R2  ne dela
+	        JARL_ 16, R2
+lab2b:      add 1, R4
+	        bne	out2
+	        # JARL_ lab2b-.text, R2 ne dela
+	        JARL_ -4, R2
+lab2a:		jmp [R2]
+out2:		nop
 
-			mov 1, R3
-	        mov 10, R3
-	        JARL_RR [R3], R2
-	        mov 3, R3
-	        mov 4, R3
-	        mov 5, R3
-	        mov 6, R3
-	        mov 16, R3
-	        JARL_RR [R3], R2
+#-----JARL(3)----32bit-------------------------- OK
+
+			movea lab3a-.text, R0, R3
+	        mov -1, R4
+	        JARL_RR R3, R2
+lab3b:		add 1, R4
+	        bne	out3
+	        movea lab3b-.text, R0, R3
+	        JARL_RR R3, R2
+lab3a:		jmp [R2]
+out3:		nop
+
+Lbl:		BR Lbl
 
