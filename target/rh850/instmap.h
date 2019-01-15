@@ -16,283 +16,335 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define MASK_OP_MAJOR(op)  (op & 0x7F)
-enum {
-    /* rv32i, rv64i, rv32m */
-    OPC_RISC_LUI    = (0x37),
-    OPC_RISC_AUIPC  = (0x17),
-    OPC_RISC_JAL    = (0x6F),
-    OPC_RISC_JALR   = (0x67),
-    OPC_RISC_BRANCH = (0x63),
-    OPC_RISC_LOAD   = (0x03),
-    OPC_RISC_STORE  = (0x23),
-    OPC_RISC_ARITH_IMM  = (0x13),
-    OPC_RISC_ARITH      = (0x33),
-    OPC_RISC_FENCE      = (0x0F),
-    OPC_RISC_SYSTEM     = (0x73),
-
-    /* rv64i, rv64m */
-    OPC_RISC_ARITH_IMM_W = (0x1B),
-    OPC_RISC_ARITH_W = (0x3B),
-
-    /* rv32a, rv64a */
-    OPC_RISC_ATOMIC = (0x2F),
-
-    /* floating point */
-    OPC_RISC_FP_LOAD = (0x7),
-    OPC_RISC_FP_STORE = (0x27),
-
-    OPC_RISC_FMADD = (0x43),
-    OPC_RISC_FMSUB = (0x47),
-    OPC_RISC_FNMSUB = (0x4B),
-    OPC_RISC_FNMADD = (0x4F),
-
-    OPC_RISC_FP_ARITH = (0x53),
+enum{
+	/*SIGNED INT*/
+	COND_RH850_BGE = 1110,
+	COND_RH850_BGT = 1111,
+	COND_RH850_BLE = 0111,
+	COND_RH850_BLT = 0110,
+	/*UNSIGNED INT*/
+	COND_RH850_BH = 1011,
+	COND_RH850_BL = 0001,
+	COND_RH850_BNH = 0011,
+	COND_RH850_BNL = 1001,
+	/*COMMON*/
+	COND_RH850_BE = 0010,
+	COND_RH850_BNE = 1010,
+	/*OTHERS*/
+	COND_RH850_BC = 0001,
+	COND_RH850_BF = 1010,
+	COND_RH850_BN = 0100,
+	COND_RH850_BNC = 1001,
+	COND_RH850_BNV = 1000,
+	COND_RH850_BNZ = 1010,
+	COND_RH850_BP = 1100,
+	COND_RH850_BR = 0101,
+	COND_RH850_BSA = 1101,
+	COND_RH850_BT = 0010,
+	COND_RH850_BV = 0000,
+	COND_RH850_BZ = 0010,
 };
 
-#define MASK_OP_ARITH(op)   (MASK_OP_MAJOR(op) | (op & ((0x7 << 12) | \
-                            (0x7F << 25))))
+#define MASK_OP_MAJOR(op)  (op & (0x3F << 5)) // the major opcode in rh850 is at bits 10-5
 enum {
-    OPC_RISC_ADD   = OPC_RISC_ARITH | (0x0 << 12) | (0x00 << 25),
-    OPC_RISC_SUB   = OPC_RISC_ARITH | (0x0 << 12) | (0x20 << 25),
-    OPC_RISC_SLL   = OPC_RISC_ARITH | (0x1 << 12) | (0x00 << 25),
-    OPC_RISC_SLT   = OPC_RISC_ARITH | (0x2 << 12) | (0x00 << 25),
-    OPC_RISC_SLTU  = OPC_RISC_ARITH | (0x3 << 12) | (0x00 << 25),
-    OPC_RISC_XOR   = OPC_RISC_ARITH | (0x4 << 12) | (0x00 << 25),
-    OPC_RISC_SRL   = OPC_RISC_ARITH | (0x5 << 12) | (0x00 << 25),
-    OPC_RISC_SRA   = OPC_RISC_ARITH | (0x5 << 12) | (0x20 << 25),
-    OPC_RISC_OR    = OPC_RISC_ARITH | (0x6 << 12) | (0x00 << 25),
-    OPC_RISC_AND   = OPC_RISC_ARITH | (0x7 << 12) | (0x00 << 25),
+	/* FORMAT I */						// unique opcodes and grouped instructions
+	OPC_RH850_16bit_0 = (0x0 << 5),		// group with opcode 0x0 (nop, synci, synce, syncm, syncp, mov)
+	OPC_RH850_NOT_reg1_reg2 	= (0x1 << 5),
+	OPC_RH850_16bit_2 = (0x2 << 5),		// group with opcode 0x2 (rie, switch, divh, fetrap)
+	OPC_RH850_16bit_3 = (0x3 << 5), 	// group with opcode 0x3 (jmp,sld.bu,sld.hu)
+	OPC_RH850_16bit_4 = (0x4 << 5),		// group with opcode 0x4 (zyb, satsub)
+	OPC_RH850_16bit_5 = (0x5 << 5),		// group with opcode 0x5 (sxb, satsub)
+	OPC_RH850_16bit_6 = (0x6 << 5),		// group with opcode 0x6 (zyh, satadd)
+	OPC_RH850_16bit_7 = (0x7 << 5),		// group with opcode 0x7 (sxh, mulh)
+	OPC_RH850_OR_reg1_reg2 	= (0x8 << 5),
+	OPC_RH850_XOR_reg1_reg2 	= (0x9 << 5),
+	OPC_RH850_AND_reg1_reg2 	= (0xA << 5),
+	OPC_RH850_TST_reg1_reg2 	= (0xB << 5),
+	OPC_RH850_SUBR_reg1_reg2 	= (0xC << 5),
+	OPC_RH850_SUB_reg1_reg2 	= (0xD << 5),
+	OPC_RH850_ADD_reg1_reg2 	= (0xE << 5),
+	OPC_RH850_CMP_reg1_reg2 = (0xF << 5),
 
-    /* RV64M */
-    OPC_RISC_MUL    = OPC_RISC_ARITH | (0x0 << 12) | (0x01 << 25),
-    OPC_RISC_MULH   = OPC_RISC_ARITH | (0x1 << 12) | (0x01 << 25),
-    OPC_RISC_MULHSU = OPC_RISC_ARITH | (0x2 << 12) | (0x01 << 25),
-    OPC_RISC_MULHU  = OPC_RISC_ARITH | (0x3 << 12) | (0x01 << 25),
+	/* FORMAT II */
+	OPC_RH850_16bit_16 = (0x10 << 5),	// group with opcode 0x10 (mov,callt)
+	OPC_RH850_16bit_17 = (0x11 << 5),	// group with opcode 0x11 (callt, satadd)
+	OPC_RH850_ADD_imm5_reg2= (0x12 << 5),   // group with opcode 0x12 (add)
+	OPC_RH850_CMP_imm5_reg2 = (0x13 << 5),	// group with opcode 0x13 (cmp)
+	OPC_RH850_SHR_imm5_reg2 = (0x14 << 5),
+	OPC_RH850_SAR_imm5_reg2 = (0x15 << 5),
+	OPC_RH850_SHL_imm5_reg2 = (0x16 << 5),
+	OPC_RH850_MULH_imm5_reg2 = (0x17 << 5),
 
-    OPC_RISC_DIV    = OPC_RISC_ARITH | (0x4 << 12) | (0x01 << 25),
-    OPC_RISC_DIVU   = OPC_RISC_ARITH | (0x5 << 12) | (0x01 << 25),
-    OPC_RISC_REM    = OPC_RISC_ARITH | (0x6 << 12) | (0x01 << 25),
-    OPC_RISC_REMU   = OPC_RISC_ARITH | (0x7 << 12) | (0x01 << 25),
+	/*FORMAT III */
+	OPC_RH850_BCOND = (0xB << 7), 	// different mask! (bits 10-7)
+
+	/* FORMAT IV */					// different mask! (bits 10-7)
+	OPC_RH850_16bit_SLDB = (0x6 << 5),
+	OPC_RH850_16bit_SLDH = (0x8 << 5),
+	OPC_RH850_16bit_IV10 = (0xA << 5), 		// group with opcode 0xA (sld.w,sst.w)
+	OPC_RH850_16bit_SSTB = (0x7 << 5),
+	OPC_RH850_16bit_SSTH = (0x9 << 5),
+
+	/* FORMAT VI */
+	OPC_RH850_ADDI_imm16_reg1_reg2	=	(0x30 << 5),
+	OPC_RH850_ANDI_imm16_reg1_reg2	=	(0x36 << 5),
+	OPC_RH850_MOVEA	=	(0x31 << 5),     	// this is also MOV 3, which is 48 bit
+	OPC_RH850_MOVHI_imm16_reg1_reg2	=	(0x32 << 5),
+	OPC_RH850_ORI_imm16_reg1_reg2	=	(0x34 << 5),
+	OPC_RH850_SATSUBI_imm16_reg1_reg2=	(0x33 << 5),
+	OPC_RH850_XORI_imm16_reg1_reg2	=	(0x35 << 5),
+
+
+	/* FORMAT VII */
+
+	OPC_RH850_LOOP	=	(0x37 << 5), 		//same as MULHI in format VI !!!!
+
+	OPC_RH850_LDB 	  = (0x38 << 5),
+	OPC_RH850_LDH_LDW = (0x39 << 5),
+	OPC_RH850_STB 	  = (0x3A << 5),
+	OPC_RH850_STH_STW = (0x3B << 5), 	//the store halfword and store word instructions differ on LSB displacement bit 16 (0=ST.H, 1=ST.W) (format VII)
+
+	OPC_RH850_ST_LD_0 = (0x3C << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
+	OPC_RH850_ST_LD_1 = (0x3D << 5), 	//5 instructions share this opcode, sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.DW=F, ST.H2=D) (format XIV)
+	//OPC_RH850_LDHU  = (0x3F << 5),	//bits 11-15 are not all 0
+
+	OPC_RH850_32bit_1 = (0x3F << 5),	// 111111
+
+
+
+
+	OPC_RH850_BIT_MANIPULATION_2	=	(0x3E << 5),
+
+	OPC_RH850_FORMAT_V_XIII = (0x1E << 6),
+
+
+	OPC_RH850_MULH1 = (0x7 << 5),
+	OPC_RH850_MULH2 = (0x17 << 5),
+
+
+};
+
+enum{
+	OPC_RH850_SET1_reg2_reg1	=	0,
+	OPC_RH850_NOT1_reg2_reg1	=	2,
+	OPC_RH850_CLR1_reg2_reg1	=	4,
+	OPC_RH850_TST1_reg2_reg1	=	6,
+};
+
+enum{
+	OPC_RH850_SET1_bit3_disp16_reg1	=	1,
+	OPC_RH850_NOT1_bit3_disp16_reg1	=	3,
+	OPC_RH850_CLR1_bit3_disp16_reg1	=	5,
+	OPC_RH850_TST1_bit3_disp16_reg1	=	7,
+};
+
+enum{
+	OPC_RH850_MOV_reg1_reg2		= 1,
+	OPC_RH850_MOV_imm5_reg2		= 2,
+	OPC_RH850_MOV_imm32_reg1	= 3,
+	OPC_RH850_MOVEA_imm16_reg1_reg2	= 4,
+};
+
+enum{
+	OPC_RH850_SATADD_reg1_reg2 		= 1,
+	OPC_RH850_SATADD_imm5_reg2 		= 2,
+	OPC_RH850_SATADD_reg1_reg2_reg3	= 3,
+	OPC_RH850_SATSUB_reg1_reg2		= 4,
+	OPC_RH850_SATSUB_reg1_reg2_reg3 = 5,
+	OPC_RH850_SATSUBR_reg1_reg2		= 6,
+};
+
+enum{
+	OPC_RH850_MUL_reg1_reg2_reg3	= 1,
+	OPC_RH850_MUL_imm9_reg2_reg3	= 2,
+	OPC_RH850_MULH_reg1_reg2		= 3,
+	//OPC_RH850_MULH_imm5_reg2		= 4,
+	OPC_RH850_MULHI_imm16_reg1_reg2	= 5,
+	OPC_RH850_MULU_reg1_reg2_reg3	= 8,
+	OPC_RH850_MULU_imm9_reg2_reg3	= 9,
+};
+
+enum{
+	OPC_RH850_ADF_cccc_reg1_reg2_reg3	= 10,
+	OPC_RH850_SBF_cccc_reg1_reg2_reg3	= 11,
+	OPC_RH850_DIVH_reg1_reg2			= 12,
+};
+
+enum{		//enum for gen_data_manipulation cases
+	OPC_RH850_SHR_reg1_reg2 		= 111,
+	OPC_RH850_SHR_reg1_reg2_reg3	= 222,
+	OPC_RH850_CMOV_cccc_reg1_reg2_reg3	= 333,
+	OPC_RH850_CMOV_cccc_imm5_reg2_reg3	= 444,
+	OPC_RH850_ROTL_reg1_reg2_reg3	= 445,
+	OPC_RH850_ROTL_imm5_reg2_reg3	= 446,
+	OPC_RH850_SAR_reg1_reg2			= 447,
+	OPC_RH850_SAR_reg1_reg2_reg3	= 448,
+	OPC_RH850_SASF_cccc_reg2		= 449,
+	OPC_RH850_SETF_cccc_reg2		= 450,
+	OPC_RH850_SHL_reg1_reg2			= 451,
+	OPC_RH850_SHL_reg1_reg2_reg3	= 453,
+	OPC_RH850_SXB_reg1				= 454,
+	OPC_RH850_SXH_reg1				= 455,
+	OPC_RH850_ZXB_reg1				= 456,
+	OPC_RH850_ZXH_reg1				= 457,
+
+
+
+};
+
+enum{
+	OPC_RH850_LDSR_reg2_regID_selID	= 1,
+	OPC_RH850_STSR_regID_reg2_selID = 2,
+	OPC_RH850_LDSR_reg2_regID = 11,
+	//check for unintentional matching
+	OPC_RH850_PREPARE_list12_imm5	= 12,
+	OPC_RH850_PREPARE_list12_imm5_sp	= 13,
+	OPC_RH850_RIE 					= 3,
+	OPC_RH850_CALLT_imm6			= 4,
+	OPC_RH850_CAXI_reg1_reg2_reg3	= 5,
+	OPC_RH850_DISPOSE_imm5_list12	= 7,
+	OPC_RH850_DISPOSE_imm5_list12_reg1 = 8,
+	OPC_RH850_FETRAP_vector4		= 15,
+	OPC_RH850_SWITCH_reg1			= 10,
+};
+
+enum{ // magic numbers for branch opcodes
+	OPC_RH850_JR_imm22			= 0,
+	OPC_RH850_JR_imm32			= 1,
+	OPC_RH850_JARL_disp22_reg2	= 2,
+	OPC_RH850_JARL_disp32_reg1	= 3, //48-bit
+	OPC_RH850_JARL_reg1_reg3	= 4,
+	OPC_RH850_JMP_reg1			= 5,
+	OPC_RH850_JMP_disp32_reg1	= 6,
+
 };
 
 
-#define MASK_OP_ARITH_IMM(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+#define MASK_OP_FORMAT_I_0(op)	(MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0x1F << 0)))
 enum {
-    OPC_RISC_ADDI   = OPC_RISC_ARITH_IMM | (0x0 << 12),
-    OPC_RISC_SLTI   = OPC_RISC_ARITH_IMM | (0x2 << 12),
-    OPC_RISC_SLTIU  = OPC_RISC_ARITH_IMM | (0x3 << 12),
-    OPC_RISC_XORI   = OPC_RISC_ARITH_IMM | (0x4 << 12),
-    OPC_RISC_ORI    = OPC_RISC_ARITH_IMM | (0x6 << 12),
-    OPC_RISC_ANDI   = OPC_RISC_ARITH_IMM | (0x7 << 12),
-    OPC_RISC_SLLI   = OPC_RISC_ARITH_IMM | (0x1 << 12), /* additional part of
-                                                           IMM */
-    OPC_RISC_SHIFT_RIGHT_I = OPC_RISC_ARITH_IMM | (0x5 << 12) /* SRAI, SRLI */
+	OPC_RH850_NOP 	= OPC_RH850_16bit_0 | (0x0 << 11) | (0x0 << 0),
+	OPC_RH850_SYNCI = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1C << 0),
+	OPC_RH850_SYNCE = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1D << 0),
+	OPC_RH850_SYNCM = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1E << 0),
+	OPC_RH850_SYNCP = OPC_RH850_16bit_0 | (0x0 << 11) | (0x1F << 0)
 };
 
-#define MASK_OP_BRANCH(op)     (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+
+
+#define MASK_OP_ST_LD0(op)   (MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0xF << 16)))
 enum {
-    OPC_RISC_BEQ  = OPC_RISC_BRANCH  | (0x0  << 12),
-    OPC_RISC_BNE  = OPC_RISC_BRANCH  | (0x1  << 12),
-    OPC_RISC_BLT  = OPC_RISC_BRANCH  | (0x4  << 12),
-    OPC_RISC_BGE  = OPC_RISC_BRANCH  | (0x5  << 12),
-    OPC_RISC_BLTU = OPC_RISC_BRANCH  | (0x6  << 12),
-    OPC_RISC_BGEU = OPC_RISC_BRANCH  | (0x7  << 12)
+
+	OPC_RH850_LDB2 	= OPC_RH850_ST_LD_0 | (0x00 << 11 ) | (0x5 << 16),
+	OPC_RH850_LDH2 	= OPC_RH850_ST_LD_0 | (0x00 << 11 ) | (0x7 << 16),
+	OPC_RH850_LDW2 	= OPC_RH850_ST_LD_0 | (0x00 << 11 ) | (0x9 << 16),
+	OPC_RH850_STB2 	= OPC_RH850_ST_LD_0 | (0x00 << 11 ) | (0xD << 16),		//sub-op bits 11-15 are 0, inst. differ in sub-op bits 16-19 (ST.B2=D, ST.W2=F) (format XIV)
+	OPC_RH850_STW2	= OPC_RH850_ST_LD_0 | (0x00 << 11 ) | (0xF << 16),
+
+};
+#define MASK_OP_ST_LD1(op)   (MASK_OP_MAJOR(op) | (op & (0x1F << 11)) | (op & (0xF << 16)))
+enum {
+
+	OPC_RH850_LDBU2 = OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0x5 << 16),
+	OPC_RH850_LDHU2 = OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0x7 << 16),
+	OPC_RH850_LDDW 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0x9 << 16),
+	OPC_RH850_STDW 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0xF << 16),
+	OPC_RH850_STH2 	= OPC_RH850_ST_LD_1 | (0x00 << 11 ) | (0xD << 16),
 };
 
+#define MASK_OP_32BIT_SUB(op)	(op & (0xF << 23))
 enum {
-    OPC_RISC_ADDIW   = OPC_RISC_ARITH_IMM_W | (0x0 << 12),
-    OPC_RISC_SLLIW   = OPC_RISC_ARITH_IMM_W | (0x1 << 12), /* additional part of
-                                                              IMM */
-    OPC_RISC_SHIFT_RIGHT_IW = OPC_RISC_ARITH_IMM_W | (0x5 << 12) /* SRAI, SRLI
-                                                                  */
+	OPC_RH850_LDSR_RIE_SETF_STSR	=	(0x0 << 23),
+	OPC_RH850_FORMAT_IX		=	(0x1 << 23),	// 0001
+	OPC_RH850_FORMAT_X		=	(0x2 << 23),	// 0010
+	OPC_RH850_MUL_INSTS		=	(0x4 << 23),	// 0100 this is also for SASF
+	OPC_RH850_FORMAT_XI		=	(0x5 << 23),	// 0101
+	OPC_RH850_FORMAT_XII	=	(0x6 << 23),	// 0110
+	OPC_RH850_ADDIT_ARITH	=	(0x7 << 23)		// 0111
 };
 
+#define MASK_OP_FORMAT_IX(op) (op & (0x3 << 21))   //0001 on b26-b23
 enum {
-    OPC_RISC_ADDW   = OPC_RISC_ARITH_W | (0x0 << 12) | (0x00 << 25),
-    OPC_RISC_SUBW   = OPC_RISC_ARITH_W | (0x0 << 12) | (0x20 << 25),
-    OPC_RISC_SLLW   = OPC_RISC_ARITH_W | (0x1 << 12) | (0x00 << 25),
-    OPC_RISC_SRLW   = OPC_RISC_ARITH_W | (0x5 << 12) | (0x00 << 25),
-    OPC_RISC_SRAW   = OPC_RISC_ARITH_W | (0x5 << 12) | (0x20 << 25),
-
-    /* RV64M */
-    OPC_RISC_MULW   = OPC_RISC_ARITH_W | (0x0 << 12) | (0x01 << 25),
-    OPC_RISC_DIVW   = OPC_RISC_ARITH_W | (0x4 << 12) | (0x01 << 25),
-    OPC_RISC_DIVUW  = OPC_RISC_ARITH_W | (0x5 << 12) | (0x01 << 25),
-    OPC_RISC_REMW   = OPC_RISC_ARITH_W | (0x6 << 12) | (0x01 << 25),
-    OPC_RISC_REMUW  = OPC_RISC_ARITH_W | (0x7 << 12) | (0x01 << 25),
+	OPC_RH850_BINS_0	= (0x0  << 21), //BINS0,SHR, SHR2
+	OPC_RH850_BINS_1	= (0x1  << 21), //BINS1,SAR,SAR2
+	OPC_RH850_BINS_2	= (0x2  << 21),	//BINS2,SHL, SHL2, ROTL, ROTL2
+	OPC_RH850_BIT_MANIPULATION		= (0x3  << 21),	//clr1, set, tst1, not1, caxi in format IX
 };
 
-#define MASK_OP_LOAD(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+#define MASK_OP_FORMAT_X(op) (op & (0xFFF << 11))	//0010 on b26-b23
 enum {
-    OPC_RISC_LB   = OPC_RISC_LOAD | (0x0 << 12),
-    OPC_RISC_LH   = OPC_RISC_LOAD | (0x1 << 12),
-    OPC_RISC_LW   = OPC_RISC_LOAD | (0x2 << 12),
-    OPC_RISC_LD   = OPC_RISC_LOAD | (0x3 << 12),
-    OPC_RISC_LBU  = OPC_RISC_LOAD | (0x4 << 12),
-    OPC_RISC_LHU  = OPC_RISC_LOAD | (0x5 << 12),
-    OPC_RISC_LWU  = OPC_RISC_LOAD | (0x6 << 12),
+	OPC_RH850_CTRET		= 	(0x880 << 11),
+	OPC_RH850_DI		= 	(0xC00 << 11),
+	OPC_RH850_EI		= 	(0XC10 << 11),
+	OPC_RH850_EIRET		= 	(0X900 << 11),
+	OPC_RH850_FERET		= 	(0X940 << 11),
+	OPC_RH850_HALT		= 	(0X400 << 11),
+	OPC_RH850_JARL3		= 	(0XC18 << 11),
+	OPC_RH850_SNOOZE	= 	(0x401 << 11),
+	OPC_RH850_SYSCALL	= 	(0xC1A << 11),
+	OPC_RH850_TRAP		= 	(0x000 << 11),
+	OPC_RH850_PREF		= 	(0xC1B << 11),
+	OPC_RH850_POPSP_rh_rt	= 	(0xC0C << 11),
+	OPC_RH850_PUSHSP_rh_rt	= 	(0xC08 << 11),
+	//don't forget CACHE
+	OPC_RH850_CLL	= 	(0xC1F << 11),
+
 };
 
-#define MASK_OP_STORE(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+#define MASK_OP_FORMAT_XI(op) (op & (0x7F << 16))
 enum {
-    OPC_RISC_SB   = OPC_RISC_STORE | (0x0 << 12),
-    OPC_RISC_SH   = OPC_RISC_STORE | (0x1 << 12),
-    OPC_RISC_SW   = OPC_RISC_STORE | (0x2 << 12),
-    OPC_RISC_SD   = OPC_RISC_STORE | (0x3 << 12),
+	OPC_RH850_DIVH_reg1_reg2_reg3 	= 0x0,
+	OPC_RH850_DIVHU_reg1_reg2_reg3 	= 0x2,
+	OPC_RH850_DIV_reg1_reg2_reg3 	= 0x40,
+	OPC_RH850_DIVQ 	= 0x7C,
+	OPC_RH850_DIVQU	= 0x7E,
+	OPC_RH850_DIVU_reg1_reg2_reg3	= 0x42
 };
 
-#define MASK_OP_JALR(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
-/* no enum since OPC_RISC_JALR is the actual value */
-
-#define MASK_OP_ATOMIC(op) \
-    (MASK_OP_MAJOR(op) | (op & ((0x7 << 12) | (0x7F << 25))))
-#define MASK_OP_ATOMIC_NO_AQ_RL_SZ(op) \
-    (MASK_OP_MAJOR(op) | (op & (0x1F << 27)))
-
+#define MASK_OP_FORMAT_XII(op) (op & (0x3 << 17))
 enum {
-    OPC_RISC_LR          = OPC_RISC_ATOMIC | (0x02 << 27),
-    OPC_RISC_SC          = OPC_RISC_ATOMIC | (0x03 << 27),
-    OPC_RISC_AMOSWAP     = OPC_RISC_ATOMIC | (0x01 << 27),
-    OPC_RISC_AMOADD      = OPC_RISC_ATOMIC | (0x00 << 27),
-    OPC_RISC_AMOXOR      = OPC_RISC_ATOMIC | (0x04 << 27),
-    OPC_RISC_AMOAND      = OPC_RISC_ATOMIC | (0x0C << 27),
-    OPC_RISC_AMOOR       = OPC_RISC_ATOMIC | (0x08 << 27),
-    OPC_RISC_AMOMIN      = OPC_RISC_ATOMIC | (0x10 << 27),
-    OPC_RISC_AMOMAX      = OPC_RISC_ATOMIC | (0x14 << 27),
-    OPC_RISC_AMOMINU     = OPC_RISC_ATOMIC | (0x18 << 27),
-    OPC_RISC_AMOMAXU     = OPC_RISC_ATOMIC | (0x1C << 27),
+	OPC_RH850_BSW_reg2_reg3	= (0x0 << 0),
+	OPC_RH850_BSH_reg2_reg3 = (0x1 << 0),
+	OPC_RH850_HSW_reg2_reg3	= (0x2 << 0),
+	OPC_RH850_HSH_reg2_reg3	= (0x3 << 0),
+	// SCHOL, SCHOR, SCH1L, SCH1R
+	OPC_RH850_SCH0R_reg2_reg3	= (0x0 << 0),
+	OPC_RH850_SCH1R_reg2_reg3	= (0x1 << 0), //this is also STCW
+	OPC_RH850_SCH0L_reg2_reg3	= (0x2 << 0),
+	OPC_RH850_SCH1L_reg2_reg3	= (0x3 << 0),
+
+
 };
 
-#define MASK_OP_SYSTEM(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+#define MASK_ADDIT_ARITH_OP(op) (op & (0x3 << 21))
 enum {
-    OPC_RISC_ECALL       = OPC_RISC_SYSTEM | (0x0 << 12),
-    OPC_RISC_EBREAK      = OPC_RISC_SYSTEM | (0x0 << 12),
-    OPC_RISC_ERET        = OPC_RISC_SYSTEM | (0x0 << 12),
-    OPC_RISC_MRTS        = OPC_RISC_SYSTEM | (0x0 << 12),
-    OPC_RISC_MRTH        = OPC_RISC_SYSTEM | (0x0 << 12),
-    OPC_RISC_HRTS        = OPC_RISC_SYSTEM | (0x0 << 12),
-    OPC_RISC_WFI         = OPC_RISC_SYSTEM | (0x0 << 12),
-    OPC_RISC_SFENCEVM    = OPC_RISC_SYSTEM | (0x0 << 12),
+	OPC_RH850_SBF_SATSUB	= 0x0,
+	OPC_RH850_ADF_SATADD3	= 0x1,
+	OPC_RH850_MAC_reg1_reg2_reg3_reg4	= 0x2,
+	OPC_RH850_MACU_reg1_reg2_reg3_reg4	= 0x3,
 
-    OPC_RISC_CSRRW       = OPC_RISC_SYSTEM | (0x1 << 12),
-    OPC_RISC_CSRRS       = OPC_RISC_SYSTEM | (0x2 << 12),
-    OPC_RISC_CSRRC       = OPC_RISC_SYSTEM | (0x3 << 12),
-    OPC_RISC_CSRRWI      = OPC_RISC_SYSTEM | (0x5 << 12),
-    OPC_RISC_CSRRSI      = OPC_RISC_SYSTEM | (0x6 << 12),
-    OPC_RISC_CSRRCI      = OPC_RISC_SYSTEM | (0x7 << 12),
+
+
+
 };
 
-#define MASK_OP_FP_LOAD(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
+#define MASK_OP_FORMAT_V_FORMAT_XIII(op) (op & (0x1F << 6))
+
+
 enum {
-    OPC_RISC_FLW   = OPC_RISC_FP_LOAD | (0x2 << 12),
-    OPC_RISC_FLD   = OPC_RISC_FP_LOAD | (0x3 << 12),
+	operation_LDL_W = 0,
+	operation_STC_W = 1,
+	operation_CLL = 2,
 };
 
-#define MASK_OP_FP_STORE(op)   (MASK_OP_MAJOR(op) | (op & (0x7 << 12)))
-enum {
-    OPC_RISC_FSW   = OPC_RISC_FP_STORE | (0x2 << 12),
-    OPC_RISC_FSD   = OPC_RISC_FP_STORE | (0x3 << 12),
-};
 
-#define MASK_OP_FP_FMADD(op)   (MASK_OP_MAJOR(op) | (op & (0x3 << 25)))
-enum {
-    OPC_RISC_FMADD_S = OPC_RISC_FMADD | (0x0 << 25),
-    OPC_RISC_FMADD_D = OPC_RISC_FMADD | (0x1 << 25),
-};
 
-#define MASK_OP_FP_FMSUB(op)   (MASK_OP_MAJOR(op) | (op & (0x3 << 25)))
-enum {
-    OPC_RISC_FMSUB_S = OPC_RISC_FMSUB | (0x0 << 25),
-    OPC_RISC_FMSUB_D = OPC_RISC_FMSUB | (0x1 << 25),
-};
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
 
-#define MASK_OP_FP_FNMADD(op)   (MASK_OP_MAJOR(op) | (op & (0x3 << 25)))
-enum {
-    OPC_RISC_FNMADD_S = OPC_RISC_FNMADD | (0x0 << 25),
-    OPC_RISC_FNMADD_D = OPC_RISC_FNMADD | (0x1 << 25),
-};
-
-#define MASK_OP_FP_FNMSUB(op)   (MASK_OP_MAJOR(op) | (op & (0x3 << 25)))
-enum {
-    OPC_RISC_FNMSUB_S = OPC_RISC_FNMSUB | (0x0 << 25),
-    OPC_RISC_FNMSUB_D = OPC_RISC_FNMSUB | (0x1 << 25),
-};
-
-#define MASK_OP_FP_ARITH(op)   (MASK_OP_MAJOR(op) | (op & (0x7F << 25)))
-enum {
-    /* float */
-    OPC_RISC_FADD_S    = OPC_RISC_FP_ARITH | (0x0 << 25),
-    OPC_RISC_FSUB_S    = OPC_RISC_FP_ARITH | (0x4 << 25),
-    OPC_RISC_FMUL_S    = OPC_RISC_FP_ARITH | (0x8 << 25),
-    OPC_RISC_FDIV_S    = OPC_RISC_FP_ARITH | (0xC << 25),
-
-    OPC_RISC_FSGNJ_S   = OPC_RISC_FP_ARITH | (0x10 << 25),
-    OPC_RISC_FSGNJN_S  = OPC_RISC_FP_ARITH | (0x10 << 25),
-    OPC_RISC_FSGNJX_S  = OPC_RISC_FP_ARITH | (0x10 << 25),
-
-    OPC_RISC_FMIN_S    = OPC_RISC_FP_ARITH | (0x14 << 25),
-    OPC_RISC_FMAX_S    = OPC_RISC_FP_ARITH | (0x14 << 25),
-
-    OPC_RISC_FSQRT_S   = OPC_RISC_FP_ARITH | (0x2C << 25),
-
-    OPC_RISC_FEQ_S     = OPC_RISC_FP_ARITH | (0x50 << 25),
-    OPC_RISC_FLT_S     = OPC_RISC_FP_ARITH | (0x50 << 25),
-    OPC_RISC_FLE_S     = OPC_RISC_FP_ARITH | (0x50 << 25),
-
-    OPC_RISC_FCVT_W_S  = OPC_RISC_FP_ARITH | (0x60 << 25),
-    OPC_RISC_FCVT_WU_S = OPC_RISC_FP_ARITH | (0x60 << 25),
-    OPC_RISC_FCVT_L_S  = OPC_RISC_FP_ARITH | (0x60 << 25),
-    OPC_RISC_FCVT_LU_S = OPC_RISC_FP_ARITH | (0x60 << 25),
-
-    OPC_RISC_FCVT_S_W  = OPC_RISC_FP_ARITH | (0x68 << 25),
-    OPC_RISC_FCVT_S_WU = OPC_RISC_FP_ARITH | (0x68 << 25),
-    OPC_RISC_FCVT_S_L  = OPC_RISC_FP_ARITH | (0x68 << 25),
-    OPC_RISC_FCVT_S_LU = OPC_RISC_FP_ARITH | (0x68 << 25),
-
-    OPC_RISC_FMV_X_S   = OPC_RISC_FP_ARITH | (0x70 << 25),
-    OPC_RISC_FCLASS_S  = OPC_RISC_FP_ARITH | (0x70 << 25),
-
-    OPC_RISC_FMV_S_X   = OPC_RISC_FP_ARITH | (0x78 << 25),
-
-    /* double */
-    OPC_RISC_FADD_D    = OPC_RISC_FP_ARITH | (0x1 << 25),
-    OPC_RISC_FSUB_D    = OPC_RISC_FP_ARITH | (0x5 << 25),
-    OPC_RISC_FMUL_D    = OPC_RISC_FP_ARITH | (0x9 << 25),
-    OPC_RISC_FDIV_D    = OPC_RISC_FP_ARITH | (0xD << 25),
-
-    OPC_RISC_FSGNJ_D   = OPC_RISC_FP_ARITH | (0x11 << 25),
-    OPC_RISC_FSGNJN_D  = OPC_RISC_FP_ARITH | (0x11 << 25),
-    OPC_RISC_FSGNJX_D  = OPC_RISC_FP_ARITH | (0x11 << 25),
-
-    OPC_RISC_FMIN_D    = OPC_RISC_FP_ARITH | (0x15 << 25),
-    OPC_RISC_FMAX_D    = OPC_RISC_FP_ARITH | (0x15 << 25),
-
-    OPC_RISC_FCVT_S_D = OPC_RISC_FP_ARITH | (0x20 << 25),
-
-    OPC_RISC_FCVT_D_S = OPC_RISC_FP_ARITH | (0x21 << 25),
-
-    OPC_RISC_FSQRT_D   = OPC_RISC_FP_ARITH | (0x2D << 25),
-
-    OPC_RISC_FEQ_D     = OPC_RISC_FP_ARITH | (0x51 << 25),
-    OPC_RISC_FLT_D     = OPC_RISC_FP_ARITH | (0x51 << 25),
-    OPC_RISC_FLE_D     = OPC_RISC_FP_ARITH | (0x51 << 25),
-
-    OPC_RISC_FCVT_W_D  = OPC_RISC_FP_ARITH | (0x61 << 25),
-    OPC_RISC_FCVT_WU_D = OPC_RISC_FP_ARITH | (0x61 << 25),
-    OPC_RISC_FCVT_L_D  = OPC_RISC_FP_ARITH | (0x61 << 25),
-    OPC_RISC_FCVT_LU_D = OPC_RISC_FP_ARITH | (0x61 << 25),
-
-    OPC_RISC_FCVT_D_W  = OPC_RISC_FP_ARITH | (0x69 << 25),
-    OPC_RISC_FCVT_D_WU = OPC_RISC_FP_ARITH | (0x69 << 25),
-    OPC_RISC_FCVT_D_L  = OPC_RISC_FP_ARITH | (0x69 << 25),
-    OPC_RISC_FCVT_D_LU = OPC_RISC_FP_ARITH | (0x69 << 25),
-
-    OPC_RISC_FMV_X_D   = OPC_RISC_FP_ARITH | (0x71 << 25),
-    OPC_RISC_FCLASS_D  = OPC_RISC_FP_ARITH | (0x71 << 25),
-
-    OPC_RISC_FMV_D_X   = OPC_RISC_FP_ARITH | (0x79 << 25),
-};
 
 #define GET_B_IMM(inst) ((extract32(inst, 8, 4) << 1) \
                          | (extract32(inst, 25, 6) << 5) \
@@ -307,12 +359,17 @@ enum {
                            | (extract32(inst, 12, 8) << 12) \
                            | (sextract64(inst, 31, 1) << 20))
 
+
+#define GET_RS1(inst)  extract32(inst, 0, 5)		//appropriate for RH850
+#define GET_RS2(inst)  extract32(inst, 11, 5)		//appropriate for RH850
+#define GET_RS3(inst)  extract32(inst, 27, 5)		//appropriate for RH850
+#define GET_DISP(inst) (extract32(inst, 20, 7) | (sextract32(inst, 32, 16) << 7 ) ) //b47-b32 + b26-b20
+
+
 #define GET_RM(inst)   extract32(inst, 12, 3)
-#define GET_RS3(inst)  extract32(inst, 27, 5)
-#define GET_RS1(inst)  extract32(inst, 15, 5)
-#define GET_RS2(inst)  extract32(inst, 20, 5)
 #define GET_RD(inst)   extract32(inst, 7, 5)
 #define GET_IMM(inst)  sextract64(inst, 20, 12)
+#define GET_IMM_32(inst)	sextract64(inst, 16, 32)
 
 /* RVC decoding macros */
 #define GET_C_IMM(inst)             (extract32(inst, 2, 5) \

@@ -1,3 +1,19 @@
+/* RH850 PSW constants */
+
+#define PSW_Z 	0x00000001
+#define PSW_S 	0x00000002
+#define PSW_OV 	0x00000004
+#define PSW_CY 	0x00000008
+#define PSW_SAT	0x00000010
+#define PSW_ID	0x00000020
+#define PSW_EP  0x00000040
+#define PSW_NP	0x00000080
+#define PSW_EBV	0x00008000
+#define PSW_CU0	0x00010000
+#define PSW_UM	0x40000000
+
+/*  */
+
 /* RH850 ISA constants */
 
 #define get_field(reg, mask) (((reg) & \

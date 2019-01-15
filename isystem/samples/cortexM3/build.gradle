@@ -159,7 +159,7 @@ model {
             assembler.args '-mfpu=vfp', '-mthumb', '-mcpu=cortex-m3'
 
             cppCompiler.args '-mfpu=vfp', '-fno-dwarf2-cfi-asm',
-                          '-mthumb', '-mcpu=cortex-m4',
+                          '-mthumb', '-mcpu=cortex-m3',
                           '-mfloat-abi=soft', '-fno-builtin-print',
                           '-fexceptions', '-fpermissive', '-Wall',
                           '-g'
@@ -179,7 +179,7 @@ model {
             }
 
             linker.args "-Wl,-Map=stm32.map,--script=$LINKER_FILE,-n",
-                        '-O0', '-nostartfiles', '-mcpu=cortex-m4', '-mthumb',
+                        '-O0', '-nostartfiles', '-mcpu=cortex-m3', '-mthumb',
                         '-fexceptions', '-lstdc++', '-lg', '-lm', '-lc', '-lrdimon'
         }
     }

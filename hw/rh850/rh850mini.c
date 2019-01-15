@@ -43,11 +43,10 @@
 #include "cpu.h"
 
 // see RH850/F1L, https://www.renesas.com/en-us/products/microcontrollers-microprocessors/rh850/rh850f1x/rh850f1l.html
-const int FLASH_SIZE = 2* (1 << 20); //2M
-const int SRAM_SIZE = 192 * (1 << 10); // 192 kB
-const int FLASH_START = 0;  // pure guess, verify the manual (IAR linker files
-                            // have start set at 0x0100) TODO
-const int SRAM_START = 2* (1 << 20);  // == FLASH_SIZE, pure guess, verify the manual TODO
+const uint32_t FLASH_SIZE = 2* (1 << 20); //2M
+const uint32_t SRAM_SIZE = 192 * (1 << 10); // 192 kB
+const uint32_t FLASH_START = 0;
+const uint32_t SRAM_START = 0xfee00000;  // start of RAM for F1L devices, is not the same for other RH850 devices
 
 
 static void rh850_reset(void *opaque)
@@ -113,6 +112,13 @@ static void load_rh_kernel(RH850CPU *cpu, const char *kernel_filename, int mem_s
 
         int image_size = load_elf_as(kernel_filename, NULL, NULL, &entry, &lowaddr,
         		                     NULL, IS_BIG_ENDIAN, EM_RH850, 1, 0, as);
+
+        if (image_size == ELF_LOAD_WRONG_ARCH) { // V850 is subset of RH850, so it is also allowed
+            error_report("Loading kernel as V850 code: '%s'", kernel_filename);
+        	image_size = load_elf_as(kernel_filename, NULL, NULL, &entry, &lowaddr,
+           		                     NULL, IS_BIG_ENDIAN, EM_V850, 1, 0, as);
+        }
+
         if (image_size < 0) {
             image_size = load_image_targphys_as(kernel_filename, 0,
                                                 mem_size, as);

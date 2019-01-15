@@ -2961,19 +2961,57 @@ disasm_inst(char *buf, size_t buflen, uint64_t pc, rv_inst inst)
 
 #include "../isystem/disas/wrap.h"
 
+
+
+
+
 int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 {
     char buf[128] = { 0 };
-    bfd_byte packet[2];
+    bfd_byte packet[4];
     rv_inst inst = 0;
-    size_t len = 2;
+    size_t len = 2;		//read 4 bytes instead of two
     bfd_vma n;
     int status;
+    rv_inst instVal = 0;
 
-    //(*info->fprintf_func)(info->stream, "print_insn_rh850() called");
-    //return 2;
+    //check if 48, 32 or 16-bit instruction
+    status = (*info->read_memory_func)(memaddr, packet, 3, info);
+    inst |= ((rv_inst) bfd_getl32(packet));
 
+	if (  (((inst >> 6) & 0x7ff) == 0x41e)  || ((inst >> 5) & 0x7FF) == 0x31
+				|| ((inst >> 5) & 0x7FF) == 0x37 || ((inst >> 5) & 0x7FF) == 0x17) {
+		if ((((inst >> 6) & 0x7ff) == 0x41e) && (((inst >> 17) & 0x3) < 0x2)) {
+			//prepare instruction can be 32bit, 48bit and 64bit
+			switch ( (inst >> 19) & 0x3 )
+			{
+				case 0x0:	len = 4; break;
+				case 0x1:	len = 6; break;
+				case 0x2:	len = 6; break;
+				case 0x3:	len = 8; break;
+				default:             break;
+			}
+
+		}
+		else if ( ((inst >> 5) & 0xfff) == 0x837)	/// za LOOP (dodal Brane, 4.10.18)
+			len = 4;
+		else
+			len = 6;
+
+		//this is a 48-bit instruction
+		//add JRL and JR, both have opcode 0x17
+
+	} else if ( ((inst >> 9) & (0x3)) == 0x3 ) {
+		len = 4;
+		//this is a 32-bit instruction
+	} else {
+		len = 2;
+		//this is a 16-bit instruction
+	}
+
+    inst = 0;
     /* Instructions are made of 2-byte packets in little-endian order */
+    /* We need to read 32 bits (two packets) to identify 48-bit instructions */
     for (n = 0; n < len; n += 2) {
         status = (*info->read_memory_func)(memaddr + n, packet, 2, info);
         if (status != 0) {
@@ -2985,16 +3023,36 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
             return status;
         }
         inst |= ((rv_inst) bfd_getl16(packet)) << (8 * n);
-        //if (n == 0) {
-        //    len = inst_length(inst);
-        //}
     }
+
 
     disasm_inst(buf, sizeof(buf), memaddr, inst);
 
-    disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst);
+    disasm_wrap(buf, sizeof(buf), memaddr, (uint64_t)inst, len);
 
-    (*info->fprintf_func)(info->stream, "%lx:  %lx", memaddr, inst);
+
+	for(int i=0; i<len; i++){
+			instVal |= ((( inst >> (8*(len-(i+1))) ) & 0xFF ) << 8*i);
+		}
+
+	switch(len){
+	case 2:
+		(*info->fprintf_func)(info->stream, "        %04lx  %s",   instVal, buf);
+		break;
+	case 4:
+		(*info->fprintf_func)(info->stream, "    %08lx  %s",   instVal, buf);
+		break;
+	case 6:
+		(*info->fprintf_func)(info->stream, "%012lx  %s",   instVal, buf);
+		break;
+	case 8:
+		(*info->fprintf_func)(info->stream, "%016lx  %s",   instVal, buf);
+	}
+
+
+    //(*info->fprintf_func)(info->stream,"%12lx  %s",   instVal, buf);
+
+	printf("%s\n", buf);///
 
     return len;
 }

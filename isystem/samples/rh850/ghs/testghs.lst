@@ -1,0 +1,25 @@
+
+                                   Tue Aug 07 10:18:37 2018           Page 1
+                                   Tue Aug 07 10:18:06 2018        testghs.s
+Command Line:   x:\GHS\V850\comp_201655\as850.exe -cpu=v850e2 -G -list testghs.s
+Source File:    testghs.s
+Directory:      d:\proj\qemu\isystem\samples\rh850\ghs
+Host OS:        Windows
+AS: Copyright (C) 1983-2016 Green Hills Software.  All Rights Reserved.
+Release: Compiler v2016.5.5
+Build Directory: [Directory] BTOWINBOX:c:/build_2015_5_bto/2016-10-20.2030-2015_5_bto/win32-comp-ecom
+Revision: [VCInfo] http://toolsvc/branches/release-branch-2015-5-bto/src@577807 (built by build)
+Revision Date: Fri Oct 21 06:30:03 2016
+
+Release Date: Fri Oct 21 08:02:41 2016
+
+                             1	.text
+00000000 070f0100            2	        ld.b 0x1[r7],r1
+00000004 060f0500            3	        ld.b 0x5 [r6],r1
+00000008 bf97fcff            4	        jarl 0x4, r18
+0000000c 63b8                5	        sld.bu 3[ep], r23
+0000000e 81ff3823            6	        jarl 0x12346, lp
+00000012 e60612000000        7	        jmp 0x12 [r6]
+00000018 a5370f00            8	        ld.bu 0xf[r5],r6
+0000001c 9f05                9	        bgt 0x2
+                            10	        

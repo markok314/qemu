@@ -100,6 +100,8 @@ typedef struct CPURH850State CPURH850State;
 
 #include "pmp.h"
 
+#include "register_indices.h"
+
 struct CPURH850State {
 
 
@@ -117,18 +119,26 @@ struct CPURH850State {
     target_ulong sysDatabuffRegs[1];
     target_ulong pc;
 
+    target_ulong psw;
 
-    target_ulong psw;		//program status word
-    target_ulong eiic;		//EI level exception cause
-    target_ulong feic;		//FI level exception cause
-    target_ulong mcfg0;		//machine configuration
-    target_ulong rbase;		//reset vector base address (if psw.ebv==0, this is also exception vector)
-    target_ulong ebase;		//exception handler vector address
-    target_ulong mctl;		//CPU control
-    target_ulong pid;		//processor ID
-    target_ulong htcfg0;	//thread configuration
-    target_ulong mea; 		//memory error address (when misaligned or MPU)
-    target_ulong mei; 		//memory error info (info about instruction that caused exception)
+    // flags contained in PSW register
+    uint32_t Z_flag;
+    uint32_t S_flag;
+    uint32_t OV_flag;
+    uint32_t CY_flag;
+    uint32_t SAT_flag;
+    uint32_t ID_flag;
+    uint32_t EP_flag;
+    uint32_t NP_flag;
+    uint32_t EBV_flag;
+    uint32_t CU0_flag;
+    uint32_t CU1_flag;
+    uint32_t CU2_flag;
+    uint32_t UM_flag;
+
+    uint32_t condSatisfied;
+
+
 
     target_ulong icsr;		//interrupt control status register
     target_ulong intcfg;	//interrupt function setting
@@ -142,14 +152,15 @@ struct CPURH850State {
     target_ulong load_res;    	// inst addr for TCG
     target_ulong load_val;    	// inst val for TCG
 
+    target_ulong cpu_LLbit;    	// register for mutual exclusion (LDL.W, STC.W)
+    target_ulong cpu_LLAddress;    	// register for mutual exclusion (LDL.W, STC.W)
+
     target_ulong frm;			//  CSR floating point rounding mode
 
-    //target_ulong badaddr;		//changed to mea
+    target_ulong badaddr;		//changed to mea
 
     //target_ulong user_ver;
     target_ulong priv_ver;
-
-    //target_ulong user_mode;
 
     target_ulong misa;
 
@@ -158,7 +169,7 @@ struct CPURH850State {
 #ifndef CONFIG_USER_ONLY
     target_ulong priv;
 
-    target_ulong mhartid;		//hardware thread ID
+    target_ulong mhartid;		//hardware thread ID  ===> is this same as HTCFG0.PEID ???? rh850 doesnt support multithread?
     target_ulong mstatus;		//machine status
     /*
      * CAUTION! Unlike the rest of this struct, mip is accessed asynchonously
@@ -186,7 +197,7 @@ struct CPURH850State {
     target_ulong mtval;  /* since: priv-1.10.0 */
 
     uint32_t mucounteren;	//user counter enable
-    uint32_t mscounteren;	//supervisor coaunter enable
+    uint32_t mscounteren;	//supervisor counter enable
     target_ulong scounteren; /* since: priv-1.10.0 */
     target_ulong mcounteren; /* since: priv-1.10.0 */
 
@@ -252,9 +263,9 @@ static inline RH850CPU *rh850_env_get_cpu(CPURH850State *env)
 }
 
 static inline int rh850_has_ext(CPURH850State *env, target_ulong ext)
-{
-    //return (env->misa & ext) != 0;
-	return false;
+{		// TODO: what does value 'ext' represent??
+    return (env->misa & ext) != 0;
+	//return false;
 }
 
 static inline bool rh850_feature(CPURH850State *env, int feature)
