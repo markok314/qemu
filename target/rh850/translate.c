@@ -316,7 +316,7 @@ static void gen_goto_tb(DisasContext *ctx, int n, target_ulong dest)
     } else {
         tcg_gen_goto_tb(n);
         tcg_gen_movi_tl(cpu_pc, dest);
-        tcg_gen_exit_tb((uintptr_t)ctx->tb + n);
+        tcg_gen_exit_tb(ctx->tb, n);
     }
 }
 
@@ -3370,7 +3370,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[CTBP_register]);
 
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 
 		break;
 
@@ -3424,7 +3424,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_or_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], temp);
 
 		tcg_temp_free_i32(temp);
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 
 		break;
 
@@ -3520,7 +3520,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_gpr(3, temp);
 
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 		}
 
 		break;
@@ -3531,12 +3531,12 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_EIRET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[EIPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[EIPSW_register]);
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 		break;
 	case OPC_RH850_FERET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
         ctx->bstate = BS_BRANCH;
 		break;
 
@@ -3566,7 +3566,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_label(cont);
 		//branch to exception handler
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 		ctx->bstate = BS_BRANCH;
 	}	break;
 
@@ -3798,7 +3798,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_label(cont);
 		//branch to exception handler
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 
 	}	break;
 
@@ -3828,7 +3828,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_ext16s_i32(temp, temp);
 		tcg_gen_shli_i32(temp, temp, 0x1);
 		tcg_gen_add_i32(cpu_pc, cpu_pc, temp);
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 		break;
 
 	// SYNC instructions will not be implemented
@@ -3867,7 +3867,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_label(cont);
 
-		tcg_gen_exit_tb(0);
+		tcg_gen_exit_tb(NULL, 0);
 
 	}	break;
 
@@ -3912,7 +3912,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 			tcg_gen_mov_i32(cpu_pc, t1);
 
-			tcg_gen_exit_tb(0); /// -> clears flags!
+			tcg_gen_exit_tb(NULL, 0); /// -> clears flags!
             ctx->bstate = BS_BRANCH;
 			break;
 		}
@@ -4892,7 +4892,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         if (cs->singlestep_enabled) {
             gen_exception_debug();
         } else {
-            tcg_gen_exit_tb(0);
+            tcg_gen_exit_tb(NULL, 0);
         }
         break;
     case BS_BRANCH: /* ops using BS_BRANCH generate own exit seq */
