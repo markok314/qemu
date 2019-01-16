@@ -2,32 +2,6 @@
 .include "gpr_init.s"
 
 
-	mov 0x4000, r1
-	LDSR_ID R1, 2, 1	# RBASE = 0x4000
-
-	mov 0x6000, r1
-	LDSR_ID R1, 3, 1	# EBASE = 0x6000
-
-	fetrap 1
-
-	fetrap 1
-
-	fetrap 3
-
-	fetrap 0xc
-
-Lbl: br Lbl
-
-.org 0x1060
-	feret
-
-.org 0x4030
-	nop
-	feret
-
-.org 0x6030
-	feret
-
 #
 # Testing instructions:
 # CAXI, CALL, CTRET, LDSR, STSR
@@ -227,6 +201,25 @@ label1:
 
 #--------------------FETRAP------------offset=0x30
 
+	mov 0x4000, r1
+	LDSR_ID R1, 2, 1	# RBASE = 0x4000
+
+	mov 0x6000, r1
+	LDSR_ID R1, 3, 1	# EBASE = 0x6000
+
+	fetrap 1
+	fetrap 2
+	fetrap 3
+	fetrap 0xc
+
+.org 0x1060
+	feret
+
+.org 0x4030
+	feret
+
+.org 0x6030
+	feret
 
 #---------------------TRAP--------------------offset=40/50
 
@@ -258,8 +251,6 @@ label1:
 	#rie		# stores this PC as return addr
 
 	# rie imm/imm What does this instruciton do on target?
-
-
 
 
 .org 0xb040

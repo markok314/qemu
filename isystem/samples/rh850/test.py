@@ -24,6 +24,8 @@ import subprocess
 import glob
 import checkRegistersBlueBox as crbb
 
+haveBlueBox = True
+
 NUM_OF_REGISTERS = 31
 NUM_OF_PRINTED_REGISTERS = 35;
 NUM_OF_REGS_TO_NOT_CHECK = NUM_OF_REGISTERS * NUM_OF_PRINTED_REGISTERS
@@ -89,6 +91,8 @@ def extract_registers(qemuLogFileName, num_of_ints_to_print, asmFileStem):
 
                     if len(raw_line) == 4:
                         print(raw_line[0], raw_line[1], raw_line[2], raw_line[3], file=qemuRegsFile)
+                    elif len(raw_line) == 3:
+                        print(raw_line[0], raw_line[1], raw_line[2], file=qemuRegsFile)
 
                 elif line.startswith(" "):
                     raw_line = line.split()
@@ -231,8 +235,9 @@ def main():
     tested_files = []
     results = []
 
-    blueBox = crbb.BlueBox()
-    blueBox.openConnection()
+    if haveBlueBox:
+        blueBox = crbb.BlueBox()
+        blueBox.openConnection()
 
     for idx, asmFile in enumerate(asmFiles):
 
@@ -250,12 +255,18 @@ def main():
         buildElf(asmFileStem)
         runQemu(asmFileStem, QEMU_LOG_FILE)
 
-        num_of_all_inst =  blueBox.check_registers_blue_box(asmFileStem, 
+        if haveBlueBox:
+            num_of_all_inst =  blueBox.check_registers_blue_box(asmFileStem, 
                                                             getBlueBoxLogFName(asmFileStem))
+        else:
+            num_of_all_inst = 100
         extract_registers(QEMU_LOG_FILE, num_of_all_inst, asmFileStem)
 
-        #_check_file_sizes(asmFileStem)
-        fileRes = compare_qemu_and_blue_box_regs(asmFileStem)
+        if haveBlueBox:
+            _check_file_sizes(asmFileStem)
+            fileRes = compare_qemu_and_blue_box_regs(asmFileStem)
+        else:
+            fileRes = ""
         results.append(fileRes)
 
     final_results = zip(tested_files, results)
