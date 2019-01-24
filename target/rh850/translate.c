@@ -3106,12 +3106,14 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
 	TCGv dest_addr = tcg_temp_new();
     TCGv zero = tcg_temp_new();
     TCGv disp = tcg_temp_new();
+    TCGv minusone = tcg_temp_new();
 
     tcg_gen_movi_i32(zero, 0);
+    tcg_gen_movi_i32(minusone, 0xffffffff);
     gen_get_gpr(r1, rs1);
+	gen_add_CC(r1, minusone);    //set flags
 	tcg_gen_addi_i32(r1, r1, 0xffffffff);
     tcg_gen_brcond_tl(TCG_COND_NE, r1, zero, l);
-    //set flags
 
     /*tcg_gen_movi_i32(disp, disp16);
     tcg_gen_ext16u_tl(disp, disp);

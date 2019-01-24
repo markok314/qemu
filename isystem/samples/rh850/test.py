@@ -23,6 +23,7 @@ import argparse
 import subprocess
 import glob
 import checkRegistersBlueBox as crbb
+import itertools
 
 haveBlueBox = True
 
@@ -38,7 +39,7 @@ QEMU_LOG_FILE = "../../../../rh850.log"
 RESULT_PASSED = "PASSED"
 RESULT_FAILED = "FAILED"
 
-_g_isVerboseLog = False
+_g_isVerboseLog = True
 
 def log(msg: str):
     if _g_isVerboseLog:
@@ -51,13 +52,25 @@ def buildElf(fileName):
 
 
 def runQemu(fileName, logFile):
-    subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -d"
-                          " nochain,exec,in_asm,cpu -D " + logFile + 
-                          " -kernel bin/" + fileName + ".elf > bin/qemu.stdout &", shell=True)
-
+    #subprocess.check_call("find .  -maxdepth 1 -type p -delete", shell=True)
+    #subprocess.check_call("mkfifo fifo1", shell=True)
+    #if subprocess.check_output("netstat -lt | grep 55555", shell=True) == 0:
+	#    subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
+    subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -nographic "
+                          " -d nochain,exec,in_asm,cpu -D " + logFile + 
+                          " -kernel bin/" + fileName + ".elf -monitor tcp:127.0.0.1:55555,server,nowait "
+						  " | tee file1 > bin/qemu.stdout &", shell=True)
+    time.sleep(1)
+    #subprocess.check_call("../bvs.sh < fifo1 &", shell=True)
+    #subprocess.check_call("cat ../file1", shell=True)
+    for i in range(20):
+	    subprocess.check_call("echo c | nc -N 127.0.0.1 55555", shell=True)
+    subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
+ 
     # TODO replace with GDB control and exiting nicely
     time.sleep(3)
-    subprocess.check_call('kill $(pgrep qemu-system)', shell=True, executable='/bin/bash')
+    #subprocess.check_call('kill $(pgrep qemu-system)', shell=True, executable='/bin/bash')
+    #subprocess.check_call('kill $(pgrep tee)', shell=True, executable='/bin/bash')
 
 
 def getQemuLogFName(asmFileStem):
@@ -154,12 +167,23 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
         with open(getBlueBoxLogFName(asmFileStem), 'r') as log_blubox:
 
             log("----------")
-            for line1, line2 in zip(log_qemu, log_blubox):
+            #for line1, line2 in zip(log_qemu, log_blubox):
+            for line1, line2 in itertools.zip_longest(log_qemu, log_blubox):
                 if start >= NUM_OF_REGS_TO_NOT_CHECK:
+                    if line1 is None:
+                         print("Missing line1 (qemu) !")
+                         print("FAILED")
+                         result_for_file = RESULT_FAILED
+                         return result_for_file
+                    #print("index: " + str(index))
                     if(index == 0):
                         #NAME OF INSTRUCTION
                         log("-----------------")
                         log('@@@> {line1[:-1]}')
+                        #print(line1[-8:-1])
+                        if line1[-8:-1] == 'BR 0000':
+                            print("BR 0000")
+                            break
                     elif(index == 2):
                         #PSW
                         if True:
@@ -174,9 +198,10 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
                                 isOkay = False
                     else:
                         #PC AND OTHER GPR
+                        #print("line1: " + line1 + ", line2: " + line2)
                         log('lines:\n - {line1}\n - {line2}')
                         if line1.split(': ')[1] != line2.split('x')[1]:
-                            print("ERROR" + line1[:-1]  + " " +  line2[:-1])
+                            print("ERROR: " + line1[:-1]  + " " +  line2[:-1])
                             isOkay = False
 
                     index = index + 1
@@ -191,6 +216,7 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
                         isOkay = True
 
                 start = start + 1
+                #print("start: " + str(start))
 
     return result_for_file
 

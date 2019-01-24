@@ -28,6 +28,10 @@ lab3:	mov 0x80abcdef, r4
         mov 1, r1
 		nop
 
+Lbl1:	BR Lbl1
+
+
+
 #----------------BGT----((S xor OV) or Z) = 0--------------------OK
 
         mov 5, r2
