@@ -10,6 +10,12 @@
 	mov 5, R2
 	add R1, R2
 	add 10, R10
+
+	loop R1, 0
+	nop
+	nop
+Lbl1:	br Lbl1
+
 	loop R1, 6	# r1=3-1=2 != 0, pc-=6, r1=1, pc-=6, r1=0, no loop
 	mov 4, R2	# r2=4
 	add 10, R10

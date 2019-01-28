@@ -8,7 +8,13 @@
 		LDSR_ID R1, 3, 1	# EBASE = 0x2000
 
 		rie
+
 lb:		br lb
+
+		.org 0x60
+		nop
+		nop
+		feret
 
 		.org 0x1060
 		feret

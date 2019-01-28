@@ -54,21 +54,41 @@ def buildElf(fileName):
 def runQemu(fileName, logFile):
     #subprocess.check_call("find .  -maxdepth 1 -type p -delete", shell=True)
     #subprocess.check_call("mkfifo fifo1", shell=True)
-    #if subprocess.check_output("netstat -lt | grep 55555", shell=True) == 0:
-	#    subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
+
+    output1 = 0
+    try:
+        subprocess.check_output("netstat -lt | grep 55555", shell=True)
+    except subprocess.CalledProcessError:
+        output1 = 1
+        print("OK: port not used yet")
+
+    if output1 == 0:
+	    subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
+    time.sleep(3)
+
     subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -nographic "
                           " -d nochain,exec,in_asm,cpu -D " + logFile + 
                           " -kernel bin/" + fileName + ".elf -monitor tcp:127.0.0.1:55555,server,nowait "
 						  " | tee file1 > bin/qemu.stdout &", shell=True)
     time.sleep(1)
     #subprocess.check_call("../bvs.sh < fifo1 &", shell=True)
+    #time.sleep(0.1)
     #subprocess.check_call("cat ../file1", shell=True)
-    for i in range(20):
-	    subprocess.check_call("echo c | nc -N 127.0.0.1 55555", shell=True)
+    while True:
+        time.sleep(1)
+        output2 = 0
+        try:
+            subprocess.check_output("tail -1 file1 | grep \"BR          0000\"", shell=True)
+        except subprocess.CalledProcessError:
+            output2 = 1
+            subprocess.check_call("echo c | nc -N 127.0.0.1 55555", shell=True)
+        if output2 == 0:
+            break
+
     subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
  
     # TODO replace with GDB control and exiting nicely
-    time.sleep(3)
+    #time.sleep(1)
     #subprocess.check_call('kill $(pgrep qemu-system)', shell=True, executable='/bin/bash')
     #subprocess.check_call('kill $(pgrep tee)', shell=True, executable='/bin/bash')
 

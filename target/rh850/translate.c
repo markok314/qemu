@@ -3050,15 +3050,18 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
 
     tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
 
+    tcg_temp_free(condOK);
+    tcg_temp_free(condTest);
+
     gen_goto_tb(ctx, 1, ctx->next_pc); // no jump, continue with next instr.
     gen_set_label(l); /* branch taken */
    	gen_goto_tb(ctx, 0, ctx->pc + bimm);  // jump
     ctx->bstate = BS_BRANCH;
 }
 
-static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation ){
-
-	// disp32 is alredy generated when entering calling this function
+static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation)
+{
+	// disp32 is already generated when entering calling this function
 	int rs2, rs3;
 	TCGv link_addr = tcg_temp_new();
 	TCGv dest_addr = tcg_temp_new();
@@ -3111,8 +3114,9 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
     tcg_gen_movi_i32(zero, 0);
     tcg_gen_movi_i32(minusone, 0xffffffff);
     gen_get_gpr(r1, rs1);
-	gen_add_CC(r1, minusone);    //set flags
-	tcg_gen_addi_i32(r1, r1, 0xffffffff);
+	//gen_add_CC(r1, minusone);    //set flags
+	tcg_gen_add_i32(r1, r1, minusone);
+	gen_set_gpr(rs1, r1);
     tcg_gen_brcond_tl(TCG_COND_NE, r1, zero, l);
 
     /*tcg_gen_movi_i32(disp, disp16);
@@ -3123,6 +3127,7 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
     tcg_temp_free(dest_addr);
     tcg_temp_free(zero);
     tcg_temp_free(disp);
+    tcg_temp_free(minusone);
 
     gen_goto_tb(ctx, 1, ctx->next_pc); // no jump, continue with next instr.
     gen_set_label(l); 				// branch taken
