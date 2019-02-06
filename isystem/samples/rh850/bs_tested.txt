@@ -1,0 +1,15 @@
+-rw-r--r-- 1 brankos brankos 6365 jan 24 17:44 test/bs_test-bcond.s				OK
+-rw-r--r-- 1 brankos brankos  164 jan 15 14:45 test/bs_test-bv.s				OK
+-rw-r--r-- 1 brankos brankos  767 jan 18 12:50 test/bs_test-jarl.s				OK
+-rw-r--r-- 1 brankos brankos  386 jan 18 12:50 test/bs_test-jmp.s				OK
+-rw-r--r-- 1 brankos brankos  683 jan 18 12:50 test/bs_test-jr.s				OK
+-rw-r--r-- 1 brankos brankos 2573 jan 18 12:50 test/bs_test-load_disp23.s		OK
+-rw-r--r-- 1 brankos brankos 2303 jan 18 12:50 test/bs_test-load.s				OK
+-rw-r--r-- 1 brankos brankos  388 jan 18 12:50 test/bs_test-loop.s				OK
+-rw-r--r-- 1 brankos brankos  546 jan 18 12:50 test/bs_test-mutex.s				Na čipu STC.W v primeru LLbit==0 ne zapiše 0 v register R1, ampak pusti 0x1f (kar je v nasprotju s specifikacijo)
+-rw-r--r-- 1 brankos brankos  455 jan 18 12:50 test/bs_test-prepare_dispose.s	OK
+-rw-r--r-- 1 brankos brankos  483 jan 18 13:44 test/bs_test-rie.s				OK
+-rw-r--r-- 1 brankos brankos 3324 jan 18 12:50 test/bs_test-store.s				OK
+-rw-r--r-- 1 brankos brankos  204 jan 18 12:50 test/bs_test-switch.s			OK
+-rw-r--r-- 1 brankos brankos  542 jan 18 12:50 test/bs_test-syscall.s			Čip preskoči en ukaz po klicu syscall (v nasprotju s specifikacijo)
+
