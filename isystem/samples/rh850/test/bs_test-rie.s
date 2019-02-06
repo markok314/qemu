@@ -1,25 +1,23 @@
 .include "RH850G3M_insts.s"
 
-.text
-		mov 0x1000, r1
-		LDSR_ID R1, 2, 1	# RBASE = 0x1000
+.include "gpr_init.s"
+
+		#mov 0x1000, r1
+		#LDSR_ID R1, 2, 1	# RBASE = 0x1000
+
+		mov 0x0, r1
+		LDSR_ID R1, 2, 1	# RBASE = 0x0 (kot na čipu)
 
 		mov 0x2000, r1
 		LDSR_ID R1, 3, 1	# EBASE = 0x2000
 
 		rie
 
-lb:		br lb
-
 		.org 0x60
-		nop
-		nop
-		feret
+Lbl:	BR Lbl
 
-		.org 0x1060
-		feret
-
-		.org 0x2060
+#		.org 0x1060	# ne deluje na čipu, očitno je reset vektor RBASE = 0
+#Lbl:	BR Lbl
 		feret
 
 /*
