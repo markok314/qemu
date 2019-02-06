@@ -1,4 +1,7 @@
-.text
+.include "RH850G3M_insts.s"
+
+.include "gpr_init.s"
+
 
 #------SWITCH---------------------------- OK
 
@@ -16,3 +19,4 @@ LUT:	.hword	2, 0
 		mov 6, r2
 		nop
 
+Lbl:	BR Lbl
