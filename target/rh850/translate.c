@@ -3105,38 +3105,40 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation)
 static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
 {
     TCGLabel *l = gen_new_label();
-    TCGv r1 = tcg_temp_new();
-	TCGv dest_addr = tcg_temp_new();
-    TCGv zero = tcg_temp_new();
-    TCGv disp = tcg_temp_new();
-    TCGv minusone = tcg_temp_new();
+    TCGv zero_local = tcg_temp_local_new();
+    TCGv r1_local = tcg_temp_local_new();
+    TCGv minusone_local = tcg_temp_local_new();
 
-    tcg_gen_movi_i32(zero, 0);
-    tcg_gen_movi_i32(minusone, 0xffffffff);
-    gen_get_gpr(r1, rs1);
-	//gen_add_CC(r1, minusone);    //set flags
-	tcg_gen_add_i32(r1, r1, minusone);
-	gen_set_gpr(rs1, r1);
-    tcg_gen_brcond_tl(TCG_COND_NE, r1, zero, l);
+    tcg_gen_movi_i32(zero_local, 0);
+    tcg_gen_movi_i32(minusone_local, 0xffffffff);
+    gen_get_gpr(r1_local, rs1);
+	gen_add_CC(r1_local, minusone_local);    //set flags
+	tcg_gen_add_i32(r1_local, r1_local, minusone_local);
+	gen_set_gpr(rs1, r1_local);
 
-    /*tcg_gen_movi_i32(disp, disp16);
-    tcg_gen_ext16u_tl(disp, disp);
-    tcg_gen_sub_i32(dest_addr, cpu_pc, disp);*/
+	// update psw register
+    TCGv temp = tcg_temp_new_i32();
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
+    tcg_gen_shli_i32(temp, cpu_SF, 0x1);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_temp_free(temp);
 
-    tcg_temp_free(r1);
-    tcg_temp_free(dest_addr);
-    tcg_temp_free(zero);
-    tcg_temp_free(disp);
-    tcg_temp_free(minusone);
+	tcg_gen_brcond_tl(TCG_COND_NE, r1_local, zero_local, l);
 
-    gen_goto_tb(ctx, 1, ctx->next_pc); // no jump, continue with next instr.
-    gen_set_label(l); 				// branch taken
-    gen_goto_tb(ctx, 0, ctx->pc - disp16);
+    tcg_temp_free(r1_local);
+    tcg_temp_free(zero_local);
+    tcg_temp_free(minusone_local);
+
+    gen_goto_tb(ctx, 0, ctx->next_pc); 	// no jump, continue with next instr.
+    gen_set_label(l); 					// branch taken
+    gen_goto_tb(ctx, 1, ctx->pc - disp16);
 
     ctx->bstate = BS_BRANCH;
 }
-
-
 
 static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){
 
@@ -3889,7 +3891,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			tcg_gen_mov_i32(cpu_sysRegs[EIPSW_register], cpu_sysRegs[PSW_register]);
 			int exception_code = vector + 0x8000;
 
-			tcg_gen_movi_i32(cpu_sysRegs[EIPC_register], exception_code);
+			tcg_gen_movi_i32(cpu_sysRegs[EIIC_register], exception_code);
 			tcg_gen_movi_i32(cpu_UM, 0x0);
 			tcg_gen_movi_i32(cpu_EP, 0x1);
 			tcg_gen_movi_i32(cpu_ID, 0x1);
