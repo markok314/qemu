@@ -200,7 +200,7 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
                         #NAME OF INSTRUCTION
                         log("-----------------")
                         log('@@@> {line1[:-1]}')
-                        #print(line1[-8:-1])
+                        print(line1)
                         if line1[-8:-1] == 'BR 0000':
                             print("BR 0000")
                             break
