@@ -1,5 +1,5 @@
 /*
- * Rh850 SoC
+ * Rh850/F1L SoC
  *
  * Copyright (c) 2018 iSYSTEM Labs d.o.o.
  *
@@ -46,7 +46,7 @@
 const uint32_t FLASH_SIZE = 2* (1 << 20); //2M
 const uint32_t SRAM_SIZE = 192 * (1 << 10); // 192 kB
 const uint32_t FLASH_START = 0;
-const uint32_t SRAM_START = 0xfee00000;  // start of RAM for F1L devices, is not the same for other RH850 devices
+const uint32_t SRAM_START = 0xfedd8000;  // start of RAM for F1L devices, is not the same for other RH850 devices
 
 
 static void rh850_reset(void *opaque)

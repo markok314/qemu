@@ -313,7 +313,7 @@ lab32:	nop
 
 #----------------BZ = BT
 
-Lbl:	BR Lbl
+Lbl:	br Lbl
 
 # Note: Bcond(2) with disp17 has not been tested
 

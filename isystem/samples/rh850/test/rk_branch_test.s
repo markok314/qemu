@@ -2,7 +2,7 @@
 .include "gpr_init.s"
 
 
-	mov 0x0000babb, r1
+	mov hilo(Lbl), r1
 	mov 0x0000baba, r2
 	mov 0x400, r3
 	mov 0x800, r4
@@ -13,7 +13,6 @@
 	mov 0x3, r15
 	
 	JARL_RR R4, R9
-	JARL_RR R3, R5
 	
 
 .org 0x00000400
@@ -30,11 +29,12 @@ lab2:
 
 	mov 0xabcdef, r18
 	mov 0x5, r10
+loop1:
 	sub r11, r15
-	bne 0xaa
+	bne loop1
 	JARL_RR R3, R5 
 
-.org 0x000008b4
+.org 0x00000800
 
 	mov 0xf, r20
 	jmp [r16]

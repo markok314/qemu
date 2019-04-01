@@ -51,44 +51,41 @@ def buildElf(fileName):
     subprocess.check_call(cmd, shell=True, executable='/bin/bash')
 
 
-def runQemu(fileName, logFile):
-    #subprocess.check_call("find .  -maxdepth 1 -type p -delete", shell=True)
-    #subprocess.check_call("mkfifo fifo1", shell=True)
-
-    output1 = 0
+def quitQemuIfRunning():
     try:
         subprocess.check_output("netstat -lt | grep 55555", shell=True)
+        subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
+        print("QEMU stopped")
+        time.sleep(3)
     except subprocess.CalledProcessError:
-        output1 = 1
-        print("OK: port not used yet")
+        print("OK: QEMU not running")
 
-    if output1 == 0:
-	    subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
-    time.sleep(3)
+
+def runQemu(fileName, logFile):
+
+    quitQemuIfRunning()
 
     subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -nographic "
                           " -d nochain,exec,in_asm,cpu -D " + logFile + 
                           " -kernel bin/" + fileName + ".elf -monitor tcp:127.0.0.1:55555,server,nowait "
 						  " | tee file1 > bin/qemu.stdout &", shell=True)
     time.sleep(1)
-    #subprocess.check_call("../bvs.sh < fifo1 &", shell=True)
-    #time.sleep(0.1)
-    #subprocess.check_call("cat ../file1", shell=True)
-    while True:
-        time.sleep(1)
-        output2 = 0
+
+    # wait until BR 0000, which indicated end of program, is executed by QEMU
+    # However, limit looping to avoid enless execution in case of missing end instr.
+    MAX_LOOPS = 70
+    for loopCount in range(MAX_LOOPS):
+        time.sleep(0.5)
+        print(loopCount, '/', MAX_LOOPS, ': ', fileName)
         try:
             subprocess.check_output("tail -1 file1 | grep \"BR          0000\"", shell=True)
-        except subprocess.CalledProcessError:
-            output2 = 1
-            subprocess.check_call("echo c | nc -N 127.0.0.1 55555", shell=True)
-        if output2 == 0:
             break
+        except subprocess.CalledProcessError:
+            subprocess.check_call("echo c | nc -N 127.0.0.1 55555", shell=True)
 
     subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
  
     # TODO replace with GDB control and exiting nicely
-    #time.sleep(1)
     #subprocess.check_call('kill $(pgrep qemu-system)', shell=True, executable='/bin/bash')
     #subprocess.check_call('kill $(pgrep tee)', shell=True, executable='/bin/bash')
 
@@ -274,6 +271,7 @@ def main():
     asmFiles = args.files
     if not asmFiles:   # no files specified in cmd line
         asmFiles = glob.glob("*.s")
+        asmFiles.sort()
 
     print(f"Testing {len(asmFiles)} files:")
     print(asmFiles)
@@ -295,17 +293,20 @@ def main():
             continue
 
         tested_files.append(asmFile)
-        print(f"- ({idx + 1}/{len(asmFiles)})  {asmFile}")
+        print(f"--- ({idx + 1}/{len(asmFiles)})  {asmFile}")
         asmFileStem = asmFile[:-2]  # remove the .s extension
 
         buildElf(asmFileStem)
+        log("Exec in QEMU...")
         runQemu(asmFileStem, QEMU_LOG_FILE)
 
         if haveBlueBox:
+            log("Exec on target ...")
             num_of_all_inst =  blueBox.check_registers_blue_box(asmFileStem, 
                                                             getBlueBoxLogFName(asmFileStem))
         else:
             num_of_all_inst = 100
+        log("Comparing registers ...")
         extract_registers(QEMU_LOG_FILE, num_of_all_inst, asmFileStem)
 
         if haveBlueBox:

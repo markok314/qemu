@@ -1,4 +1,5 @@
 .text
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
 	LDSR_ID R1,0,0

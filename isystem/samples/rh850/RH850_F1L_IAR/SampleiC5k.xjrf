@@ -8,7 +8,7 @@
       <VersionLow>1</VersionLow>
      </REG_HEADER>
      <REG_ROOT>
-      <RegVer>1279381504</RegVer>
+      <RegVer>1279574016</RegVer>
       <ColorSyntax>
        <ASMSyntaxFile></ASMSyntaxFile>
       </ColorSyntax>
@@ -340,141 +340,12 @@
       <VersionLow>1</VersionLow>
      </REG_HEADER>
      <REG_ROOT>
-      <RegVer>1279381504</RegVer>
+      <RegVer>1279574016</RegVer>
       <ANGUIData.0>
        <Filetime type="B">KCKLHCLBICFDMNAB</Filetime>
        <GUID type="B">PFGFPEGMLPEIIPEAIMCDECFBLDPHMGGM</GUID>
-       <Docks>
-        <ActiveTab>0</ActiveTab>
-        <ID>-1</ID>
-        <Tab>0</Tab>
-        <Array.0>
-         <Docks.0>
-          <ActiveTab>0</ActiveTab>
-          <ID>1</ID>
-          <Tab>0</Tab>
-          <Array.0>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.0>
-          <Array.1>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.1>
-          <Array.2>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.2>
-          <Array.3>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.3>
-          <Rect>
-           <Bottom>5000</Bottom>
-           <Left>0</Left>
-           <Right>10000</Right>
-           <Top>0</Top>
-          </Rect>
-         </Docks.0>
-         <Rect>
-          <Bottom>5000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.0>
-        <Array.1>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.1>
-        <Array.2>
-         <Docks.0>
-          <ActiveTab>0</ActiveTab>
-          <ID>3</ID>
-          <Tab>0</Tab>
-          <Array.0>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.0>
-          <Array.1>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.1>
-          <Array.2>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.2>
-          <Array.3>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.3>
-          <Rect>
-           <Bottom>10000</Bottom>
-           <Left>0</Left>
-           <Right>10000</Right>
-           <Top>5000</Top>
-          </Rect>
-         </Docks.0>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>5000</Top>
-         </Rect>
-        </Array.2>
-        <Array.3>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.3>
-        <Rect>
-         <Bottom>10000</Bottom>
-         <Left>0</Left>
-         <Right>10000</Right>
-         <Top>0</Top>
-        </Rect>
-       </Docks>
        <PRWndData>
-        <AutoSync>False</AutoSync>
+        <AutoSync>True</AutoSync>
         <ColHistVisibleHistory>True</ColHistVisibleHistory>
         <ColHistVisibleName>True</ColHistVisibleName>
         <ColHistVisibleValue>True</ColHistVisibleValue>
@@ -504,8 +375,13 @@
         <HistoryMin type="B">AAAAAAAAAAAAAAAA</HistoryMin>
         <HistoryScrollPos type="B">AAAAAAAAAAAAAAAA</HistoryScrollPos>
         <HistoryZoomLevel type="B">ABAAAAAAAAAAAAAA</HistoryZoomLevel>
-        <LinesRelativeToFunction>False</LinesRelativeToFunction>
+        <InitialLayoutProcessed>0</InitialLayoutProcessed>
         <MaxNumberOfStates>128</MaxNumberOfStates>
+        <StatAreaName></StatAreaName>
+        <StatFromTime type="B">AAAAAAAAAAAAAAAA</StatFromTime>
+        <StatFullName></StatFullName>
+        <StatType>0</StatType>
+        <SyncAreaFilters>False</SyncAreaFilters>
         <PaneHist>
          <AreaAux>
           <Height>100</Height>
@@ -565,15 +441,12 @@
           </Tree>
          </AreaData>
          <ColumnWidth.0>
-          <Pos type="D">0.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.0>
          <ColumnWidth.1>
-          <Pos type="D">34.9143610013175234</Pos>
           <Width>0</Width>
          </ColumnWidth.1>
          <ColumnWidth.2>
-          <Pos type="D">45.4545454545454533</Pos>
           <Width>0</Width>
          </ColumnWidth.2>
         </PaneHist>
@@ -636,15 +509,12 @@
           </Tree>
          </AreaData>
          <ColumnWidth.0>
-          <Pos type="D">0.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.0>
          <ColumnWidth.1>
-          <Pos type="D">20.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.1>
          <ColumnWidth.2>
-          <Pos type="D">40.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.2>
         </PaneStat>
@@ -719,24 +589,22 @@
             </Tree>
            </AreaData>
            <ColumnWidth.0>
-            <Pos type="D">0.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.0>
            <ColumnWidth.1>
-            <Pos type="D">34.9143610013175234</Pos>
             <Width>0</Width>
            </ColumnWidth.1>
            <ColumnWidth.2>
-            <Pos type="D">45.4545454545454533</Pos>
             <Width>0</Width>
            </ColumnWidth.2>
           </Pane>
          </ViewSettings>
         </PRHistoryView.0>
         <PRSettings>
-         <Display_._download_._file>0</Display_._download_._file>
+         <Display_._download_._file>False</Display_._download_._file>
          <Max_._number_._of_._states>128</Max_._number_._of_._states>
-         <Synchronize_._profiler_._views>0</Synchronize_._profiler_._views>
+         <Synchronize_._all_._profiler_._views_._filters>False</Synchronize_._all_._profiler_._views_._filters>
+         <Synchronize_._profiler_._views>True</Synchronize_._profiler_._views>
         </PRSettings>
         <PRStatisticView.0>
          <ColStatVisible>False</ColStatVisible>
@@ -758,7 +626,10 @@
          <ColStatVisibleTimePeriodMax>False</ColStatVisibleTimePeriodMax>
          <ColStatVisibleTimePeriodMin>False</ColStatVisibleTimePeriodMin>
          <FitChart>False</FitChart>
-         <LinesRelativeToFunction>False</LinesRelativeToFunction>
+         <StatAreaName></StatAreaName>
+         <StatFromTime type="B">AAAAAAAAAAAAAAAA</StatFromTime>
+         <StatFullName></StatFullName>
+         <StatType>0</StatType>
          <CommonView>
           <CurrentContextIndex>65535</CurrentContextIndex>
           <HideAreasWithNoActivity>False</HideAreasWithNoActivity>
@@ -821,15 +692,12 @@
             </Tree>
            </AreaData>
            <ColumnWidth.0>
-            <Pos type="D">0.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.0>
            <ColumnWidth.1>
-            <Pos type="D">20.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.1>
            <ColumnWidth.2>
-            <Pos type="D">40.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.2>
           </Pane>
@@ -840,137 +708,8 @@
       <ANGUIData.1>
        <Filetime type="B">MOHKLMFFFKHEMMAB</Filetime>
        <GUID type="B">CFLNIOHPENMLJBEGIPAAMCGFJFJIBEIN</GUID>
-       <Docks>
-        <ActiveTab>0</ActiveTab>
-        <ID>-1</ID>
-        <Tab>0</Tab>
-        <Array.0>
-         <Docks.0>
-          <ActiveTab>0</ActiveTab>
-          <ID>1</ID>
-          <Tab>0</Tab>
-          <Array.0>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.0>
-          <Array.1>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.1>
-          <Array.2>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.2>
-          <Array.3>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.3>
-          <Rect>
-           <Bottom>5000</Bottom>
-           <Left>0</Left>
-           <Right>10000</Right>
-           <Top>0</Top>
-          </Rect>
-         </Docks.0>
-         <Rect>
-          <Bottom>5000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.0>
-        <Array.1>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.1>
-        <Array.2>
-         <Docks.0>
-          <ActiveTab>0</ActiveTab>
-          <ID>3</ID>
-          <Tab>0</Tab>
-          <Array.0>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.0>
-          <Array.1>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.1>
-          <Array.2>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.2>
-          <Array.3>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.3>
-          <Rect>
-           <Bottom>10000</Bottom>
-           <Left>0</Left>
-           <Right>10000</Right>
-           <Top>5000</Top>
-          </Rect>
-         </Docks.0>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>5000</Top>
-         </Rect>
-        </Array.2>
-        <Array.3>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.3>
-        <Rect>
-         <Bottom>10000</Bottom>
-         <Left>0</Left>
-         <Right>10000</Right>
-         <Top>0</Top>
-        </Rect>
-       </Docks>
        <PRWndData>
-        <AutoSync>False</AutoSync>
+        <AutoSync>True</AutoSync>
         <ColHistVisibleHistory>True</ColHistVisibleHistory>
         <ColHistVisibleName>True</ColHistVisibleName>
         <ColHistVisibleValue>True</ColHistVisibleValue>
@@ -1000,8 +739,13 @@
         <HistoryMin type="B">AAAAAAAAAAAAAAAA</HistoryMin>
         <HistoryScrollPos type="B">AAAAAAAAAAAAAAAA</HistoryScrollPos>
         <HistoryZoomLevel type="B">ABAAAAAAAAAAAAAA</HistoryZoomLevel>
-        <LinesRelativeToFunction>False</LinesRelativeToFunction>
+        <InitialLayoutProcessed>0</InitialLayoutProcessed>
         <MaxNumberOfStates>128</MaxNumberOfStates>
+        <StatAreaName></StatAreaName>
+        <StatFromTime type="B">AAAAAAAAAAAAAAAA</StatFromTime>
+        <StatFullName></StatFullName>
+        <StatType>0</StatType>
+        <SyncAreaFilters>False</SyncAreaFilters>
         <PaneHist>
          <AreaAux>
           <Height>0</Height>
@@ -1061,15 +805,12 @@
           </Tree>
          </AreaData>
          <ColumnWidth.0>
-          <Pos type="D">0.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.0>
          <ColumnWidth.1>
-          <Pos type="D">35.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.1>
          <ColumnWidth.2>
-          <Pos type="D">38.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.2>
         </PaneHist>
@@ -1132,15 +873,12 @@
           </Tree>
          </AreaData>
          <ColumnWidth.0>
-          <Pos type="D">0.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.0>
          <ColumnWidth.1>
-          <Pos type="D">20.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.1>
          <ColumnWidth.2>
-          <Pos type="D">40.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.2>
         </PaneStat>
@@ -1215,24 +953,22 @@
             </Tree>
            </AreaData>
            <ColumnWidth.0>
-            <Pos type="D">0.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.0>
            <ColumnWidth.1>
-            <Pos type="D">35.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.1>
            <ColumnWidth.2>
-            <Pos type="D">38.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.2>
           </Pane>
          </ViewSettings>
         </PRHistoryView.0>
         <PRSettings>
-         <Display_._download_._file>0</Display_._download_._file>
+         <Display_._download_._file>False</Display_._download_._file>
          <Max_._number_._of_._states>128</Max_._number_._of_._states>
-         <Synchronize_._profiler_._views>0</Synchronize_._profiler_._views>
+         <Synchronize_._all_._profiler_._views_._filters>False</Synchronize_._all_._profiler_._views_._filters>
+         <Synchronize_._profiler_._views>True</Synchronize_._profiler_._views>
         </PRSettings>
         <PRStatisticView.0>
          <ColStatVisible>False</ColStatVisible>
@@ -1254,7 +990,10 @@
          <ColStatVisibleTimePeriodMax>False</ColStatVisibleTimePeriodMax>
          <ColStatVisibleTimePeriodMin>False</ColStatVisibleTimePeriodMin>
          <FitChart>False</FitChart>
-         <LinesRelativeToFunction>False</LinesRelativeToFunction>
+         <StatAreaName></StatAreaName>
+         <StatFromTime type="B">AAAAAAAAAAAAAAAA</StatFromTime>
+         <StatFullName></StatFullName>
+         <StatType>0</StatType>
          <CommonView>
           <CurrentContextIndex>65535</CurrentContextIndex>
           <HideAreasWithNoActivity>False</HideAreasWithNoActivity>
@@ -1317,15 +1056,12 @@
             </Tree>
            </AreaData>
            <ColumnWidth.0>
-            <Pos type="D">0.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.0>
            <ColumnWidth.1>
-            <Pos type="D">20.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.1>
            <ColumnWidth.2>
-            <Pos type="D">40.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.2>
           </Pane>
@@ -1336,137 +1072,8 @@
       <ANGUIData.2>
        <Filetime type="B">IKMBAHHMFNHEMMAB</Filetime>
        <GUID type="B">DOMMPGCKNIJCNCENJJEAKKFNJBBFAALK</GUID>
-       <Docks>
-        <ActiveTab>0</ActiveTab>
-        <ID>-1</ID>
-        <Tab>0</Tab>
-        <Array.0>
-         <Docks.0>
-          <ActiveTab>0</ActiveTab>
-          <ID>1</ID>
-          <Tab>0</Tab>
-          <Array.0>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.0>
-          <Array.1>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.1>
-          <Array.2>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.2>
-          <Array.3>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.3>
-          <Rect>
-           <Bottom>5000</Bottom>
-           <Left>0</Left>
-           <Right>10000</Right>
-           <Top>0</Top>
-          </Rect>
-         </Docks.0>
-         <Rect>
-          <Bottom>5000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.0>
-        <Array.1>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.1>
-        <Array.2>
-         <Docks.0>
-          <ActiveTab>0</ActiveTab>
-          <ID>3</ID>
-          <Tab>0</Tab>
-          <Array.0>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.0>
-          <Array.1>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.1>
-          <Array.2>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.2>
-          <Array.3>
-           <Rect>
-            <Bottom>10000</Bottom>
-            <Left>0</Left>
-            <Right>10000</Right>
-            <Top>0</Top>
-           </Rect>
-          </Array.3>
-          <Rect>
-           <Bottom>10000</Bottom>
-           <Left>0</Left>
-           <Right>10000</Right>
-           <Top>5000</Top>
-          </Rect>
-         </Docks.0>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>5000</Top>
-         </Rect>
-        </Array.2>
-        <Array.3>
-         <Rect>
-          <Bottom>10000</Bottom>
-          <Left>0</Left>
-          <Right>10000</Right>
-          <Top>0</Top>
-         </Rect>
-        </Array.3>
-        <Rect>
-         <Bottom>10000</Bottom>
-         <Left>0</Left>
-         <Right>10000</Right>
-         <Top>0</Top>
-        </Rect>
-       </Docks>
        <PRWndData>
-        <AutoSync>False</AutoSync>
+        <AutoSync>True</AutoSync>
         <ColHistVisibleHistory>True</ColHistVisibleHistory>
         <ColHistVisibleName>True</ColHistVisibleName>
         <ColHistVisibleValue>True</ColHistVisibleValue>
@@ -1496,8 +1103,13 @@
         <HistoryMin type="B">AAAAAAAAAAAAAAAA</HistoryMin>
         <HistoryScrollPos type="B">AAAAAAAAAAAAAAAA</HistoryScrollPos>
         <HistoryZoomLevel type="B">ABAAAAAAAAAAAAAA</HistoryZoomLevel>
-        <LinesRelativeToFunction>False</LinesRelativeToFunction>
+        <InitialLayoutProcessed>0</InitialLayoutProcessed>
         <MaxNumberOfStates>128</MaxNumberOfStates>
+        <StatAreaName></StatAreaName>
+        <StatFromTime type="B">AAAAAAAAAAAAAAAA</StatFromTime>
+        <StatFullName></StatFullName>
+        <StatType>0</StatType>
+        <SyncAreaFilters>False</SyncAreaFilters>
         <PaneHist>
          <AreaAux>
           <Height>0</Height>
@@ -1557,15 +1169,12 @@
           </Tree>
          </AreaData>
          <ColumnWidth.0>
-          <Pos type="D">0.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.0>
          <ColumnWidth.1>
-          <Pos type="D">35.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.1>
          <ColumnWidth.2>
-          <Pos type="D">38.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.2>
         </PaneHist>
@@ -1628,15 +1237,12 @@
           </Tree>
          </AreaData>
          <ColumnWidth.0>
-          <Pos type="D">0.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.0>
          <ColumnWidth.1>
-          <Pos type="D">20.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.1>
          <ColumnWidth.2>
-          <Pos type="D">40.0000000000000000</Pos>
           <Width>0</Width>
          </ColumnWidth.2>
         </PaneStat>
@@ -1711,24 +1317,22 @@
             </Tree>
            </AreaData>
            <ColumnWidth.0>
-            <Pos type="D">0.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.0>
            <ColumnWidth.1>
-            <Pos type="D">35.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.1>
            <ColumnWidth.2>
-            <Pos type="D">38.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.2>
           </Pane>
          </ViewSettings>
         </PRHistoryView.0>
         <PRSettings>
-         <Display_._download_._file>0</Display_._download_._file>
+         <Display_._download_._file>False</Display_._download_._file>
          <Max_._number_._of_._states>128</Max_._number_._of_._states>
-         <Synchronize_._profiler_._views>0</Synchronize_._profiler_._views>
+         <Synchronize_._all_._profiler_._views_._filters>False</Synchronize_._all_._profiler_._views_._filters>
+         <Synchronize_._profiler_._views>True</Synchronize_._profiler_._views>
         </PRSettings>
         <PRStatisticView.0>
          <ColStatVisible>False</ColStatVisible>
@@ -1750,7 +1354,10 @@
          <ColStatVisibleTimePeriodMax>False</ColStatVisibleTimePeriodMax>
          <ColStatVisibleTimePeriodMin>False</ColStatVisibleTimePeriodMin>
          <FitChart>False</FitChart>
-         <LinesRelativeToFunction>False</LinesRelativeToFunction>
+         <StatAreaName></StatAreaName>
+         <StatFromTime type="B">AAAAAAAAAAAAAAAA</StatFromTime>
+         <StatFullName></StatFullName>
+         <StatType>0</StatType>
          <CommonView>
           <CurrentContextIndex>65535</CurrentContextIndex>
           <HideAreasWithNoActivity>False</HideAreasWithNoActivity>
@@ -1813,15 +1420,12 @@
             </Tree>
            </AreaData>
            <ColumnWidth.0>
-            <Pos type="D">0.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.0>
            <ColumnWidth.1>
-            <Pos type="D">20.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.1>
            <ColumnWidth.2>
-            <Pos type="D">40.0000000000000000</Pos>
             <Width>0</Width>
            </ColumnWidth.2>
           </Pane>
@@ -1841,7 +1445,7 @@
    </REG_HEADER>
    <REG_ROOT>
     <HServer>HASYST</HServer>
-    <RegVer>1279381504</RegVer>
+    <RegVer>1279574016</RegVer>
     <Cfg_System>
     </Cfg_System>
     <Desktop>
@@ -1873,10 +1477,10 @@
       </EditorHistoryFile.3>
      </Documents.0>
      <Progress>
-      <b>676</b>
-      <l>791</l>
-      <r>1295</r>
-      <t>312</t>
+      <b>724</b>
+      <l>711</l>
+      <r>1215</r>
+      <t>360</t>
      </Progress>
      <Watches>
       <ActiveWatchPane>2</ActiveWatchPane>
@@ -2241,24 +1845,19 @@
         <TypeOfWnd>3</TypeOfWnd>
         <Data>
          <Columns.0>
-          <Pos type="D">0.0000000000000000</Pos>
-          <Width>0</Width>
+          <Width>180</Width>
          </Columns.0>
          <Columns.1>
-          <Pos type="D">20.0000000000000000</Pos>
-          <Width>0</Width>
+          <Width>80</Width>
          </Columns.1>
          <Columns.2>
-          <Pos type="D">55.0000000000000000</Pos>
-          <Width>0</Width>
+          <Width>80</Width>
          </Columns.2>
          <Columns.3>
-          <Pos type="D">70.0000000000000000</Pos>
-          <Width>0</Width>
+          <Width>140</Width>
          </Columns.3>
          <Columns.4>
-          <Pos type="D">85.0000000000000000</Pos>
-          <Width>0</Width>
+          <Width>400</Width>
          </Columns.4>
         </Data>
        </DockRect.2>
@@ -2276,24 +1875,19 @@
         <TypeOfWnd>2</TypeOfWnd>
         <Data>
          <Columns.0>
-          <Pos type="D">0.0000000000000000</Pos>
-          <Width>0</Width>
+          <Width>180</Width>
          </Columns.0>
          <Columns.1>
-          <Pos type="D">19.9372056514913645</Pos>
-          <Width>0</Width>
+          <Width>80</Width>
          </Columns.1>
          <Columns.2>
-          <Pos type="D">41.2872841444270051</Pos>
-          <Width>0</Width>
+          <Width>80</Width>
          </Columns.2>
          <Columns.3>
-          <Pos type="D">51.9623233908948166</Pos>
-          <Width>0</Width>
+          <Width>140</Width>
          </Columns.3>
          <Columns.4>
-          <Pos type="D">84.9293563579277873</Pos>
-          <Width>0</Width>
+          <Width>400</Width>
          </Columns.4>
         </Data>
        </DockRect.4>
@@ -2311,38 +1905,77 @@
        <TypeOfWnd>-1</TypeOfWnd>
       </DockRect.3>
       <DockRect.4>
-       <AreHorz>1</AreHorz>
+       <AreHorz>0</AreHorz>
        <Percent>461</Percent>
-       <strTypeOfWnd>Memory</strTypeOfWnd>
        <Type>0</Type>
-       <TypeOfWnd>6</TypeOfWnd>
-       <Data>
-        <AA type="B">AAAAAAAAAAAAAAAA</AA>
-        <Address>0</Address>
-        <AddrMode>1</AddrMode>
-        <Area>0</Area>
-        <Bits>8</Bits>
-        <DisplayMode>0</DisplayMode>
-        <HA type="B">PPPPPPPPAAAAAAAA</HA>
-        <High>-1</High>
-        <LA type="B">AAAAAAAAAAAAAAAA</LA>
-        <LimitMAUsPerLine>0</LimitMAUsPerLine>
-        <Low>0</Low>
-        <RealTime>0</RealTime>
-        <strAddress>0x0</strAddress>
-        <SwapFloat>True</SwapFloat>
-        <SwapInt>True</SwapInt>
+       <TypeOfWnd>-1</TypeOfWnd>
+       <DockRect.0>
+        <AreHorz>1</AreHorz>
+        <Percent>612</Percent>
+        <strTypeOfWnd>Memory</strTypeOfWnd>
         <Type>0</Type>
-        <API.0>
+        <TypeOfWnd>6</TypeOfWnd>
+        <Data>
          <AA type="B">AAAAAAAAAAAAAAAA</AA>
          <Address>0</Address>
-         <AddressOffset>0</AddressOffset>
-         <AOA type="B">AAAAAAAAAAAAAAAA</AOA>
+         <AddrMode>1</AddrMode>
+         <Area>0</Area>
+         <Bits>8</Bits>
          <DisplayMode>0</DisplayMode>
-         <FloatLowFirst>1</FloatLowFirst>
-         <IntLowFirst>1</IntLowFirst>
-        </API.0>
-       </Data>
+         <HA type="B">PPPPPPPPAAAAAAAA</HA>
+         <High>-1</High>
+         <LA type="B">AAAAAAAAAAAAAAAA</LA>
+         <LimitMAUsPerLine>0</LimitMAUsPerLine>
+         <Low>0</Low>
+         <RealTime>0</RealTime>
+         <strAddress>0x0</strAddress>
+         <SwapFloat>True</SwapFloat>
+         <SwapInt>True</SwapInt>
+         <Type>0</Type>
+         <API.0>
+          <AA type="B">AAAAAAAAAAAAAAAA</AA>
+          <Address>0</Address>
+          <AddressOffset>0</AddressOffset>
+          <AOA type="B">AAAAAAAAAAAAAAAA</AOA>
+          <DisplayMode>0</DisplayMode>
+          <FloatLowFirst>1</FloatLowFirst>
+          <IntLowFirst>1</IntLowFirst>
+         </API.0>
+        </Data>
+       </DockRect.0>
+       <DockRect.1>
+        <AreHorz>1</AreHorz>
+        <Percent>5</Percent>
+        <Type>6</Type>
+        <TypeOfWnd>-1</TypeOfWnd>
+       </DockRect.1>
+       <DockRect.2>
+        <AreHorz>1</AreHorz>
+        <Percent>798</Percent>
+        <strTypeOfWnd>Disassembly</strTypeOfWnd>
+        <Type>0</Type>
+        <TypeOfWnd>5</TypeOfWnd>
+        <Data>
+         <HeaderWidth.0>
+          <__>104</__>
+         </HeaderWidth.0>
+         <HeaderWidth.1>
+          <__>91</__>
+         </HeaderWidth.1>
+         <HeaderWidth.2>
+          <__>347</__>
+         </HeaderWidth.2>
+         <HeaderWidth.3>
+          <__>254</__>
+         </HeaderWidth.3>
+        </Data>
+       </DockRect.2>
+       <DockRect.3>
+        <AreHorz>1</AreHorz>
+        <Percent>0</Percent>
+        <Type>6</Type>
+        <TypeOfWnd>-1</TypeOfWnd>
+       </DockRect.3>
       </DockRect.4>
       <DockRect.5>
        <AreHorz>1</AreHorz>
@@ -2359,16 +1992,7 @@
        <DisplayMessage>False</DisplayMessage>
       </Fetch>
      </Breakpoints>
-     <CASETool>
-      <AutoBegin>False</AutoBegin>
-     </CASETool>
      <Debug>
-      <ASID>
-       <AppID>0</AppID>
-       <Level>3</Level>
-       <Secure>0</Secure>
-       <VMID>0</VMID>
-      </ASID>
       <Debugging>
        <Ambiguity>1</Ambiguity>
        <DisableBPs>1</DisableBPs>
@@ -2395,102 +2019,11 @@
        </SourceDir.1>
       </Directories>
       <Download>
-       <DefaultFile>0</DefaultFile>
+       <DefaultFile>-1</DefaultFile>
        <UseRealTimeWrite>0</UseRealTimeWrite>
        <File.0>
         <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
-        <Flags>3</Flags>
-        <Load>1</Load>
-        <LoadCode>1</LoadCode>
-        <LoadSymbols>1</LoadSymbols>
-        <MemoryArea>0</MemoryArea>
-        <Offset>0</Offset>
-        <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
-        <OptimizeTypeByName>0</OptimizeTypeByName>
-        <OverrideMemoryArea>0</OverrideMemoryArea>
-        <Path>..\gcc\test-gcc.elf</Path>
-        <ProjectOutputFile>0</ProjectOutputFile>
-        <SOffset>0</SOffset>
-        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
-        <TargetRelative>False</TargetRelative>
-        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
-        <Type>28</Type>
-        <Options>
-         <CallStack>0</CallStack>
-         <DumpELFHeaders>0</DumpELFHeaders>
-         <GCC_ARM_double_Format>1</GCC_ARM_double_Format>
-         <IgnoreChecksum>0</IgnoreChecksum>
-         <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
-         <InsertInlinedFunctions>0</InsertInlinedFunctions>
-         <LoadCode>0</LoadCode>
-         <LoadDwarfSection>1</LoadDwarfSection>
-         <LoadSymbols>0</LoadSymbols>
-         <LoadWeakFunctions>1</LoadWeakFunctions>
-         <LoadZeros>0</LoadZeros>
-         <MergeTypes>0</MergeTypes>
-         <Override64bitVariableLocation>1</Override64bitVariableLocation>
-         <RemoveOptimizedLines>1</RemoveOptimizedLines>
-         <ReverseBitFields>0</ReverseBitFields>
-         <Cosmic>
-          <nowidden>0</nowidden>
-          <sprec>0</sprec>
-         </Cosmic>
-        </Options>
-        <PreProc>
-         <Analyze>0</Analyze>
-         <CommandLine></CommandLine>
-         <UseProjectDefines>0</UseProjectDefines>
-         <UseProjectIncludePaths>0</UseProjectIncludePaths>
-        </PreProc>
-       </File.0>
-       <File.1>
-        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
-        <Flags>3</Flags>
-        <Load>0</Load>
-        <LoadCode>1</LoadCode>
-        <LoadSymbols>1</LoadSymbols>
-        <MemoryArea>0</MemoryArea>
-        <Offset>0</Offset>
-        <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
-        <OptimizeTypeByName>0</OptimizeTypeByName>
-        <OverrideMemoryArea>0</OverrideMemoryArea>
-        <Path>..\test_disas_1.elf</Path>
-        <ProjectOutputFile>0</ProjectOutputFile>
-        <SOffset>0</SOffset>
-        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
-        <TargetRelative>False</TargetRelative>
-        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
-        <Type>28</Type>
-        <Options>
-         <CallStack>0</CallStack>
-         <DumpELFHeaders>0</DumpELFHeaders>
-         <GCC_ARM_double_Format>1</GCC_ARM_double_Format>
-         <IgnoreChecksum>0</IgnoreChecksum>
-         <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
-         <InsertInlinedFunctions>0</InsertInlinedFunctions>
-         <LoadCode>0</LoadCode>
-         <LoadDwarfSection>1</LoadDwarfSection>
-         <LoadSymbols>0</LoadSymbols>
-         <LoadWeakFunctions>1</LoadWeakFunctions>
-         <LoadZeros>0</LoadZeros>
-         <MergeTypes>0</MergeTypes>
-         <Override64bitVariableLocation>1</Override64bitVariableLocation>
-         <RemoveOptimizedLines>1</RemoveOptimizedLines>
-         <ReverseBitFields>0</ReverseBitFields>
-         <Cosmic>
-          <nowidden>0</nowidden>
-          <sprec>0</sprec>
-         </Cosmic>
-        </Options>
-        <PreProc>
-         <Analyze>0</Analyze>
-         <CommandLine></CommandLine>
-         <UseProjectDefines>0</UseProjectDefines>
-         <UseProjectIncludePaths>0</UseProjectIncludePaths>
-        </PreProc>
-       </File.1>
-       <File.2>
-        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
+        <CoreIndex>0</CoreIndex>
         <Flags>3</Flags>
         <Load>0</Load>
         <LoadCode>1</LoadCode>
@@ -2507,6 +2040,16 @@
         <TargetRelative>True</TargetRelative>
         <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
         <Type>28</Type>
+        <UseDefaultCore>1</UseDefaultCore>
+        <UseDefaultMSID>1</UseDefaultMSID>
+        <MSID>
+         <App></App>
+         <bAppID>0</bAppID>
+         <bVMID>0</bVMID>
+         <Level>3</Level>
+         <Secure>0</Secure>
+         <VM></VM>
+        </MSID>
         <Options>
          <CallStack>0</CallStack>
          <DumpELFHeaders>0</DumpELFHeaders>
@@ -2534,63 +2077,7 @@
          <UseProjectDefines>1</UseProjectDefines>
          <UseProjectIncludePaths>1</UseProjectIncludePaths>
         </PreProc>
-       </File.2>
-       <File.3>
-        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
-        <Flags>1</Flags>
-        <Load>0</Load>
-        <LoadCode>1</LoadCode>
-        <LoadSymbols>0</LoadSymbols>
-        <MemoryArea>0</MemoryArea>
-        <Offset>-14680064</Offset>
-        <OffsetA type="B">AAAACAPPAAAAAAAA</OffsetA>
-        <OptimizeTypeByName>0</OptimizeTypeByName>
-        <OverrideMemoryArea>0</OverrideMemoryArea>
-        <Path>dataFlash500B.BIN</Path>
-        <ProjectOutputFile>0</ProjectOutputFile>
-        <SOffset>0</SOffset>
-        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
-        <TargetRelative>False</TargetRelative>
-        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
-        <Type>0</Type>
-        <Options>
-         <IgnoreChecksum>0</IgnoreChecksum>
-        </Options>
-        <PreProc>
-         <Analyze>0</Analyze>
-         <CommandLine></CommandLine>
-         <UseProjectDefines>0</UseProjectDefines>
-         <UseProjectIncludePaths>0</UseProjectIncludePaths>
-        </PreProc>
-       </File.3>
-       <File.4>
-        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
-        <Flags>1</Flags>
-        <Load>0</Load>
-        <LoadCode>1</LoadCode>
-        <LoadSymbols>0</LoadSymbols>
-        <MemoryArea>0</MemoryArea>
-        <Offset>-14680064</Offset>
-        <OffsetA type="B">AAAACAPPAAAAAAAA</OffsetA>
-        <OptimizeTypeByName>0</OptimizeTypeByName>
-        <OverrideMemoryArea>0</OverrideMemoryArea>
-        <Path>dataFlash16K.BIN</Path>
-        <ProjectOutputFile>0</ProjectOutputFile>
-        <SOffset>0</SOffset>
-        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
-        <TargetRelative>False</TargetRelative>
-        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
-        <Type>0</Type>
-        <Options>
-         <IgnoreChecksum>0</IgnoreChecksum>
-        </Options>
-        <PreProc>
-         <Analyze>0</Analyze>
-         <CommandLine></CommandLine>
-         <UseProjectDefines>0</UseProjectDefines>
-         <UseProjectIncludePaths>0</UseProjectIncludePaths>
-        </PreProc>
-       </File.4>
+       </File.0>
       </Download>
       <DownloadOptionsData>
        <AfterDL1>1</AfterDL1>
@@ -2600,12 +2087,10 @@
        <bAfterDL1>0</bAfterDL1>
        <bAfterDL2>0</bAfterDL2>
        <BeforeDownload>1</BeforeDownload>
-       <bRunUntil>0</bRunUntil>
        <byAutoDownload>0</byAutoDownload>
        <DisplayLoadMap>True</DisplayLoadMap>
        <DownloadInHotAttach>0</DownloadInHotAttach>
        <PostDLActionAlsoAfterReset>0</PostDLActionAlsoAfterReset>
-       <strRunUntil>main</strRunUntil>
        <TargetDownload>0</TargetDownload>
        <VerifyDownload>True</VerifyDownload>
        <VerifyDownloadSource>0</VerifyDownloadSource>
@@ -2613,35 +2098,17 @@
         <DefaultFile>-1</DefaultFile>
         <UseRealTimeWrite>0</UseRealTimeWrite>
        </Download>
+       <LoadReport>
+        <FileName>$Download.xml</FileName>
+        <Format>0</Format>
+        <Loaded>1</Loaded>
+        <Overlap>1</Overlap>
+        <VerifyErrors>1</VerifyErrors>
+       </LoadReport>
       </DownloadOptionsData>
-      <HistoryFile>
-       <Enabled>False</Enabled>
-       <LocalVariables>False</LocalVariables>
-       <Memory>False</Memory>
-       <Path>history.txt</Path>
-       <Registers>True</Registers>
-       <SFRs>False</SFRs>
-       <Source>True</Source>
-       <Speed>0</Speed>
-       <Status>True</Status>
-       <Trace>False</Trace>
-       <Watches>True</Watches>
-      </HistoryFile>
-      <LoadMap>
-       <FileName>$Download.xml</FileName>
-       <Report>0</Report>
-       <SaveLoaded>1</SaveLoaded>
-       <SaveOverlaps>1</SaveOverlaps>
-       <SaveVerifyErrors>1</SaveVerifyErrors>
-      </LoadMap>
       <MemoryRegion>
        <FullAccessOutside>1</FullAccessOutside>
       </MemoryRegion>
-      <MMUData>
-       <AddressDisplay>0</AddressDisplay>
-       <DisplayAddresses>1</DisplayAddresses>
-       <DisplayRegisters>1</DisplayRegisters>
-      </MMUData>
       <mode0>
        <GlobalProperty>0</GlobalProperty>
        <IgnoreDLInfo>0</IgnoreDLInfo>
@@ -2658,20 +2125,17 @@
        <GlobalProperty>0</GlobalProperty>
        <IgnoreDLInfo>0</IgnoreDLInfo>
       </modeEndianLittle>
+      <MSID>
+       <App></App>
+       <bAppID>0</bAppID>
+       <bVMID>0</bVMID>
+       <Level>3</Level>
+       <Secure>0</Secure>
+       <VM></VM>
+      </MSID>
       <Parser>
        <ExpressionMemoryAccessOperator>58</ExpressionMemoryAccessOperator>
       </Parser>
-      <ProcessData>
-       <Processes>
-        <__.0>
-         <Name>DEFAULT</Name>
-         <PID_dwPID>0</PID_dwPID>
-         <Overlay>
-          <Mode>0</Mode>
-         </Overlay>
-        </__.0>
-       </Processes>
-      </ProcessData>
       <RTOS>
        <Imported>0</Imported>
        <OS>0</OS>
@@ -2712,10 +2176,6 @@
        <StepToOtherLine>0</StepToOtherLine>
        <UsePartitionPrefix>0</UsePartitionPrefix>
        <VagueFloatPrecision type="D">0.0000100000000000</VagueFloatPrecision>
-       <Export>
-        <FileName></FileName>
-        <Format>0</Format>
-       </Export>
       </Symbols>
       <Update>
        <Memory>True</Memory>
@@ -2959,7 +2419,7 @@
       </Combo>
      </History>
      <Info>
-      <winIDEA>Build 9.17.29</winIDEA>
+      <winIDEA>Build 9.17.76</winIDEA>
      </Info>
      <Options>
       <CallstackWindow>
@@ -2968,10 +2428,6 @@
        <Path>0</Path>
        <ShowSourceLines>1</ShowSourceLines>
       </CallstackWindow>
-      <CASE>
-       <RunWhenWinIDEAStarts>0</RunWhenWinIDEAStarts>
-       <Tool>0</Tool>
-      </CASE>
       <Environment>
        <DocumentTabNumLines>1</DocumentTabNumLines>
        <HILExt></HILExt>
@@ -2997,7 +2453,7 @@
        <Default8bitMAUDisplayOptions>0</Default8bitMAUDisplayOptions>
       </MemoryWindow>
       <ProjectWindow>
-       <Symbols_ModuleFolders>2</Symbols_ModuleFolders>
+       <Symbols_ShowModuleFolders>1</Symbols_ShowModuleFolders>
       </ProjectWindow>
       <RTOSWindow>
        <RTOSTaskPropertiesDialogBottom>0</RTOSTaskPropertiesDialogBottom>
@@ -3098,15 +2554,11 @@
       <PPC>
        <ExtendReturnValues>0</ExtendReturnValues>
       </PPC>
-      <RX>
-       <Compiler>0</Compiler>
-      </RX>
       <TriCore>
        <Compiler>0</Compiler>
       </TriCore>
       <V850>
        <Compiler>4</Compiler>
-       <PartialAddressDecoding>0</PartialAddressDecoding>
       </V850>
      </Test>
      <WindowsInfo>
@@ -3197,7 +2649,7 @@
     <VersionLow>1</VersionLow>
    </REG_HEADER>
    <REG_ROOT>
-    <RegVer>1279381504</RegVer>
+    <RegVer>1279574016</RegVer>
     <Project_Local>
      <Project.0>
       <DefaultTargetName>Debug</DefaultTargetName>
@@ -3212,7 +2664,7 @@
     <VersionLow>1</VersionLow>
    </REG_HEADER>
    <REG_ROOT>
-    <RegVer>1279381504</RegVer>
+    <RegVer>1279574016</RegVer>
     <HServerData>
      <Data>
       <Debug>
@@ -5700,6 +5152,2836 @@
         </SoC_Debug>
        </TriCore>
       </Debug>
+      <FNet>
+       <FixedFNode.0>
+        <Name>System</Name>
+        <Type>0x0</Type>
+        <Cfg>
+         <AIN.0>
+          <Cfg>
+           <AverageNum>4</AverageNum>
+           <CurrentShunt>1</CurrentShunt>
+           <Group>0</Group>
+           <Name>AIN1</Name>
+           <PowerMeasurement>0</PowerMeasurement>
+           <UseAverager>1</UseAverager>
+           <Channel.0>
+            <Multiply>1</Multiply>
+            <Name>AIN0</Name>
+            <Show>1</Show>
+           </Channel.0>
+           <Channel.1>
+            <Multiply>1</Multiply>
+            <Name>AIN1</Name>
+            <Show>1</Show>
+           </Channel.1>
+          </Cfg>
+          <Op>
+           <Sampling>10000000</Sampling>
+           <Channel.0>
+            <Qualify>0</Qualify>
+            <Comp.0>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.0>
+            <Comp.1>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.1>
+           </Channel.0>
+           <Channel.1>
+            <Qualify>0</Qualify>
+            <Comp.0>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.0>
+            <Comp.1>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.1>
+           </Channel.1>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AIN.0>
+         <AOUT.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name>AOUT1</Name>
+           <Channel.0>
+            <InitialState>0</InitialState>
+            <Name>AOUT0</Name>
+            <Show>1</Show>
+           </Channel.0>
+           <Channel.1>
+            <InitialState>0</InitialState>
+            <Name>AOUT1</Name>
+            <Show>1</Show>
+           </Channel.1>
+          </Cfg>
+          <Op>
+           <Channel.0>
+            <Act.0>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.0>
+            <Act.1>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.1>
+           </Channel.0>
+           <Channel.1>
+            <Act.0>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.0>
+            <Act.1>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.1>
+           </Channel.1>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AOUT.0>
+         <AP.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name>AP1</Name>
+          </Cfg>
+          <Op>
+           <CheckStatus>0</CheckStatus>
+           <A_Run>
+            <TC>0</TC>
+           </A_Run>
+           <A_Stop>
+            <TC>0</TC>
+           </A_Stop>
+           <E_Stopped>
+            <TC>0</TC>
+           </E_Stopped>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AP.0>
+         <AP.1>
+          <Cfg>
+           <Group>0</Group>
+           <Name>AP2</Name>
+          </Cfg>
+          <Op>
+           <CheckStatus>0</CheckStatus>
+           <A_Run>
+            <TC>0</TC>
+           </A_Run>
+           <A_Stop>
+            <TC>0</TC>
+           </A_Stop>
+           <E_Stopped>
+            <TC>0</TC>
+           </E_Stopped>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AP.1>
+         <BRIDGE.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name></Name>
+          </Cfg>
+          <Op>
+           <SystemTimer>0</SystemTimer>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </BRIDGE.0>
+         <CAN.0>
+          <Cfg>
+           <Active>0</Active>
+           <Group>0</Group>
+           <Mode>0</Mode>
+           <Name>CAN1</Name>
+           <BRS_Arbitration>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Arbitration>
+           <BRS_Data>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Data>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Act.0>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.0>
+           <Act.1>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.1>
+           <Act.2>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.2>
+           <Act.3>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.3>
+           <Comp.0>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <TQ_Error>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Error>
+           <TQ_Overload>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Overload>
+          </Op>
+         </CAN.0>
+         <CAN.1>
+          <Cfg>
+           <Active>0</Active>
+           <Group>0</Group>
+           <Mode>0</Mode>
+           <Name>CAN2</Name>
+           <BRS_Arbitration>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Arbitration>
+           <BRS_Data>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Data>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Act.0>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.0>
+           <Act.1>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.1>
+           <Act.2>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.2>
+           <Act.3>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.3>
+           <Comp.0>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <TQ_Error>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Error>
+           <TQ_Overload>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Overload>
+          </Op>
+         </CAN.1>
+         <COUNTER.0>
+          <Op>
+           <Channel.0>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.0>
+           <Channel.1>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.1>
+           <Channel.2>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.2>
+           <Channel.3>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </COUNTER.0>
+         <DIO.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name>DIO1</Name>
+           <Bank.0>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.0>
+           <Bank.1>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.1>
+           <Bank.2>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.2>
+           <Bank.3>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.3>
+           <Channel.0>
+            <InitialState>0</InitialState>
+            <Name>D0_0</Name>
+            <Show>1</Show>
+           </Channel.0>
+           <Channel.1>
+            <InitialState>0</InitialState>
+            <Name>D0_1</Name>
+            <Show>1</Show>
+           </Channel.1>
+           <Channel.10>
+            <InitialState>0</InitialState>
+            <Name>D1_2</Name>
+            <Show>1</Show>
+           </Channel.10>
+           <Channel.11>
+            <InitialState>0</InitialState>
+            <Name>D1_3</Name>
+            <Show>1</Show>
+           </Channel.11>
+           <Channel.12>
+            <InitialState>0</InitialState>
+            <Name>D1_4</Name>
+            <Show>1</Show>
+           </Channel.12>
+           <Channel.13>
+            <InitialState>0</InitialState>
+            <Name>D1_5</Name>
+            <Show>1</Show>
+           </Channel.13>
+           <Channel.14>
+            <InitialState>0</InitialState>
+            <Name>D1_6</Name>
+            <Show>1</Show>
+           </Channel.14>
+           <Channel.15>
+            <InitialState>0</InitialState>
+            <Name>D1_7</Name>
+            <Show>1</Show>
+           </Channel.15>
+           <Channel.16>
+            <InitialState>0</InitialState>
+            <Name>D2_0</Name>
+            <Show>1</Show>
+           </Channel.16>
+           <Channel.17>
+            <InitialState>0</InitialState>
+            <Name>D2_1</Name>
+            <Show>1</Show>
+           </Channel.17>
+           <Channel.18>
+            <InitialState>0</InitialState>
+            <Name>D2_2</Name>
+            <Show>1</Show>
+           </Channel.18>
+           <Channel.19>
+            <InitialState>0</InitialState>
+            <Name>D2_3</Name>
+            <Show>1</Show>
+           </Channel.19>
+           <Channel.2>
+            <InitialState>0</InitialState>
+            <Name>D0_2</Name>
+            <Show>1</Show>
+           </Channel.2>
+           <Channel.20>
+            <InitialState>0</InitialState>
+            <Name>D2_4</Name>
+            <Show>1</Show>
+           </Channel.20>
+           <Channel.21>
+            <InitialState>0</InitialState>
+            <Name>D2_5</Name>
+            <Show>1</Show>
+           </Channel.21>
+           <Channel.22>
+            <InitialState>0</InitialState>
+            <Name>D2_6</Name>
+            <Show>1</Show>
+           </Channel.22>
+           <Channel.23>
+            <InitialState>0</InitialState>
+            <Name>D2_7</Name>
+            <Show>1</Show>
+           </Channel.23>
+           <Channel.24>
+            <InitialState>0</InitialState>
+            <Name>D3_0</Name>
+            <Show>1</Show>
+           </Channel.24>
+           <Channel.25>
+            <InitialState>0</InitialState>
+            <Name>D3_1</Name>
+            <Show>1</Show>
+           </Channel.25>
+           <Channel.26>
+            <InitialState>0</InitialState>
+            <Name>D3_2</Name>
+            <Show>1</Show>
+           </Channel.26>
+           <Channel.27>
+            <InitialState>0</InitialState>
+            <Name>D3_3</Name>
+            <Show>1</Show>
+           </Channel.27>
+           <Channel.28>
+            <InitialState>0</InitialState>
+            <Name>D3_4</Name>
+            <Show>1</Show>
+           </Channel.28>
+           <Channel.29>
+            <InitialState>0</InitialState>
+            <Name>D3_5</Name>
+            <Show>1</Show>
+           </Channel.29>
+           <Channel.3>
+            <InitialState>0</InitialState>
+            <Name>D0_3</Name>
+            <Show>1</Show>
+           </Channel.3>
+           <Channel.30>
+            <InitialState>0</InitialState>
+            <Name>D3_6</Name>
+            <Show>1</Show>
+           </Channel.30>
+           <Channel.31>
+            <InitialState>0</InitialState>
+            <Name>D3_7</Name>
+            <Show>1</Show>
+           </Channel.31>
+           <Channel.4>
+            <InitialState>0</InitialState>
+            <Name>D0_4</Name>
+            <Show>1</Show>
+           </Channel.4>
+           <Channel.5>
+            <InitialState>0</InitialState>
+            <Name>D0_5</Name>
+            <Show>1</Show>
+           </Channel.5>
+           <Channel.6>
+            <InitialState>0</InitialState>
+            <Name>D0_6</Name>
+            <Show>1</Show>
+           </Channel.6>
+           <Channel.7>
+            <InitialState>0</InitialState>
+            <Name>D0_7</Name>
+            <Show>1</Show>
+           </Channel.7>
+           <Channel.8>
+            <InitialState>0</InitialState>
+            <Name>D1_0</Name>
+            <Show>1</Show>
+           </Channel.8>
+           <Channel.9>
+            <InitialState>0</InitialState>
+            <Name>D1_1</Name>
+            <Show>1</Show>
+           </Channel.9>
+          </Cfg>
+          <Op>
+           <Record>0</Record>
+           <Act.0>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.0>
+           <Act.1>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.1>
+           <Act.2>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.2>
+           <Act.3>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.3>
+           <Comp.0>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.0>
+           <Comp.1>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.1>
+           <Comp.2>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.2>
+           <Comp.3>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <Pattern.0>
+            <Frames></Frames>
+           </Pattern.0>
+           <Pattern.1>
+            <Frames></Frames>
+           </Pattern.1>
+           <Pattern.2>
+            <Frames></Frames>
+           </Pattern.2>
+           <Pattern.3>
+            <Frames></Frames>
+           </Pattern.3>
+          </Op>
+         </DIO.0>
+         <LIN.0>
+          <Cfg>
+           <BaudRate>9600</BaudRate>
+           <Group>0</Group>
+           <Name>LIN1</Name>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <WakeUpTQ>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </WakeUpTQ>
+          </Op>
+         </LIN.0>
+         <LIN.1>
+          <Cfg>
+           <BaudRate>9600</BaudRate>
+           <Group>0</Group>
+           <Name>LIN2</Name>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <WakeUpTQ>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </WakeUpTQ>
+          </Op>
+         </LIN.1>
+         <SPI.0>
+          <Cfg>
+           <ClockIdle>0</ClockIdle>
+           <Enabled>0</Enabled>
+           <Group>0</Group>
+           <Name>SPI1</Name>
+           <SamplingPhase>0</SamplingPhase>
+           <SSActive>0</SSActive>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+          </Op>
+         </SPI.0>
+         <SPI.1>
+          <Cfg>
+           <ClockIdle>0</ClockIdle>
+           <Enabled>0</Enabled>
+           <Group>0</Group>
+           <Name>SPI2</Name>
+           <SamplingPhase>0</SamplingPhase>
+           <SSActive>0</SSActive>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+          </Op>
+         </SPI.1>
+        </Cfg>
+       </FixedFNode.0>
+       <FixedFNode.1>
+        <Name>Hub</Name>
+        <Type>0x103</Type>
+        <Cfg>
+         <AIN.0>
+          <Cfg>
+           <AverageNum>4</AverageNum>
+           <CurrentShunt>1</CurrentShunt>
+           <Group>0</Group>
+           <Name>AIN1</Name>
+           <PowerMeasurement>0</PowerMeasurement>
+           <UseAverager>1</UseAverager>
+           <Channel.0>
+            <Multiply>1</Multiply>
+            <Name>AIN0</Name>
+            <Show>1</Show>
+           </Channel.0>
+           <Channel.1>
+            <Multiply>1</Multiply>
+            <Name>AIN1</Name>
+            <Show>1</Show>
+           </Channel.1>
+          </Cfg>
+          <Op>
+           <Sampling>10000000</Sampling>
+           <Channel.0>
+            <Qualify>0</Qualify>
+            <Comp.0>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.0>
+            <Comp.1>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.1>
+           </Channel.0>
+           <Channel.1>
+            <Qualify>0</Qualify>
+            <Comp.0>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.0>
+            <Comp.1>
+             <Compare>0</Compare>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Comp.1>
+           </Channel.1>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AIN.0>
+         <AOUT.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name>AOUT1</Name>
+           <Channel.0>
+            <InitialState>0</InitialState>
+            <Name>AOUT0</Name>
+            <Show>1</Show>
+           </Channel.0>
+           <Channel.1>
+            <InitialState>0</InitialState>
+            <Name>AOUT1</Name>
+            <Show>1</Show>
+           </Channel.1>
+          </Cfg>
+          <Op>
+           <Channel.0>
+            <Act.0>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.0>
+            <Act.1>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.1>
+           </Channel.0>
+           <Channel.1>
+            <Act.0>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.0>
+            <Act.1>
+             <Level>0</Level>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </Act.1>
+           </Channel.1>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AOUT.0>
+         <AP.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name>AP1</Name>
+          </Cfg>
+          <Op>
+           <CheckStatus>0</CheckStatus>
+           <A_Run>
+            <TC>0</TC>
+           </A_Run>
+           <A_Stop>
+            <TC>0</TC>
+           </A_Stop>
+           <E_Stopped>
+            <TC>0</TC>
+           </E_Stopped>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AP.0>
+         <AP.1>
+          <Cfg>
+           <Group>0</Group>
+           <Name>AP2</Name>
+          </Cfg>
+          <Op>
+           <CheckStatus>0</CheckStatus>
+           <A_Run>
+            <TC>0</TC>
+           </A_Run>
+           <A_Stop>
+            <TC>0</TC>
+           </A_Stop>
+           <E_Stopped>
+            <TC>0</TC>
+           </E_Stopped>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </AP.1>
+         <BRIDGE.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name></Name>
+          </Cfg>
+          <Op>
+           <SystemTimer>0</SystemTimer>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </BRIDGE.0>
+         <CAN.0>
+          <Cfg>
+           <Active>0</Active>
+           <Group>0</Group>
+           <Mode>0</Mode>
+           <Name>CAN1</Name>
+           <BRS_Arbitration>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Arbitration>
+           <BRS_Data>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Data>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Act.0>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.0>
+           <Act.1>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.1>
+           <Act.2>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.2>
+           <Act.3>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.3>
+           <Comp.0>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <TQ_Error>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Error>
+           <TQ_Overload>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Overload>
+          </Op>
+         </CAN.0>
+         <CAN.1>
+          <Cfg>
+           <Active>0</Active>
+           <Group>0</Group>
+           <Mode>0</Mode>
+           <Name>CAN2</Name>
+           <BRS_Arbitration>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Arbitration>
+           <BRS_Data>
+            <Baudrate>1000000</Baudrate>
+            <BitSamplePoint>80</BitSamplePoint>
+            <BRP>1</BRP>
+            <SJW>2</SJW>
+            <TSEG1>2</TSEG1>
+            <TSEG2>2</TSEG2>
+           </BRS_Data>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Act.0>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.0>
+           <Act.1>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.1>
+           <Act.2>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.2>
+           <Act.3>
+            <InjectMsg>
+             <BitRateSwitch>0</BitRateSwitch>
+             <Data></Data>
+             <ESIRecessive>0</ESIRecessive>
+             <FDFormat>1</FDFormat>
+             <ID>0</ID>
+             <IDLength>0</IDLength>
+             <RemoteRequest>0</RemoteRequest>
+            </InjectMsg>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.3>
+           <Comp.0>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID1>0</ID1>
+            <ID2>4294967295</ID2>
+            <IDLength>0</IDLength>
+            <Mode>1</Mode>
+            <Remote>2</Remote>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <TQ_Error>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Error>
+           <TQ_Overload>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </TQ_Overload>
+          </Op>
+         </CAN.1>
+         <COUNTER.0>
+          <Op>
+           <Channel.0>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.0>
+           <Channel.1>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.1>
+           <Channel.2>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.2>
+           <Channel.3>
+            <Limit>1000</Limit>
+            <LimitAutoReset>0</LimitAutoReset>
+            <LimitEnable>0</LimitEnable>
+            <StartActive>0</StartActive>
+            <TickCounter>1</TickCounter>
+            <TickCounterEnable>0</TickCounterEnable>
+            <Trace_Increment>0</Trace_Increment>
+            <Trace_Limit>0</Trace_Limit>
+            <A_Increment>
+             <TC>0</TC>
+            </A_Increment>
+            <A_Reset>
+             <TC>0</TC>
+            </A_Reset>
+            <A_Resume>
+             <TC>0</TC>
+            </A_Resume>
+            <A_Suspend>
+             <TC>0</TC>
+            </A_Suspend>
+            <E_Increment>
+             <TC>0</TC>
+            </E_Increment>
+            <E_Limit>
+             <TC>0</TC>
+            </E_Limit>
+           </Channel.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+          </Op>
+         </COUNTER.0>
+         <DIO.0>
+          <Cfg>
+           <Group>0</Group>
+           <Name>DIO1</Name>
+           <Bank.0>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.0>
+           <Bank.1>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.1>
+           <Bank.2>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.2>
+           <Bank.3>
+            <Direction>0</Direction>
+            <Voltage>5</Voltage>
+           </Bank.3>
+           <Channel.0>
+            <InitialState>0</InitialState>
+            <Name>D0_0</Name>
+            <Show>1</Show>
+           </Channel.0>
+           <Channel.1>
+            <InitialState>0</InitialState>
+            <Name>D0_1</Name>
+            <Show>1</Show>
+           </Channel.1>
+           <Channel.10>
+            <InitialState>0</InitialState>
+            <Name>D1_2</Name>
+            <Show>1</Show>
+           </Channel.10>
+           <Channel.11>
+            <InitialState>0</InitialState>
+            <Name>D1_3</Name>
+            <Show>1</Show>
+           </Channel.11>
+           <Channel.12>
+            <InitialState>0</InitialState>
+            <Name>D1_4</Name>
+            <Show>1</Show>
+           </Channel.12>
+           <Channel.13>
+            <InitialState>0</InitialState>
+            <Name>D1_5</Name>
+            <Show>1</Show>
+           </Channel.13>
+           <Channel.14>
+            <InitialState>0</InitialState>
+            <Name>D1_6</Name>
+            <Show>1</Show>
+           </Channel.14>
+           <Channel.15>
+            <InitialState>0</InitialState>
+            <Name>D1_7</Name>
+            <Show>1</Show>
+           </Channel.15>
+           <Channel.16>
+            <InitialState>0</InitialState>
+            <Name>D2_0</Name>
+            <Show>1</Show>
+           </Channel.16>
+           <Channel.17>
+            <InitialState>0</InitialState>
+            <Name>D2_1</Name>
+            <Show>1</Show>
+           </Channel.17>
+           <Channel.18>
+            <InitialState>0</InitialState>
+            <Name>D2_2</Name>
+            <Show>1</Show>
+           </Channel.18>
+           <Channel.19>
+            <InitialState>0</InitialState>
+            <Name>D2_3</Name>
+            <Show>1</Show>
+           </Channel.19>
+           <Channel.2>
+            <InitialState>0</InitialState>
+            <Name>D0_2</Name>
+            <Show>1</Show>
+           </Channel.2>
+           <Channel.20>
+            <InitialState>0</InitialState>
+            <Name>D2_4</Name>
+            <Show>1</Show>
+           </Channel.20>
+           <Channel.21>
+            <InitialState>0</InitialState>
+            <Name>D2_5</Name>
+            <Show>1</Show>
+           </Channel.21>
+           <Channel.22>
+            <InitialState>0</InitialState>
+            <Name>D2_6</Name>
+            <Show>1</Show>
+           </Channel.22>
+           <Channel.23>
+            <InitialState>0</InitialState>
+            <Name>D2_7</Name>
+            <Show>1</Show>
+           </Channel.23>
+           <Channel.24>
+            <InitialState>0</InitialState>
+            <Name>D3_0</Name>
+            <Show>1</Show>
+           </Channel.24>
+           <Channel.25>
+            <InitialState>0</InitialState>
+            <Name>D3_1</Name>
+            <Show>1</Show>
+           </Channel.25>
+           <Channel.26>
+            <InitialState>0</InitialState>
+            <Name>D3_2</Name>
+            <Show>1</Show>
+           </Channel.26>
+           <Channel.27>
+            <InitialState>0</InitialState>
+            <Name>D3_3</Name>
+            <Show>1</Show>
+           </Channel.27>
+           <Channel.28>
+            <InitialState>0</InitialState>
+            <Name>D3_4</Name>
+            <Show>1</Show>
+           </Channel.28>
+           <Channel.29>
+            <InitialState>0</InitialState>
+            <Name>D3_5</Name>
+            <Show>1</Show>
+           </Channel.29>
+           <Channel.3>
+            <InitialState>0</InitialState>
+            <Name>D0_3</Name>
+            <Show>1</Show>
+           </Channel.3>
+           <Channel.30>
+            <InitialState>0</InitialState>
+            <Name>D3_6</Name>
+            <Show>1</Show>
+           </Channel.30>
+           <Channel.31>
+            <InitialState>0</InitialState>
+            <Name>D3_7</Name>
+            <Show>1</Show>
+           </Channel.31>
+           <Channel.4>
+            <InitialState>0</InitialState>
+            <Name>D0_4</Name>
+            <Show>1</Show>
+           </Channel.4>
+           <Channel.5>
+            <InitialState>0</InitialState>
+            <Name>D0_5</Name>
+            <Show>1</Show>
+           </Channel.5>
+           <Channel.6>
+            <InitialState>0</InitialState>
+            <Name>D0_6</Name>
+            <Show>1</Show>
+           </Channel.6>
+           <Channel.7>
+            <InitialState>0</InitialState>
+            <Name>D0_7</Name>
+            <Show>1</Show>
+           </Channel.7>
+           <Channel.8>
+            <InitialState>0</InitialState>
+            <Name>D1_0</Name>
+            <Show>1</Show>
+           </Channel.8>
+           <Channel.9>
+            <InitialState>0</InitialState>
+            <Name>D1_1</Name>
+            <Show>1</Show>
+           </Channel.9>
+          </Cfg>
+          <Op>
+           <Record>0</Record>
+           <Act.0>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.0>
+           <Act.1>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.1>
+           <Act.2>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.2>
+           <Act.3>
+            <Pattern_0>0</Pattern_0>
+            <Pattern_1>0</Pattern_1>
+            <Pattern_10>0</Pattern_10>
+            <Pattern_11>0</Pattern_11>
+            <Pattern_12>0</Pattern_12>
+            <Pattern_13>0</Pattern_13>
+            <Pattern_14>0</Pattern_14>
+            <Pattern_15>0</Pattern_15>
+            <Pattern_16>0</Pattern_16>
+            <Pattern_17>0</Pattern_17>
+            <Pattern_18>0</Pattern_18>
+            <Pattern_19>0</Pattern_19>
+            <Pattern_2>0</Pattern_2>
+            <Pattern_20>0</Pattern_20>
+            <Pattern_21>0</Pattern_21>
+            <Pattern_22>0</Pattern_22>
+            <Pattern_23>0</Pattern_23>
+            <Pattern_24>0</Pattern_24>
+            <Pattern_25>0</Pattern_25>
+            <Pattern_26>0</Pattern_26>
+            <Pattern_27>0</Pattern_27>
+            <Pattern_28>0</Pattern_28>
+            <Pattern_29>0</Pattern_29>
+            <Pattern_3>0</Pattern_3>
+            <Pattern_30>0</Pattern_30>
+            <Pattern_31>0</Pattern_31>
+            <Pattern_4>0</Pattern_4>
+            <Pattern_5>0</Pattern_5>
+            <Pattern_6>0</Pattern_6>
+            <Pattern_7>0</Pattern_7>
+            <Pattern_8>0</Pattern_8>
+            <Pattern_9>0</Pattern_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Act.3>
+           <Comp.0>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.0>
+           <Comp.1>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.1>
+           <Comp.2>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.2>
+           <Comp.3>
+            <State_0>2</State_0>
+            <State_1>2</State_1>
+            <State_10>2</State_10>
+            <State_11>2</State_11>
+            <State_12>2</State_12>
+            <State_13>2</State_13>
+            <State_14>2</State_14>
+            <State_15>2</State_15>
+            <State_16>2</State_16>
+            <State_17>2</State_17>
+            <State_18>2</State_18>
+            <State_19>2</State_19>
+            <State_2>2</State_2>
+            <State_20>2</State_20>
+            <State_21>2</State_21>
+            <State_22>2</State_22>
+            <State_23>2</State_23>
+            <State_24>2</State_24>
+            <State_25>2</State_25>
+            <State_26>2</State_26>
+            <State_27>2</State_27>
+            <State_28>2</State_28>
+            <State_29>2</State_29>
+            <State_3>2</State_3>
+            <State_30>2</State_30>
+            <State_31>2</State_31>
+            <State_4>2</State_4>
+            <State_5>2</State_5>
+            <State_6>2</State_6>
+            <State_7>2</State_7>
+            <State_8>2</State_8>
+            <State_9>2</State_9>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <Pattern.0>
+            <Frames></Frames>
+           </Pattern.0>
+           <Pattern.1>
+            <Frames></Frames>
+           </Pattern.1>
+           <Pattern.2>
+            <Frames></Frames>
+           </Pattern.2>
+           <Pattern.3>
+            <Frames></Frames>
+           </Pattern.3>
+          </Op>
+         </DIO.0>
+         <LIN.0>
+          <Cfg>
+           <BaudRate>9600</BaudRate>
+           <Group>0</Group>
+           <Name>LIN1</Name>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <WakeUpTQ>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </WakeUpTQ>
+          </Op>
+         </LIN.0>
+         <LIN.1>
+          <Cfg>
+           <BaudRate>9600</BaudRate>
+           <Group>0</Group>
+           <Name>LIN2</Name>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <ID_Mask>0</ID_Mask>
+            <ID_Values>0</ID_Values>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+           <IPQualifier>
+            <Initial>0</Initial>
+            <Disable>
+             <TC>0</TC>
+            </Disable>
+            <Enable>
+             <TC>0</TC>
+            </Enable>
+           </IPQualifier>
+           <WakeUpTQ>
+            <Qualify>0</Qualify>
+            <Trigger>
+             <TC>0</TC>
+            </Trigger>
+           </WakeUpTQ>
+          </Op>
+         </LIN.1>
+         <SPI.0>
+          <Cfg>
+           <ClockIdle>0</ClockIdle>
+           <Enabled>0</Enabled>
+           <Group>0</Group>
+           <Name>SPI1</Name>
+           <SamplingPhase>0</SamplingPhase>
+           <SSActive>0</SSActive>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+          </Op>
+         </SPI.0>
+         <SPI.1>
+          <Cfg>
+           <ClockIdle>0</ClockIdle>
+           <Enabled>0</Enabled>
+           <Group>0</Group>
+           <Name>SPI2</Name>
+           <SamplingPhase>0</SamplingPhase>
+           <SSActive>0</SSActive>
+          </Cfg>
+          <Op>
+           <QualifyAll>1</QualifyAll>
+           <Comp.0>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.0>
+           <Comp.1>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.1>
+           <Comp.2>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.2>
+           <Comp.3>
+            <CS>0</CS>
+            <Data>0x0</Data>
+            <Endian>0</Endian>
+            <Mask>0xFFFFFFFF</Mask>
+            <Offset>0</Offset>
+            <Size>8</Size>
+            <Stream>0</Stream>
+            <TQ>
+             <Qualify>0</Qualify>
+             <Trigger>
+              <TC>0</TC>
+             </Trigger>
+            </TQ>
+           </Comp.3>
+          </Op>
+         </SPI.1>
+        </Cfg>
+       </FixedFNode.1>
+      </FNet>
       <HIL>
        <A_IN.0>
         <Name>AIN0</Name>
@@ -6308,18 +8590,6 @@
          <BaudRate>9600</BaudRate>
         </UART>
        </Output>
-       <V850DataFLASH>
-        <DFSaveFileOffset>0</DFSaveFileOffset>
-        <DisplayMode>2</DisplayMode>
-        <EraseAuto>0</EraseAuto>
-        <LoadAuto>0</LoadAuto>
-        <LoadDFAuto>0</LoadDFAuto>
-        <LoadDFFile></LoadDFFile>
-        <LoadFile></LoadFile>
-        <SaveAuto>0</SaveAuto>
-        <SaveDFFile></SaveDFFile>
-        <SaveFile></SaveFile>
-       </V850DataFLASH>
       </Tools>
       <Trace>
        <Common>
@@ -6357,6 +8627,7 @@
          <Name>Renesas RH850/F1L Code 2MB</Name>
          <OnChip>1</OnChip>
          <OverrideTimeout>0</OverrideTimeout>
+         <PreserveContext>1</PreserveContext>
          <ProgramAtDownload>0</ProgramAtDownload>
          <Timeout>60</Timeout>
          <UseCompression>1</UseCompression>
@@ -6391,6 +8662,7 @@
          <Name>Renesas RH850/F1L Data 32KB</Name>
          <OnChip>1</OnChip>
          <OverrideTimeout>0</OverrideTimeout>
+         <PreserveContext>1</PreserveContext>
          <ProgramAtDownload>0</ProgramAtDownload>
          <Timeout>60</Timeout>
          <UseCompression>1</UseCompression>
@@ -6404,37 +8676,30 @@
       </UMI>
      </Data>
      <HW>
-      <V_BUILD>29</V_BUILD>
+      <V_BUILD>76</V_BUILD>
       <V_BUILD_SUB>0</V_BUILD_SUB>
       <V_MAJOR>9</V_MAJOR>
       <V_Mfix>1</V_Mfix>
       <V_MINOR>17</V_MINOR>
-      <Version>152109114</Version>
+      <Version>152109208</Version>
       <BDM>
        <CPU>
         <CPU1>160</CPU1>
         <CPUOptions>0</CPUOptions>
-        <CPUOptionsMask>127</CPUOptionsMask>
         <Endian>0</Endian>
         <Family>23</Family>
         <POD>2</POD>
         <SubCPU></SubCPU>
         <B_V850>
-         <CKC>128</CKC>
          <CodeFLASHPwd type="B">PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP</CodeFLASHPwd>
          <DataFLASHPwd type="B">PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP</DataFLASHPwd>
          <DebugPort>1</DebugPort>
          <EELayout>0</EELayout>
+         <EnableProgrammingOPBT>0</EnableProgrammingOPBT>
          <ForceDebugPortConfiguration>0</ForceDebugPortConfiguration>
          <ICURegionEraseAfterDFLASHErase>0</ICURegionEraseAfterDFLASHErase>
          <ICUValidateAfterDL>0</ICUValidateAfterDL>
          <LPDClock_kHz>4000</LPDClock_kHz>
-         <MaskHOLD>0</MaskHOLD>
-         <MaskNMI0>0</MaskNMI0>
-         <MaskNMI1>0</MaskNMI1>
-         <MaskRESET>0</MaskRESET>
-         <MaskWAIT>0</MaskWAIT>
-         <PCC>2</PCC>
          <SerialPortClock_kHz>2000</SerialPortClock_kHz>
          <UnlockIDCode type="B">PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP</UnlockIDCode>
          <UseHandshaking>1</UseHandshaking>
@@ -6443,21 +8708,21 @@
        <Debugging>
         <AllowAccessToUnimplementedRegisters>0</AllowAccessToUnimplementedRegisters>
         <AuroraBaudrate>0</AuroraBaudrate>
-        <BoostClock>0</BoostClock>
+        <BootCore>0</BootCore>
         <Breakpoints>0</Breakpoints>
+        <CacheDL>0</CacheDL>
         <CacheSWBPs>0</CacheSWBPs>
         <CalibrateClockVref>0</CalibrateClockVref>
         <CalibratePhase>13</CalibratePhase>
         <CalibrateVref>114</CalibrateVref>
         <CalibrationPerformed>0</CalibrationPerformed>
         <ClockkHz>0</ClockkHz>
+        <CycleDuration type="D">0.0000000150000000</CycleDuration>
         <DebugClockkHz>4000</DebugClockkHz>
         <ExtOscillatorClk>16000</ExtOscillatorClk>
         <FLASHIncremental>0</FLASHIncremental>
         <GenerateAuroraClock>0</GenerateAuroraClock>
         <IgnoreAccessErrors>1</IgnoreAccessErrors>
-        <IgnoreTargetResetAfter>0</IgnoreTargetResetAfter>
-        <IgnoreTargetResetAfter_ms>10</IgnoreTargetResetAfter_ms>
         <InitRAM>2</InitRAM>
         <LatchRESET>0</LatchRESET>
         <NexusClockDivider>1</NexusClockDivider>
@@ -6472,13 +8737,11 @@
         <OCTInitAtStart>1</OCTInitAtStart>
         <PhaseShift>0</PhaseShift>
         <PostResetDelay>0</PostResetDelay>
+        <ReadMemoryOnMissingCode>1</ReadMemoryOnMissingCode>
         <ResetDelay>100</ResetDelay>
         <ResetMethod>0</ResetMethod>
-        <RESETOutput>0</RESETOutput>
         <SimulateSingleStep>0</SimulateSingleStep>
         <StopAfterReset>1</StopAfterReset>
-        <SyncStartOnTargetReset>0</SyncStartOnTargetReset>
-        <TargetPowerSenseDisabled>0</TargetPowerSenseDisabled>
         <TargetResetTimeout>100</TargetResetTimeout>
         <Watchdog>0</Watchdog>
        </Debugging>
@@ -6510,8 +8773,6 @@
         <File>mon4.ini</File>
         <FromFile>1</FromFile>
         <InitAfterReset>1</InitAfterReset>
-        <Offset>0</Offset>
-        <OffsetMode>0</OffsetMode>
         <ResetCPUAfterDownload>0</ResetCPUAfterDownload>
         <TargetInitSec>1</TargetInitSec>
         <Use>0</Use>
@@ -6520,8 +8781,6 @@
         <File></File>
         <FromFile>0</FromFile>
         <InitAfterReset>1</InitAfterReset>
-        <Offset>0</Offset>
-        <OffsetMode>0</OffsetMode>
         <ResetCPUAfterDownload>0</ResetCPUAfterDownload>
         <TargetInitSec>1</TargetInitSec>
         <Use>0</Use>
@@ -6543,6 +8802,35 @@
        <MC>
         <Cores>
          <__.0>
+          <ARMv7>
+           <Exceptions>
+            <MD>0</MD>
+            <MF>0</MF>
+            <MI>0</MI>
+            <MP>0</MP>
+            <MS>0</MS>
+            <NSD>0</NSD>
+            <NSF>0</NSF>
+            <NSHC>0</NSHC>
+            <NSHD>0</NSHD>
+            <NSHE>0</NSHE>
+            <NSHF>0</NSHF>
+            <NSHI>0</NSHI>
+            <NSHP>0</NSHP>
+            <NSHU>0</NSHU>
+            <NSI>0</NSI>
+            <NSP>0</NSP>
+            <NSS>0</NSS>
+            <NSU>0</NSU>
+            <R>0</R>
+            <SD>0</SD>
+            <SF>0</SF>
+            <SI>0</SI>
+            <SP>0</SP>
+            <SS>0</SS>
+            <SU>0</SU>
+           </Exceptions>
+          </ARMv7>
           <ARMv8>
            <CatchEvents>
             <NSE1>0</NSE1>
@@ -6564,18 +8852,11 @@
             <BUSERR>0</BUSERR>
             <CHKERR>0</CHKERR>
             <CORERESET>0</CORERESET>
-            <D_Abort>0</D_Abort>
-            <FIQ>0</FIQ>
             <HARDERR>0</HARDERR>
             <INTERR>0</INTERR>
-            <IRQ>0</IRQ>
             <MMERR>0</MMERR>
             <NOCPERR>0</NOCPERR>
-            <P_Abort>0</P_Abort>
-            <Reset>0</Reset>
             <STATERR>0</STATERR>
-            <SWI>0</SWI>
-            <Undefined>0</Undefined>
            </Exceptions>
           </Cortex>
           <e200>
@@ -6672,12 +8953,25 @@
        <Communication>
         <BridgeDeviceName></BridgeDeviceName>
         <BridgeName></BridgeName>
-        <IPAddr>10.4.2.3</IPAddr>
+        <IPAddr>172.29.2.3</IPAddr>
         <IPUseGlobalDiscoveryPort>1</IPUseGlobalDiscoveryPort>
         <Mode>4</Mode>
         <TCPPortNumber>5313</TCPPortNumber>
         <USBDeviceName></USBDeviceName>
        </Communication>
+       <XCP>
+        <Transport>0</Transport>
+        <Common>
+         <ConnectMode>0</ConnectMode>
+         <CPU>0</CPU>
+         <KeyQueryDLL></KeyQueryDLL>
+         <UseBulkAccessIfAvaliable>0</UseBulkAccessIfAvaliable>
+        </Common>
+        <TCPIP>
+         <Port>0</Port>
+         <Server></Server>
+        </TCPIP>
+       </XCP>
       </HW>
       <Trace>
        <Type>0</Type>
@@ -6694,33 +8988,57 @@
          <CAN>
           <QualifyAll>1</QualifyAll>
           <Act.0>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
           </Act.0>
           <Act.1>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
           </Act.1>
           <Act.2>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
           </Act.2>
           <Act.3>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
@@ -6777,6 +9095,15 @@
             </Trigger>
            </TQ>
           </Comp.3>
+          <IPQualifier>
+           <Initial>0</Initial>
+           <Disable>
+            <TC>0</TC>
+           </Disable>
+           <Enable>
+            <TC>0</TC>
+           </Enable>
+          </IPQualifier>
           <TQ_Error>
            <Qualify>0</Qualify>
            <Trigger>
@@ -6798,33 +9125,57 @@
          <CAN>
           <QualifyAll>1</QualifyAll>
           <Act.0>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
           </Act.0>
           <Act.1>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
           </Act.1>
           <Act.2>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
           </Act.2>
           <Act.3>
-           <Data></Data>
-           <ID>0</ID>
-           <IDLength>0</IDLength>
+           <InjectMsg>
+            <BitRateSwitch>0</BitRateSwitch>
+            <Data></Data>
+            <ESIRecessive>0</ESIRecessive>
+            <FDFormat>1</FDFormat>
+            <ID>0</ID>
+            <IDLength>0</IDLength>
+            <RemoteRequest>0</RemoteRequest>
+           </InjectMsg>
            <Trigger>
             <TC>0</TC>
            </Trigger>
@@ -6881,6 +9232,15 @@
             </Trigger>
            </TQ>
           </Comp.3>
+          <IPQualifier>
+           <Initial>0</Initial>
+           <Disable>
+            <TC>0</TC>
+           </Disable>
+           <Enable>
+            <TC>0</TC>
+           </Enable>
+          </IPQualifier>
           <TQ_Error>
            <Qualify>0</Qualify>
            <Trigger>
