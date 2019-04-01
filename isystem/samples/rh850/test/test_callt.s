@@ -6,19 +6,25 @@
 
 	# check value of CTBP on bluebox, to generate valid address
 	# DONE CTBP can be modified with ldsr command
-
+start:
 	mov 0xff,r10
 	ldsr r10,PSW
 	#modify psw reg to 0xff	
 
-	mov 0x0,r11
+	mov  hilo(callTable),r11
 	ldsr r11,20
 	#20 is CTBP
-	#we can modify CTBP register
 	
-	CALLT subrutine
+	CALLT 1
 	#test_callt.o:(.text+0x4e): warning: could not locate special linker symbol __ctbp
 	#this outputs ./build.sh
+    
+    mov  0x12345, r1
+    br Lbl
+callTable:
+    .hword 0xffff
+    .hword subrutine - callTable
+    .hword 0xe2b3
 
 	subrutine:	
 
@@ -33,5 +39,8 @@
 
 		CTRET
 		#with that we should return to back after CALLT
+
+    # should never get here
+    br  start
 
 Lbl:	br Lbl

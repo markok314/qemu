@@ -1,8 +1,7 @@
 /*
  * QEMU RH850 CPU
  *
- * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
- * Copyright (c) 2017-2018 SiFive, Inc.
+ * Copyright (c) 2018-2019 iSYSTEM Labs d.o.o.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -278,6 +277,7 @@ static void rh850_any_cpu_init(Object *obj)
     CPURH850State *env = &RH850_CPU(obj)->env;
     // set_misa(env, RVXLEN | RVI | RVM | RVA | RVF | RVD | RVC | RVU);
     // set_versions(env, USER_VERSION_2_02_0, PRIV_VERSION_1_10_0);
+    env->psw = 0x20; // set reset value of register
     set_resetvec(env, DEFAULT_RSTVEC);
 }
 /*

@@ -31,6 +31,7 @@ NUM_OF_REGISTERS = 31
 NUM_OF_PRINTED_REGISTERS = 35;
 NUM_OF_REGS_TO_NOT_CHECK = NUM_OF_REGISTERS * NUM_OF_PRINTED_REGISTERS
 NUM_OF_LINES_WITH_GPR_VALUES = 12
+PSW_MASK = 0xfffff1ff   # ignore flags for debug mode, because they are set by winIDEA
 
 # files provifing common functionality to test files
 NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s']
@@ -184,41 +185,37 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
         with open(getBlueBoxLogFName(asmFileStem), 'r') as log_blubox:
 
             log("----------")
-            #for line1, line2 in zip(log_qemu, log_blubox):
-            for line1, line2 in itertools.zip_longest(log_qemu, log_blubox):
+            #for lineQemu, lineBB in zip(log_qemu, log_blubox):
+            for lineQemu, lineBB in itertools.zip_longest(log_qemu, log_blubox):
                 if start >= NUM_OF_REGS_TO_NOT_CHECK:
-                    if line1 is None:
-                         print("Missing line1 (qemu) !")
+                    if lineQemu is None:
+                         print("Missing lineQemu (qemu) !")
                          print("FAILED")
                          result_for_file = RESULT_FAILED
                          return result_for_file
                     #print("index: " + str(index))
                     if(index == 0):
-                        #NAME OF INSTRUCTION
+                        # NAME OF INSTRUCTION
                         log("-----------------")
-                        log('@@@> {line1[:-1]}')
-                        print(line1)
-                        if line1[-8:-1] == 'BR 0000':
+                        log('@@@> {lineQemu[:-1]}')
+                        print(lineQemu)
+                        if lineQemu[-8:-1] == 'BR 0000':
                             print("BR 0000")
                             break
                     elif(index == 2):
-                        #PSW
-                        if True:
-                            #print("CHECKING FLAGS ALSO");
-                            if line1[-2:] != line2[-2:]:
-                                # CHECKING JUST LAST 4 BITS OF PSW REG
-                                print("ERROR:\n - "  +  line1[:-1]  + "\n - " +  line2[:-1])
-                                isOkay = False
-                            elif ((int(line1[-3]) % 2) != (int(line2[-3]) % 2)):
-                                #CHECKING SAT FLAG
-                                print("SERROR:\n - "  +  line1[:-1]  + "\n - " +  line2[:-1])
-                                isOkay = False
+                        # PSW
+                        print("CHECKING FLAGS ALSO:\nQemu:", lineQemu, '\nBB:', lineBB)
+                        pswQemu = int(lineQemu[lineQemu.index(':') + 2:], 16)
+                        pswBB = int(lineBB[lineBB.index('=') + 2:], 16)
+                        if ((pswQemu & PSW_MASK) != (pswBB & PSW_MASK)):
+                            print("ERROR PSW:\n QEMU "  +  lineQemu + "\n BB: " +  lineBB)
+                            isOkay = False
                     else:
                         #PC AND OTHER GPR
-                        #print("line1: " + line1 + ", line2: " + line2)
-                        log('lines:\n - {line1}\n - {line2}')
-                        if line1.split(': ')[1] != line2.split('x')[1]:
-                            print("ERROR: " + line1[:-1]  + " " +  line2[:-1])
+                        #print("lineQemu: " + lineQemu + ", lineBB: " + lineBB)
+                        log('lines:\n - {lineQemu}\n - {lineBB}')
+                        if lineQemu.split(': ')[1] != lineBB.split('x')[1]:
+                            print("ERROR: " + lineQemu[:-1]  + " " +  lineBB[:-1])
                             isOkay = False
 
                     index = index + 1
