@@ -204,7 +204,7 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
                             break
                     elif(index == 2):
                         # PSW
-                        print("CHECKING FLAGS ALSO:\nQemu:", lineQemu, '\nBB:', lineBB)
+                        # print("CHECKING FLAGS ALSO:\nQemu:", lineQemu, 'BB:', lineBB)
                         pswQemu = int(lineQemu[lineQemu.index(':') + 2:], 16)
                         pswBB = int(lineBB[lineBB.index('=') + 2:], 16)
                         if ((pswQemu & PSW_MASK) != (pswBB & PSW_MASK)):

@@ -277,7 +277,6 @@ static void rh850_any_cpu_init(Object *obj)
     CPURH850State *env = &RH850_CPU(obj)->env;
     // set_misa(env, RVXLEN | RVI | RVM | RVA | RVF | RVD | RVC | RVU);
     // set_versions(env, USER_VERSION_2_02_0, PRIV_VERSION_1_10_0);
-    env->psw = 0x20; // set reset value of register
     set_resetvec(env, DEFAULT_RSTVEC);
 }
 /*
@@ -520,6 +519,7 @@ static void rh850_cpu_reset(CPUState *cs)
 #endif
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);
+    env->sysBasicRegs[psw_idx] = 0x20; // reset value of PSW
 }
 
 static void rh850_cpu_disas_set_info(CPUState *s, disassemble_info *info)

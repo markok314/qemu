@@ -119,8 +119,6 @@ struct CPURH850State {
     target_ulong sysDatabuffRegs[1];
     target_ulong pc;
 
-    target_ulong psw;
-
     // flags contained in PSW register
     uint32_t Z_flag;
     uint32_t S_flag;
