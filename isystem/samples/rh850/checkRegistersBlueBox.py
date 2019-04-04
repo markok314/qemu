@@ -79,6 +79,5 @@ class BlueBox:
 
             print()
 
-            self._removeFileForDownload(downloadFile, self.ideCtrl)
             return NUM_OF_INSTRUCTIONS
 
