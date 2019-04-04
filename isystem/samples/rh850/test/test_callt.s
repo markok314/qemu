@@ -16,8 +16,6 @@ start:
 	#20 is CTBP
 	
 	CALLT 1
-	#test_callt.o:(.text+0x4e): warning: could not locate special linker symbol __ctbp
-	#this outputs ./build.sh
     
     mov  0x12345, r1
     br Lbl

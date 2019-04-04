@@ -31,4 +31,5 @@ start = 0xfee00000
         ST_DW R8, 16, R2
         LD_DW 16, R2, R4
 
+lbl:    br lbl
 

@@ -49,6 +49,8 @@
       </History>
       <PI.0>
        <Bookmarks_num_>0</Bookmarks_num_>
+       <C>62</C>
+       <L>4</L>
        <P>..\test_disas_1.s</P>
       </PI.0>
       <PI.1>
@@ -1477,10 +1479,10 @@
       </EditorHistoryFile.3>
      </Documents.0>
      <Progress>
-      <b>724</b>
-      <l>711</l>
-      <r>1215</r>
-      <t>360</t>
+      <b>725</b>
+      <l>956</l>
+      <r>1460</r>
+      <t>361</t>
      </Progress>
      <Watches>
       <ActiveWatchPane>2</ActiveWatchPane>
@@ -1708,7 +1710,7 @@
       <TypeOfWnd>-1</TypeOfWnd>
       <DockRect.0>
        <AreHorz>0</AreHorz>
-       <Percent>600</Percent>
+       <Percent>382</Percent>
        <Type>0</Type>
        <TypeOfWnd>-1</TypeOfWnd>
        <DockRect.0>
@@ -1820,8 +1822,36 @@
        <TypeOfWnd>-1</TypeOfWnd>
       </DockRect.1>
       <DockRect.2>
+       <AreHorz>1</AreHorz>
+       <Percent>287</Percent>
+       <strTypeOfWnd>SFR</strTypeOfWnd>
+       <Type>0</Type>
+       <TypeOfWnd>12</TypeOfWnd>
+       <Data>
+        <SFRPane>
+         <Tree>
+          <HeaderWidth.0>200</HeaderWidth.0>
+          <HeaderWidth.1>100</HeaderWidth.1>
+          <HeaderWidth.2>400</HeaderWidth.2>
+          <HeaderWidth.3>100</HeaderWidth.3>
+          <HeaderWidth.4>400</HeaderWidth.4>
+         </Tree>
+        </SFRPane>
+        <WndData>
+         <Custom>0</Custom>
+         <strCustom></strCustom>
+        </WndData>
+       </Data>
+      </DockRect.2>
+      <DockRect.3>
+       <AreHorz>1</AreHorz>
+       <Percent>5</Percent>
+       <Type>6</Type>
+       <TypeOfWnd>-1</TypeOfWnd>
+      </DockRect.3>
+      <DockRect.4>
        <AreHorz>0</AreHorz>
-       <Percent>200</Percent>
+       <Percent>157</Percent>
        <Type>0</Type>
        <TypeOfWnd>-1</TypeOfWnd>
        <DockRect.0>
@@ -1838,36 +1868,6 @@
         <TypeOfWnd>-1</TypeOfWnd>
        </DockRect.1>
        <DockRect.2>
-        <AreHorz>1</AreHorz>
-        <Percent>100</Percent>
-        <strTypeOfWnd>Variables</strTypeOfWnd>
-        <Type>0</Type>
-        <TypeOfWnd>3</TypeOfWnd>
-        <Data>
-         <Columns.0>
-          <Width>180</Width>
-         </Columns.0>
-         <Columns.1>
-          <Width>80</Width>
-         </Columns.1>
-         <Columns.2>
-          <Width>80</Width>
-         </Columns.2>
-         <Columns.3>
-          <Width>140</Width>
-         </Columns.3>
-         <Columns.4>
-          <Width>400</Width>
-         </Columns.4>
-        </Data>
-       </DockRect.2>
-       <DockRect.3>
-        <AreHorz>1</AreHorz>
-        <Percent>5</Percent>
-        <Type>6</Type>
-        <TypeOfWnd>-1</TypeOfWnd>
-       </DockRect.3>
-       <DockRect.4>
         <AreHorz>1</AreHorz>
         <Percent>100</Percent>
         <strTypeOfWnd>Watch</strTypeOfWnd>
@@ -1890,34 +1890,34 @@
           <Width>400</Width>
          </Columns.4>
         </Data>
-       </DockRect.4>
-       <DockRect.5>
+       </DockRect.2>
+       <DockRect.3>
         <AreHorz>1</AreHorz>
         <Percent>0</Percent>
         <Type>6</Type>
         <TypeOfWnd>-1</TypeOfWnd>
-       </DockRect.5>
-      </DockRect.2>
-      <DockRect.3>
+       </DockRect.3>
+      </DockRect.4>
+      <DockRect.5>
        <AreHorz>1</AreHorz>
        <Percent>5</Percent>
        <Type>6</Type>
        <TypeOfWnd>-1</TypeOfWnd>
-      </DockRect.3>
-      <DockRect.4>
+      </DockRect.5>
+      <DockRect.6>
        <AreHorz>0</AreHorz>
-       <Percent>461</Percent>
+       <Percent>427</Percent>
        <Type>0</Type>
        <TypeOfWnd>-1</TypeOfWnd>
        <DockRect.0>
         <AreHorz>1</AreHorz>
-        <Percent>612</Percent>
+        <Percent>540</Percent>
         <strTypeOfWnd>Memory</strTypeOfWnd>
         <Type>0</Type>
         <TypeOfWnd>6</TypeOfWnd>
         <Data>
-         <AA type="B">AAAAAAAAAAAAAAAA</AA>
-         <Address>0</Address>
+         <AA type="B">AAPANPPOAAAAAAAA</AA>
+         <Address>-18878464</Address>
          <AddrMode>1</AddrMode>
          <Area>0</Area>
          <Bits>8</Bits>
@@ -1928,7 +1928,7 @@
          <LimitMAUsPerLine>0</LimitMAUsPerLine>
          <Low>0</Low>
          <RealTime>0</RealTime>
-         <strAddress>0x0</strAddress>
+         <strAddress>0xfedff000</strAddress>
          <SwapFloat>True</SwapFloat>
          <SwapInt>True</SwapInt>
          <Type>0</Type>
@@ -1951,7 +1951,7 @@
        </DockRect.1>
        <DockRect.2>
         <AreHorz>1</AreHorz>
-        <Percent>798</Percent>
+        <Percent>870</Percent>
         <strTypeOfWnd>Disassembly</strTypeOfWnd>
         <Type>0</Type>
         <TypeOfWnd>5</TypeOfWnd>
@@ -1960,13 +1960,13 @@
           <__>104</__>
          </HeaderWidth.0>
          <HeaderWidth.1>
-          <__>91</__>
+          <__>158</__>
          </HeaderWidth.1>
          <HeaderWidth.2>
-          <__>347</__>
+          <__>422</__>
          </HeaderWidth.2>
          <HeaderWidth.3>
-          <__>254</__>
+          <__>257</__>
          </HeaderWidth.3>
         </Data>
        </DockRect.2>
@@ -1976,13 +1976,13 @@
         <Type>6</Type>
         <TypeOfWnd>-1</TypeOfWnd>
        </DockRect.3>
-      </DockRect.4>
-      <DockRect.5>
+      </DockRect.6>
+      <DockRect.7>
        <AreHorz>1</AreHorz>
        <Percent>0</Percent>
        <Type>6</Type>
        <TypeOfWnd>-1</TypeOfWnd>
-      </DockRect.5>
+      </DockRect.7>
      </Workspace.0>
     </Desktop>
     <Environment>
@@ -1990,6 +1990,58 @@
       <Fetch>
        <Beep>True</Beep>
        <DisplayMessage>False</DisplayMessage>
+       <BP.0>
+        <__>
+         <ActionEnabled>False</ActionEnabled>
+         <ActionScript></ActionScript>
+         <ActionScriptParams></ActionScriptParams>
+         <ActionShow>False</ActionShow>
+         <Active>False</Active>
+         <Condition></Condition>
+         <Condition_Count>0</Condition_Count>
+         <ConditionEnabled>False</ConditionEnabled>
+         <Name>0xF6</Name>
+        </__>
+       </BP.0>
+       <BP.1>
+        <__>
+         <ActionEnabled>False</ActionEnabled>
+         <ActionScript></ActionScript>
+         <ActionScriptParams></ActionScriptParams>
+         <ActionShow>False</ActionShow>
+         <Active>False</Active>
+         <Condition></Condition>
+         <Condition_Count>0</Condition_Count>
+         <ConditionEnabled>False</ConditionEnabled>
+         <Name>0x126</Name>
+        </__>
+       </BP.1>
+       <BP.2>
+        <__>
+         <ActionEnabled>False</ActionEnabled>
+         <ActionScript></ActionScript>
+         <ActionScriptParams></ActionScriptParams>
+         <ActionShow>False</ActionShow>
+         <Active>False</Active>
+         <Condition></Condition>
+         <Condition_Count>0</Condition_Count>
+         <ConditionEnabled>False</ConditionEnabled>
+         <Name>0xAE</Name>
+        </__>
+       </BP.2>
+       <BP.3>
+        <__>
+         <ActionEnabled>False</ActionEnabled>
+         <ActionScript></ActionScript>
+         <ActionScriptParams></ActionScriptParams>
+         <ActionShow>False</ActionShow>
+         <Active>True</Active>
+         <Condition></Condition>
+         <Condition_Count>0</Condition_Count>
+         <ConditionEnabled>False</ConditionEnabled>
+         <Name>0x3E</Name>
+        </__>
+       </BP.3>
       </Fetch>
      </Breakpoints>
      <Debug>
@@ -2019,7 +2071,7 @@
        </SourceDir.1>
       </Directories>
       <Download>
-       <DefaultFile>-1</DefaultFile>
+       <DefaultFile>3</DefaultFile>
        <UseRealTimeWrite>0</UseRealTimeWrite>
        <File.0>
         <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
@@ -2078,6 +2130,177 @@
          <UseProjectIncludePaths>1</UseProjectIncludePaths>
         </PreProc>
        </File.0>
+       <File.1>
+        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
+        <CoreIndex>0</CoreIndex>
+        <Flags>3</Flags>
+        <Load>1</Load>
+        <LoadCode>1</LoadCode>
+        <LoadSymbols>1</LoadSymbols>
+        <MemoryArea>0</MemoryArea>
+        <Offset>0</Offset>
+        <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
+        <OptimizeTypeByName>0</OptimizeTypeByName>
+        <OverrideMemoryArea>0</OverrideMemoryArea>
+        <Path>../test/bin/test_callt.elf</Path>
+        <ProjectOutputFile>0</ProjectOutputFile>
+        <SOffset>0</SOffset>
+        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
+        <TargetRelative>False</TargetRelative>
+        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
+        <Type>28</Type>
+        <UseDefaultCore>1</UseDefaultCore>
+        <UseDefaultMSID>1</UseDefaultMSID>
+        <MSID>
+         <App></App>
+         <bAppID>0</bAppID>
+         <bVMID>0</bVMID>
+         <Level>3</Level>
+         <Secure>0</Secure>
+         <VM></VM>
+        </MSID>
+        <Options>
+         <CallStack>0</CallStack>
+         <DumpELFHeaders>0</DumpELFHeaders>
+         <GCC_ARM_double_Format>1</GCC_ARM_double_Format>
+         <IgnoreChecksum>0</IgnoreChecksum>
+         <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
+         <InsertInlinedFunctions>0</InsertInlinedFunctions>
+         <LoadCode>1</LoadCode>
+         <LoadDwarfSection>1</LoadDwarfSection>
+         <LoadSymbols>0</LoadSymbols>
+         <LoadWeakFunctions>1</LoadWeakFunctions>
+         <LoadZeros>0</LoadZeros>
+         <MergeTypes>0</MergeTypes>
+         <Override64bitVariableLocation>1</Override64bitVariableLocation>
+         <RemoveOptimizedLines>1</RemoveOptimizedLines>
+         <ReverseBitFields>0</ReverseBitFields>
+         <Cosmic>
+          <nowidden>0</nowidden>
+          <sprec>0</sprec>
+         </Cosmic>
+        </Options>
+        <PreProc>
+         <Analyze>0</Analyze>
+         <CommandLine></CommandLine>
+         <UseProjectDefines>0</UseProjectDefines>
+         <UseProjectIncludePaths>0</UseProjectIncludePaths>
+        </PreProc>
+       </File.1>
+       <File.2>
+        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
+        <CoreIndex>0</CoreIndex>
+        <Flags>3</Flags>
+        <Load>1</Load>
+        <LoadCode>1</LoadCode>
+        <LoadSymbols>1</LoadSymbols>
+        <MemoryArea>0</MemoryArea>
+        <Offset>0</Offset>
+        <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
+        <OptimizeTypeByName>0</OptimizeTypeByName>
+        <OverrideMemoryArea>0</OverrideMemoryArea>
+        <Path>../test/bin/test_callt.elf</Path>
+        <ProjectOutputFile>0</ProjectOutputFile>
+        <SOffset>0</SOffset>
+        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
+        <TargetRelative>False</TargetRelative>
+        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
+        <Type>28</Type>
+        <UseDefaultCore>1</UseDefaultCore>
+        <UseDefaultMSID>1</UseDefaultMSID>
+        <MSID>
+         <App></App>
+         <bAppID>0</bAppID>
+         <bVMID>0</bVMID>
+         <Level>3</Level>
+         <Secure>0</Secure>
+         <VM></VM>
+        </MSID>
+        <Options>
+         <CallStack>0</CallStack>
+         <DumpELFHeaders>0</DumpELFHeaders>
+         <GCC_ARM_double_Format>1</GCC_ARM_double_Format>
+         <IgnoreChecksum>0</IgnoreChecksum>
+         <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
+         <InsertInlinedFunctions>0</InsertInlinedFunctions>
+         <LoadCode>1</LoadCode>
+         <LoadDwarfSection>1</LoadDwarfSection>
+         <LoadSymbols>0</LoadSymbols>
+         <LoadWeakFunctions>1</LoadWeakFunctions>
+         <LoadZeros>0</LoadZeros>
+         <MergeTypes>0</MergeTypes>
+         <Override64bitVariableLocation>1</Override64bitVariableLocation>
+         <RemoveOptimizedLines>1</RemoveOptimizedLines>
+         <ReverseBitFields>0</ReverseBitFields>
+         <Cosmic>
+          <nowidden>0</nowidden>
+          <sprec>0</sprec>
+         </Cosmic>
+        </Options>
+        <PreProc>
+         <Analyze>0</Analyze>
+         <CommandLine></CommandLine>
+         <UseProjectDefines>0</UseProjectDefines>
+         <UseProjectIncludePaths>0</UseProjectIncludePaths>
+        </PreProc>
+       </File.2>
+       <File.3>
+        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
+        <CoreIndex>0</CoreIndex>
+        <Flags>3</Flags>
+        <Load>1</Load>
+        <LoadCode>1</LoadCode>
+        <LoadSymbols>1</LoadSymbols>
+        <MemoryArea>0</MemoryArea>
+        <Offset>0</Offset>
+        <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
+        <OptimizeTypeByName>0</OptimizeTypeByName>
+        <OverrideMemoryArea>0</OverrideMemoryArea>
+        <Path>../test/bin/test_callt.elf</Path>
+        <ProjectOutputFile>0</ProjectOutputFile>
+        <SOffset>0</SOffset>
+        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
+        <TargetRelative>False</TargetRelative>
+        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
+        <Type>28</Type>
+        <UseDefaultCore>1</UseDefaultCore>
+        <UseDefaultMSID>1</UseDefaultMSID>
+        <MSID>
+         <App></App>
+         <bAppID>0</bAppID>
+         <bVMID>0</bVMID>
+         <Level>3</Level>
+         <Secure>0</Secure>
+         <VM></VM>
+        </MSID>
+        <Options>
+         <CallStack>0</CallStack>
+         <DumpELFHeaders>0</DumpELFHeaders>
+         <GCC_ARM_double_Format>1</GCC_ARM_double_Format>
+         <IgnoreChecksum>0</IgnoreChecksum>
+         <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
+         <InsertInlinedFunctions>0</InsertInlinedFunctions>
+         <LoadCode>1</LoadCode>
+         <LoadDwarfSection>1</LoadDwarfSection>
+         <LoadSymbols>0</LoadSymbols>
+         <LoadWeakFunctions>1</LoadWeakFunctions>
+         <LoadZeros>0</LoadZeros>
+         <MergeTypes>0</MergeTypes>
+         <Override64bitVariableLocation>1</Override64bitVariableLocation>
+         <RemoveOptimizedLines>1</RemoveOptimizedLines>
+         <ReverseBitFields>0</ReverseBitFields>
+         <Cosmic>
+          <nowidden>0</nowidden>
+          <sprec>0</sprec>
+         </Cosmic>
+        </Options>
+        <PreProc>
+         <Analyze>0</Analyze>
+         <CommandLine></CommandLine>
+         <UseProjectDefines>0</UseProjectDefines>
+         <UseProjectIncludePaths>0</UseProjectIncludePaths>
+        </PreProc>
+       </File.3>
       </Download>
       <DownloadOptionsData>
        <AfterDL1>1</AfterDL1>
@@ -2325,28 +2548,28 @@
        </ID.15>
        <ID.16>
         <Data.0>
-         <__>0x00000005</__>
+         <__>22334455</__>
         </Data.0>
         <Data.1>
-         <__>0xFEDF600A</__>
+         <__>0x00000005</__>
         </Data.1>
         <Data.2>
-         <__>0xE1</__>
+         <__>0xFEDF600A</__>
         </Data.2>
         <Data.3>
-         <__>0xFEA00000</__>
+         <__>0xE1</__>
         </Data.3>
         <Data.4>
-         <__>0x00000000</__>
+         <__>0xFEA00000</__>
         </Data.4>
         <Data.5>
-         <__>0x19191919</__>
+         <__>0x00000000</__>
         </Data.5>
         <Data.6>
-         <__>0x00000100</__>
+         <__>0x19191919</__>
         </Data.6>
         <Data.7>
-         <__>0x77AFFA3C</__>
+         <__>0x00000100</__>
         </Data.7>
        </ID.16>
        <ID.2>
@@ -2564,15 +2787,15 @@
      <WindowsInfo>
       <Memory>
        <FillAddressType>1</FillAddressType>
-       <FillSize>4</FillSize>
+       <FillSize>256</FillSize>
        <FillSizeHex>True</FillSizeHex>
        <FillSizeType>1</FillSizeType>
-       <FillValue>55aa33cc</FillValue>
+       <FillValue>55</FillValue>
        <FillValueType>0</FillValueType>
        <FindAddressType>1</FindAddressType>
        <FindValueType>0</FindValueType>
        <Format>0</Format>
-       <FSA type="B">AEAAAAAAAAAAAAAA</FSA>
+       <FSA type="B">AAABAAAAAAAAAAAA</FSA>
        <HexList>False</HexList>
        <HexSaveAddress>False</HexSaveAddress>
        <HexSaveSize>True</HexSaveSize>
@@ -2616,6 +2839,54 @@
        <StateItem>
         <Name></Name>
         <Options>0</Options>
+        <ChildItems.0>
+         <Name>V850G3K, R7F701035x</Name>
+         <Options>1</Options>
+         <ChildItems.0>
+          <Name>G3K Core Registers</Name>
+          <Options>1</Options>
+          <ChildItems.0>
+           <Name>GPR General Purpose Registers</Name>
+           <Options>1</Options>
+          </ChildItems.0>
+          <ChildItems.1>
+           <Name>G3 System Registers</Name>
+           <Options>1</Options>
+           <ChildItems.0>
+            <Name>FEIC FE level exception cause</Name>
+            <Options>4</Options>
+           </ChildItems.0>
+           <ChildItems.1>
+            <Name>CTPC Call Table PC</Name>
+            <Options>0</Options>
+           </ChildItems.1>
+           <ChildItems.2>
+            <Name>CTPSW Call Table PSW</Name>
+            <Options>0</Options>
+           </ChildItems.2>
+           <ChildItems.3>
+            <Name>CTBP Call Table Base Pointer</Name>
+            <Options>0</Options>
+           </ChildItems.3>
+           <ChildItems.4>
+            <Name>ASID Address Space ID</Name>
+            <Options>0</Options>
+           </ChildItems.4>
+           <ChildItems.5>
+            <Name>EIWR EI level exception working register</Name>
+            <Options>0</Options>
+           </ChildItems.5>
+           <ChildItems.6>
+            <Name>FEWR FE level exception working register</Name>
+            <Options>0</Options>
+           </ChildItems.6>
+           <ChildItems.7>
+            <Name>HTCFG0 Thread configuration</Name>
+            <Options>0</Options>
+           </ChildItems.7>
+          </ChildItems.1>
+         </ChildItems.0>
+        </ChildItems.0>
        </StateItem>
       </SFR_Tree>
      </WindowsInfo>

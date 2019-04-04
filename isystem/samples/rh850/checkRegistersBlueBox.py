@@ -44,6 +44,7 @@ class BlueBox:
         cmgr.connectMRU('')
         self.debugCtrl = ic.CDebugFacade(cmgr)
         self.ideCtrl = ic.CIDEController(cmgr)
+        self.loaderCtrl = ic.CLoaderController(cmgr)
 
 
     def check_registers_blue_box(self, asmFileStem, blueBoxLogFName):
@@ -52,6 +53,7 @@ class BlueBox:
 
             downloadFile = '../test/bin/' + asmFileStem + '.elf'
             filetype = "ELF"
+            self.loaderCtrl.clearDownloadList(ic.CLoaderController.DLIST_PRIMARY)
             self._addFileForDownload(downloadFile, filetype, self.ideCtrl)
 
             self.debugCtrl.download()
