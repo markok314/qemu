@@ -244,3 +244,16 @@
 .equ R29, 29
 .equ R30, 30
 .equ R31, 31
+
+# selID = 0
+.equ SR_EIPC, 0
+.equ SR_EIPSW, 1
+.equ SR_FEPC, 2
+.equ SR_FEPSW, 3
+.equ SR_PSW, 5
+
+# selID = 1
+.equ SR_RBASE, 2
+.equ SR_EBASE, 3
+.equ SR_SCBP, 12
+

@@ -24,12 +24,6 @@ back2:
 
 
 start:
-    # check if QEMU sets/reads PSW the same way as real device
-    # bit 30 = 0 to stay in supervisor mode
-	mov 0xBFFFFFFF, r5
-	LDSR r5, PSW
-	STSR PSW, r6    # only bits 0-7 are rea ==> r6 = 0xff
-
 	# RBASE IS NOT changed to 0x2000, because it is read-only!
 	mov 0x2000,r10
 	LDSR_ID R10,2,1
