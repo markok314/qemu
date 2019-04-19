@@ -40,10 +40,10 @@ static const char rh850_exts[26] = "IMAFDQECLBJTPVNSUHKORWXYZG";
  */
 
 const char * const rh850_prog_regnames[] = {
-  "zero", "ar  ", "r2  ", "sp  ", "gp  ", "tp  ", "r6  ", "r7  ",
-  "r8  ", "r9  ", "r10 ", "r11 ", "r12 ", "r13 ", "r14 ", "r15 ",
-  "r16 ", "r17 ", "r18 ", "r19 ", "r20 ", "r21 ", "r22 ", "r23 ",
-  "r24 ", "r25 ", "r26 ", "r27 ", "r28 ", "r29 ", "ep  ", "lp  "
+  "r0-zero", "r1", "r2", "r3-sp", "r4", "r5", "r6", "r7",
+  "r8", "r9", "r10 ", "r11", "r12", "r13", "r14", "r15",
+  "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r2 ",
+  "r24", "r25", "r26", "r27", "r28", "r29", "r30-ep", "r31-lp"
 };
 
 /* Basic system registers (rh850_sys__basic_regnames):
@@ -81,10 +81,10 @@ const char * const rh850_prog_regnames[] = {
  */
 
 const char * const rh850_sys_basic_regnames[] = {
-  "eipc ", "eipsw ", "fepc ", "fepsw ", "psw  ", "fpsr ", "fpepc ",  "fpst ",
-  "fpcc ", "fpcfg ", "fpec ", "eiic  ", "feic ", "ctpc ", "ctpsw ",  "ctbp ",
-  "eiwr ", "fewr  ", "bsel ", "mcfg0 ", "rbase", "ebase", "intbp ",  "mctl ",
-  "pid  ", "sccfg ", "scbp ", "htcfg0", "mea  ", "asid ", "mei"
+  "eipc", "eipsw", "fepc", "fepsw", "psw",  "fpsr", "fpepc",  "fpst",
+  "fpcc", "fpcfg", "fpec", "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
+  "eiwr", "fewr",  "bsel", "mcfg0", "rbase","ebase","intbp ", "mctl",
+  "pid ", "sccfg", "scbp", "htcfg0","mea",  "asid", "mei",    ""
 };
 
 /* Interrupt function registers (rh850_sys_intr_regnames):
@@ -173,13 +173,13 @@ const char * const rh850_sys_fpr_regnames[] = { /*Floating point function regist
  */
 
 const char * const rh850_sys_mpu_regnames[] = { /* MPU function system registers */
-		"mpm   ", "mprc  ", "mpbrgn", "mptrgn", "mca   ", "mcs   ",
-		"mcc   ", "mcr   ", "mpla0 ", "mpua0 ", "mpat0 ", "mpla1 ",
-		"mpua1 ", "mpat1 ", "mpla2 ", "mpua2 ", "mpat2 ", "mpla3 ",
-		"mpua3 ", "mpat3 ", "mpla4 ", "mpua4 ", "mpat4 ", "mpla5 ",
-		"mpua5 ", "mpat5 ", "mpla6 ", "mpua6 ", "mpat6 ", "mpla7 ",
-		"mpua7 ", "mpat7 ", "mpla8 ", "mpua8 ", "mpat8 ", "mpla9 ",
-		"mpua9 ", "mpat9 ", "mpla10", "mpua10", "mpat10", "mpla11",
+		"mpm", "mprc", "mpbrgn", "mptrgn", "mca", "mcs",
+		"mcc", "mcr", "mpla0", "mpua0", "mpat0", "mpla1",
+		"mpua1", "mpat1", "mpla2", "mpua2", "mpat2", "mpla3",
+		"mpua3", "mpat3", "mpla4", "mpua4", "mpat4", "mpla5",
+		"mpua5", "mpat5", "mpla6", "mpua6", "mpat6", "mpla7",
+		"mpua7", "mpat7", "mpla8", "mpua8", "mpat8", "mpla9",
+		"mpua9", "mpat9", "mpla10", "mpua10", "mpat10", "mpla11",
 		"mpua11", "mpat11", "mpla12", "mpua12", "mpat12", "mpla13",
 		"mpua13", "mpat13", "mpla14", "mpua14", "mpat14", "mpla15",
 		"mpua15", "mpat15"
@@ -372,8 +372,8 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     CPURH850State *env = &cpu->env;
     int i;
 
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pc      ", env->pc);
-    cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "psw     ", env->sysBasicRegs[psw_idx]);
+    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "pc", env->pc);
+    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->sysBasicRegs[psw_idx]);
 
     //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "eiic    ", env->eiic);
     //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "feic    ", env->feic);
@@ -399,7 +399,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
 #endif
 
     for (i = 0; i < 32; i++) {
-        cpu_fprintf(f, " %s " TARGET_FMT_lx,
+        cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
             rh850_prog_regnames[i], env->progRegs[i]);
         if ((i & 3) == 3) {
             cpu_fprintf(f, "\n");
@@ -410,7 +410,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
 
     for (i = 0; i < 31; i++) {
     	if (i!=psw_idx){
-        cpu_fprintf(f, " %s " TARGET_FMT_lx,
+        cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
             rh850_sys_basic_regnames[i], env->sysBasicRegs[i]);
     	}
         if ((i & 3) == 3) {
@@ -421,7 +421,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     cpu_fprintf(f, "\n");
 
     for (i = 0; i < 5; i++) {
-        cpu_fprintf(f, " %s " TARGET_FMT_lx,
+        cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
             rh850_sys_intr_regnames[i], env->sysInterruptRegs[i]);
         if ((i & 3) == 3) {
             cpu_fprintf(f, "\n");
@@ -504,9 +504,180 @@ void restore_state_to_opc(CPURH850State *env, TranslationBlock *tb,
     env->pc = data[0];
 }
 
-static void rh850_cpu_reset(CPUState *cs)
+
+static gchar *rh850_gdb_arch_name(CPUState *cs)
+{
+    return g_strdup("rh850");
+}
+
+/* not yet adapted for rh850 from ARM
+int rh850_gen_dynamic_xml(CPUState *cs)
 {
     RH850CPU *cpu = RH850_CPU(cs);
+    GString *s = g_string_new(NULL);
+    RegisterSysregXmlParam param = {cs, s};
+
+    cpu->dyn_xml.num_cpregs = 0;
+    cpu->dyn_xml.cpregs_keys = g_new(uint32_t, g_hash_table_size(cpu->cp_regs));
+    g_string_printf(s, "<?xml version=\"1.0\"?>");
+    g_string_append_printf(s, "<!DOCTYPE target SYSTEM \"gdb-target.dtd\">");
+    g_string_append_printf(s, "<feature name=\"org.qemu.gdb.arm.sys.regs\">");
+    g_hash_table_foreach(cpu->cp_regs, arm_register_sysreg_for_xml, &param);
+    g_string_append_printf(s, "</feature>");
+    cpu->dyn_xml.desc = g_string_free(s, false);
+    return cpu->dyn_xml.num_cpregs;
+} */
+
+
+static const char *rh850_gdb_get_dynamic_xml(CPUState *cs, const char *xmlname)
+{
+    // RH850CPU *cpu = RH850_CPU(cs);
+
+    if (strcmp(xmlname, "system-registers.xml") == 0) {
+        return "rh850-core.xml";
+    }
+    return NULL;
+}
+
+
+static void rh850_raise_exception(CPURH850State *env, uint32_t excp,
+                           uint32_t syndrome, uint32_t target_el)
+{
+    CPUState *cs = CPU(rh850_env_get_cpu(env));
+
+    cs->exception_index = excp;
+    // env->exception.syndrome = syndrome;
+    // env->exception.target_el = target_el;
+    cpu_loop_exit(cs);
+}
+
+
+static void rh850_debug_excp_handler(CPUState *cs)
+{
+    /* Called by core code when a watchpoint or breakpoint fires;
+     * need to check which one and raise the appropriate exception.
+     */
+    RH850CPU *cpu = RH850_CPU(cs);
+    CPURH850State *env = &cpu->env;
+    CPUWatchpoint *wp_hit = cs->watchpoint_hit;
+
+    if (wp_hit) {
+        if (wp_hit->flags & BP_CPU) {
+            // bool wnr = (wp_hit->flags & BP_WATCHPOINT_HIT_WRITE) != 0;
+            // bool same_el = true;
+
+            cs->watchpoint_hit = NULL;
+
+            // env->exception.fsr = arm_debug_exception_fsr(env);
+            // env->exception.vaddress = wp_hit->hitaddr;
+            rh850_raise_exception(env, 0, 0, 0);
+        }
+    } else {
+        // uint64_t pc = env->pc : env->regs[15];
+        // bool same_el = true;
+
+        /* (1) GDB breakpoints should be handled first.
+         * (2) Do not raise a CPU exception if no CPU breakpoint has fired,
+         * since singlestep is also done by generating a debug internal
+         * exception.
+         */
+//        if (cpu_breakpoint_test(cs, pc, BP_GDB)
+//            || !cpu_breakpoint_test(cs, pc, BP_CPU)) {
+//            return;
+//        }
+
+        // env->exception.fsr = arm_debug_exception_fsr(env);
+        // env->exception.vaddress = 0;
+        rh850_raise_exception(env, 0, 0, 0);
+    }
+}
+
+static bool check_watchpoints(RH850CPU *cpu)
+{
+    // CPURH850State *env = &cpu->env;
+
+    /* If watchpoints are disabled globally or we can't take debug
+     * exceptions here then watchpoint firings are ignored.
+     */
+//    if (extract32(env->cp15.mdscr_el1, 15, 1) == 0
+//        || !arm_generate_debug_exceptions(env)) {
+//        return false;
+//    }
+
+//    for (int n = 0; n < ARRAY_SIZE(env->cpu_watchpoint); n++) {
+//        if (bp_wp_matches(cpu, n, true)) {
+//            return true;
+//        }
+//    }
+//    return false;
+    return true;
+}
+
+
+//static bool bp_wp_matches(RH850CPU *cpu, int n, bool is_wp)
+//{
+//     CPURH850State *env = &cpu->env;
+
+//    if (is_wp) {
+//        CPUWatchpoint *wp = env->cpu_watchpoint[n];
+//
+//        if (!wp || !(wp->flags & BP_WATCHPOINT_HIT)) {
+//            return false;
+//        }
+//    } else {
+//        uint64_t pc = is_a64(env) ? env->pc : env->regs[15];
+//
+//        if (!env->cpu_breakpoint[n] || env->cpu_breakpoint[n]->pc != pc) {
+//            return false;
+//        }
+//    }
+    /* The WATCHPOINT_HIT flag guarantees us that the watchpoint is
+     * enabled and that the address and access type match; for breakpoints
+     * we know the address matched; check the remaining fields, including
+     * linked breakpoints. We rely on WCR and BCR having the same layout
+     * for the LBN, SSC, HMC, PAC/PMC and is-linked fields.
+     * Note that some combinations of {PAC, HMC, SSC} are reserved and
+     * must act either like some valid combination or as if the watchpoint
+     * were disabled. We choose the former, and use this together with
+     * the fact that EL3 must always be Secure and EL2 must always be
+     * Non-Secure to simplify the code slightly compared to the full
+     * table in the ARM ARM.
+     */
+
+//    return true;
+//}
+
+
+//static bool check_breakpoints(RH850CPU *cpu)
+//{
+//    CPURH850State *env = &cpu->env;
+//    int n;
+//
+//    for (n = 0; n < ARRAY_SIZE(env->cpu_breakpoint); n++) {
+//        if (bp_wp_matches(cpu, n, false)) {
+//            return true;
+//        }
+//    }
+//    return false;
+//	return true;
+//}
+
+
+static bool rh850_debug_check_watchpoint(CPUState *cs, CPUWatchpoint *wp)
+{
+    /* Called by core code when a CPU watchpoint fires; need to check if this
+     * is also an architectural watchpoint match.
+     */
+    RH850CPU *cpu = RH850_CPU(cs);
+
+    return check_watchpoints(cpu);
+}
+
+
+static void rh850_cpu_reset(CPUState *cs)
+{
+
+	RH850CPU *cpu = RH850_CPU(cs);
     RH850CPUClass *mcc = RH850_CPU_GET_CLASS(cpu);
     CPURH850State *env = &cpu->env;
 
@@ -515,11 +686,15 @@ static void rh850_cpu_reset(CPUState *cs)
     env->priv = PRV_M;   //sets machine privilege level, make for rh850
     env->mstatus &= ~(MSTATUS_MIE | MSTATUS_MPRV); //
     env->mcause = 0;
-    env->pc = env->sysBasicRegs[rbase_idx];
+    env->pc = 0;
+    env->sysBasicRegs[psw_idx] = 0x20; // reset value of PSW
+    env->sysBasicRegs[rbase_idx] = 0;
 #endif
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);
+    env->pc = 0;
     env->sysBasicRegs[psw_idx] = 0x20; // reset value of PSW
+    env->sysBasicRegs[rbase_idx] = 0;
 }
 
 static void rh850_cpu_disas_set_info(CPUState *s, disassemble_info *info)
@@ -583,9 +758,19 @@ static void rh850_cpu_class_init(ObjectClass *c, void *data)
     cc->synchronize_from_tb = rh850_cpu_synchronize_from_tb;
     cc->gdb_read_register = rh850_cpu_gdb_read_register;
     cc->gdb_write_register = rh850_cpu_gdb_write_register;
-    cc->gdb_num_core_regs = 32;
+    // see rh850/gdbstub.c:: rh850_cpu_gdb_read_register for number of regs supported for gdb
+    cc->gdb_num_core_regs = 79;
     cc->gdb_stop_before_watchpoint = true;
+
+    cc->gdb_core_xml_file = "rh850-core.xml";
+    cc->gdb_arch_name = rh850_gdb_arch_name;
+    cc->gdb_get_dynamic_xml = rh850_gdb_get_dynamic_xml;
+    cc->gdb_stop_before_watchpoint = true;
+    cc->debug_excp_handler = rh850_debug_excp_handler;
+    cc->debug_check_watchpoint = rh850_debug_check_watchpoint;
+
     cc->disas_set_info = rh850_cpu_disas_set_info;
+
 #ifdef CONFIG_USER_ONLY
     cc->handle_mmu_fault = rh850_cpu_handle_mmu_fault;
 #else

@@ -18,4 +18,8 @@
 	LDSR_ID R15, SR_EBASE, 1
     STSR_ID SR_EBASE, R14, 1
 
+    mov 0xa5b4c5d6, r6
+    LDSR_ID R6, SR_SCCFG, 1
+    STSR_ID SR_SCCFG, R7, 1
+
 lbl: br lbl

@@ -20,6 +20,7 @@
 #define pid_idx		24	//processor ID
 #define htcfg0_idx	27	//thread configuration
 #define mea_idx		28	//memory error address (when misaligned or MPU)
+#define asid_idx	29	//memory error address (when misaligned or MPU)
 #define mei_idx		30	//memory error info (info about instruction that caused exception)
 
 	// sysInterruptRegs indices

@@ -255,5 +255,5 @@
 # selID = 1
 .equ SR_RBASE, 2
 .equ SR_EBASE, 3
+.equ SR_SCCFG, 11
 .equ SR_SCBP, 12
-
