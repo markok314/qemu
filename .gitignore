@@ -215,4 +215,5 @@ trace-ust-all.c
 /build/
 .pydevproject
 /target/arm/decode-sve.inc.c
+*.swp
 

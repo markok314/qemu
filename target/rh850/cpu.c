@@ -275,6 +275,7 @@ static void set_resetvec(CPURH850State *env, int resetvec)
 static void rh850_any_cpu_init(Object *obj)
 {
     CPURH850State *env = &RH850_CPU(obj)->env;
+    env->features = 0;  // no features at the moment (eg. no MMU, no FPU).
     // set_misa(env, RVXLEN | RVI | RVM | RVA | RVF | RVD | RVC | RVU);
     // set_versions(env, USER_VERSION_2_02_0, PRIV_VERSION_1_10_0);
     set_resetvec(env, DEFAULT_RSTVEC);
@@ -573,7 +574,7 @@ static void rh850_debug_excp_handler(CPUState *cs)
             rh850_raise_exception(env, 0, 0, 0);
         }
     } else {
-        // uint64_t pc = env->pc : env->regs[15];
+        uint64_t pc = env->pc;
         // bool same_el = true;
 
         /* (1) GDB breakpoints should be handled first.
@@ -581,10 +582,10 @@ static void rh850_debug_excp_handler(CPUState *cs)
          * since singlestep is also done by generating a debug internal
          * exception.
          */
-//        if (cpu_breakpoint_test(cs, pc, BP_GDB)
-//            || !cpu_breakpoint_test(cs, pc, BP_CPU)) {
-//            return;
-//        }
+        if (cpu_breakpoint_test(cs, pc, BP_GDB)
+            || !cpu_breakpoint_test(cs, pc, BP_CPU)) {
+            return;
+        }
 
         // env->exception.fsr = arm_debug_exception_fsr(env);
         // env->exception.vaddress = 0;
