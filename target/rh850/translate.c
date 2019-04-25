@@ -3901,22 +3901,24 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 			TCGv local_SCCFG_SIZE = tcg_temp_local_new_i32();
 			tcg_gen_mov_i32(local_SCCFG_SIZE, cpu_sysRegs[SCCFG_register]);
-			tcg_gen_andi_tl(local_SCCFG_SIZE, local_SCCFG_SIZE, 0x7F);
-			//WHERE ARE BITS OF SCCFG_SIZE (BITS 7 TO 0 OF SCCFG)  SET/RESET ?
 
+			// if vector <= SCCFG
+			// gen_set_gpr(17, local_vector);  // debug!
+ 			// gen_set_gpr(18, local_SCCFG_SIZE); // debug!
 			tcg_gen_brcond_i32(TCG_COND_LEU, local_vector, local_SCCFG_SIZE, add_scbp);
-			tcg_gen_add_i32(t0, local_vector, cpu_sysRegs[SCBP_register]);
+			// {
+			// gen_set_gpr(19, local_SCCFG_SIZE); // debug!
+			tcg_gen_mov_i32(t0, cpu_sysRegs[SCBP_register]);
 			tcg_gen_br(cont);
-
+            // } else {
 			gen_set_label(add_scbp);
 			tcg_gen_shli_tl(local_vector, local_vector, 0x2);
-			tcg_gen_ext8u_tl(local_vector, local_vector);
 			tcg_gen_add_i32(t0, local_vector, cpu_sysRegs[SCBP_register]); // t0 = adr
-
+            // }
 			gen_set_label(cont);
 
 			//currently loading unsigned word
-			tcg_gen_qemu_ld_tl(t1, t0, MO_TEUL,0);
+			tcg_gen_qemu_ld_tl(t1, t0, MEM_IDX, MO_TEUL);
 			tcg_gen_add_i32(t1,t1,cpu_sysRegs[SCBP_register]);
 
 			tcg_gen_mov_i32(cpu_pc, t1);
