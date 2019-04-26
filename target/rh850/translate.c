@@ -25,6 +25,7 @@
 #include "exec/exec-all.h"
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
+#include "exec/translator.h"
 
 #include "exec/log.h"
 
@@ -94,14 +95,12 @@ const int MEM_IDX = 0;
  * because it contains information for translation, not disassembler.
  */
 typedef struct DisasContext {
-    struct TranslationBlock *tb;
-    target_ulong pc;  // pointer to instruction being translated, use
-    target_ulong next_pc; // pointer to next instruction
+    DisasContextBase base;
+    target_ulong pc;  // pointer to instruction being translated
     uint32_t opcode;
     uint32_t opcode1;  // used for 48 bit instructions
     uint32_t flags;
 
-    int singlestep_enabled;
     int bstate;
 } DisasContext;
 
@@ -174,11 +173,13 @@ static void generate_exception(DisasContext *ctx, int excp)
 */
 
 
-static void gen_exception_debug(void)
+static void gen_exception_debug(DisasContext *dc)
 {
     TCGv_i32 helper_tmp = tcg_const_i32(EXCP_DEBUG);
     gen_helper_raise_exception(cpu_env, helper_tmp);
     tcg_temp_free_i32(helper_tmp);
+
+    dc->base.is_jmp = DISAS_NORETURN;
 }
 /*
 static void gen_exception_illegal(DisasContext *ctx)
@@ -310,13 +311,13 @@ static int decode_register(int regID,int selID){
 
 static void gen_goto_tb(DisasContext *ctx, int n, target_ulong dest)
 {
-    if (unlikely(ctx->singlestep_enabled)) {
+    if (unlikely(ctx->base.singlestep_enabled)) {
         tcg_gen_movi_tl(cpu_pc, dest);
-        gen_exception_debug();
+        gen_exception_debug(ctx);
     } else {
         tcg_gen_goto_tb(n);
         tcg_gen_movi_tl(cpu_pc, dest);
-        tcg_gen_exit_tb(ctx->tb, n);
+        tcg_gen_exit_tb(ctx->base.tb, n);
     }
 }
 
@@ -3053,7 +3054,7 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
     tcg_temp_free(condOK);
     tcg_temp_free(condTest);
 
-    gen_goto_tb(ctx, 1, ctx->next_pc); // no jump, continue with next instr.
+    gen_goto_tb(ctx, 1, ctx->base.pc_next); // no jump, continue with next instr.
     gen_set_label(l); /* branch taken */
    	gen_goto_tb(ctx, 0, ctx->pc + bimm);  // jump
     ctx->bstate = BS_BRANCH;
@@ -3099,7 +3100,7 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation)
     tcg_gen_mov_i32(cpu_pc, dest_addr);
     tcg_temp_free(link_addr);
     tcg_temp_free(dest_addr);
-    gen_exception_debug();
+    gen_exception_debug(ctx);
 }
 
 static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
@@ -3133,7 +3134,7 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
     tcg_temp_free(zero_local);
     tcg_temp_free(minusone_local);
 
-    gen_goto_tb(ctx, 0, ctx->next_pc); 	// no jump, continue with next instr.
+    gen_goto_tb(ctx, 0, ctx->base.pc_next); 	// no jump, continue with next instr.
     gen_set_label(l); 					// branch taken
     gen_goto_tb(ctx, 1, ctx->pc - disp16);
 
@@ -3380,7 +3381,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[CTBP_register]);
 
 		tcg_gen_exit_tb(NULL, 0);
-
+        ctx->bstate = BS_BRANCH;
 		break;
 
 	case OPC_RH850_CAXI_reg1_reg2_reg3: {
@@ -3541,6 +3542,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[EIPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[EIPSW_register]);
 		tcg_gen_exit_tb(NULL, 0);
+        ctx->bstate = BS_BRANCH;
 		break;
 	case OPC_RH850_FERET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
@@ -3732,31 +3734,31 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				break;
 
 			case 0x1:
-				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 16bits from memory
+				imm = cpu_lduw_code(env, ctx->base.pc_next); // fetching additional 16bits from memory
 				tcg_gen_movi_i32(temp, imm);
 				tcg_gen_ext16s_i32(temp, temp);
 				gen_set_gpr(30, temp);
-				ctx->next_pc+=2;						// increasing PC due to additional fetch
+				ctx->base.pc_next+=2;						// increasing PC due to additional fetch
 				break;
 
 			case 0x2:
 				printf("OK! The 'ff' field in instruction PREPARE is set to 0x2."
 						" \n Delete this printout!!! \n");
-				imm = cpu_lduw_code(env, ctx->next_pc); // fetching additional 16bits from memory
+				imm = cpu_lduw_code(env, ctx->base.pc_next); // fetching additional 16bits from memory
 				tcg_gen_movi_i32(temp, imm);
 				tcg_gen_shli_i32(temp, temp, 0x10);
 				gen_set_gpr(30, temp);
-				ctx->next_pc+=2;
+				ctx->base.pc_next+=2;
 				break;
 
 			case 0x3:
-				imm = cpu_lduw_code(env, ctx->next_pc) |
-				(cpu_lduw_code(env, ctx->next_pc+2) << 0x10);
+				imm = cpu_lduw_code(env, ctx->base.pc_next) |
+				(cpu_lduw_code(env, ctx->base.pc_next + 2) << 0x10);
 				// fetching additional 32bits from memory
 
 				tcg_gen_movi_i32(temp, imm);
 				gen_set_gpr(30, temp);
-				ctx->next_pc = ctx->next_pc + 4;
+				ctx->base.pc_next = ctx->base.pc_next + 4;
 				break;
 		}
 
@@ -4745,6 +4747,187 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 	}
 }
 
+
+static void copyFlagsToPSW()
+{
+    // Set flags in PSW to 0 so we can write new state
+    tcg_gen_andi_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register], 0xffffffe0);
+
+    TCGv temp = tcg_temp_new_i32();
+
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
+
+    tcg_gen_shli_i32(temp, cpu_SF, 0x1);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_SATF, 0x4);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+	tcg_gen_shli_i32(temp, cpu_ID, 0x5);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_EP, 0x6);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_NP, 0x7);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_EBV, 0xF);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CU0, 0x10);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CU1, 0x11);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CU2, 0x12);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+
+    tcg_gen_shli_i32(temp, cpu_UM, 0x1E);
+    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+}
+
+
+// ###################################################################################
+// ###################################################################################
+// ###################################################################################
+
+static void rh850_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cpu)
+{
+    DisasContext *dc = container_of(dcbase, DisasContext, base);
+//    CPURH850State *env = cpu->env_ptr;
+//    dc->env = env;
+    dc->pc = dc->base.pc_first;
+}
+
+static void rh850_tr_tb_start(DisasContextBase *dcbase, CPUState *cpu)
+{
+}
+
+static void rh850_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
+{
+    DisasContext *dc = container_of(dcbase, DisasContext, base);
+    tcg_gen_insn_start(dc->base.pc_next);
+}
+
+/*
+ * This f. is called when breakpoint is hit. It should implement
+ * handling of breakpoint - for example HW breskpoints may be
+ * handled differently from SW breakpoints (see arm/translate.c).
+ * However, in RH850 we currently implement only SW breakpoints.
+ *
+ * Comment from translator.c:
+ *     The breakpoint_check hook may use DISAS_TOO_MANY to indicate
+ *     that only one more instruction is to be executed.  Otherwise
+ *     it should use DISAS_NORETURN when generating an exception,
+ *     but may use a DISAS_TARGET_* value for Something Else.
+ */
+static bool rh850_tr_breakpoint_check(DisasContextBase *dcbase, CPUState *cpu,
+                                     const CPUBreakpoint *bp)
+{
+    DisasContext *dc = container_of(dcbase, DisasContext, base);
+
+    gen_exception_debug(dc);
+    /* The address covered by the breakpoint must be included in
+       [tb->pc, tb->pc + tb->size) in order to for it to be
+       properly cleared -- thus we increment the PC here so that
+       the logic setting tb->size below does the right thing.  */
+    dc->base.pc_next += 2;
+    dc->base.is_jmp = DISAS_NORETURN;
+    return true;
+}
+
+static void rh850_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
+{
+    DisasContext *dc = container_of(dcbase, DisasContext, base);
+    // CPURH850State *env = cpu->env_ptr;
+    // TODO uint16_t insn = read_im16(env, dc);
+    // TODO opcode_table[insn](env, dc, insn);
+
+    dc->base.pc_next = dc->pc;
+    //do_release(dc);
+
+#ifdef RH850_HAS_MMU
+    if (dc->base.is_jmp == DISAS_NEXT) {
+        /* Stop translation when the next insn might touch a new page.
+         * This ensures that prefetch aborts at the right place.
+         *
+         * We cannot determine the size of the next insn without
+         * completely decoding it.  However, the maximum insn size
+         * is 32 bytes, so end if we do not have that much remaining.
+         * This may produce several small TBs at the end of each page,
+         * but they will all be linked with goto_tb.
+         *
+         * ??? ColdFire maximum is 4 bytes; MC68000's maximum is also
+         * smaller than MC68020's.
+         */
+        target_ulong start_page_offset
+            = dc->pc - (dc->base.pc_first & TARGET_PAGE_MASK);
+
+        if (start_page_offset >= TARGET_PAGE_SIZE - 32) {
+            dc->base.is_jmp = DISAS_TOO_MANY;
+        }
+    }
+#endif
+}
+
+/* is_jmp field values */
+#define DISAS_JUMP      DISAS_TARGET_0 /* only pc was modified dynamically */
+#define DISAS_EXIT      DISAS_TARGET_1 /* cpu state was modified dynamically */
+
+static void rh850_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
+{
+    DisasContext *dc = container_of(dcbase, DisasContext, base);
+
+    if (dc->base.is_jmp == DISAS_NORETURN) {
+        return;
+    }
+    if (dc->base.singlestep_enabled) {
+        gen_helper_raise_exception(cpu_env, tcg_const_i32(EXCP_DEBUG));
+        return;
+    }
+
+    switch (dc->base.is_jmp) {
+    case DISAS_TOO_MANY:
+        gen_goto_tb(dc, 0, dc->pc);
+        break;
+    case DISAS_JUMP:
+        /* We updated CC_OP and PC in gen_jmp/gen_jmp_im.  */
+        tcg_gen_lookup_and_goto_ptr();
+        break;
+    case DISAS_EXIT:
+        /* We updated CC_OP and PC in gen_exit_tb, but also modified
+           other state that may require returning to the main loop.  */
+        tcg_gen_exit_tb(NULL, 0);
+        break;
+    default:
+        g_assert_not_reached();
+    }
+}
+
+static void rh850_tr_disas_log(const DisasContextBase *dcbase, CPUState *cpu)
+{
+    qemu_log("IN: %s\n", lookup_symbol(dcbase->pc_first));
+    log_target_disas(cpu, dcbase->pc_first, dcbase->tb->size);
+}
+
+static const TranslatorOps rh850_tr_ops = {
+    .init_disas_context = rh850_tr_init_disas_context,
+    .tb_start           = rh850_tr_tb_start,
+    .insn_start         = rh850_tr_insn_start,
+    .breakpoint_check   = rh850_tr_breakpoint_check,
+    .translate_insn     = rh850_tr_translate_insn,
+    .tb_stop            = rh850_tr_tb_stop,
+    .disas_log          = rh850_tr_disas_log,
+};
+
 /**
  * This function translates one translation block (translation block
  * is a sequence of instructions without jumps). Translation block
@@ -4753,45 +4936,50 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
  * breakpoint is detected, ... - see if statements, which break
  * while loop below.
  */
+static /*TODO remove static */ void gen_intermediate_codeX(CPUState *cpu, TranslationBlock *tb)
+{
+    DisasContext dc;
+    translator_loop(&rh850_tr_ops, &dc.base, cpu, tb);
+}
+
+
 void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 {
     CPURH850State *env = cs->env_ptr;
     DisasContext ctx;
-    target_ulong pc_start;
-    target_ulong next_page_start;
-    int num_insns;
-    int max_insns;
-    pc_start = tb->pc;
-    next_page_start = (pc_start & TARGET_PAGE_MASK) + TARGET_PAGE_SIZE;
+    target_ulong pc_start = tb->pc;
     ctx.pc = pc_start;
 
+    if (pc_start == 0xffffFFff) { // TODO remove, it is here only to trick compiler
+    	gen_intermediate_codeX(cs, tb);
+    }
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
-    ctx.singlestep_enabled = cs->singlestep_enabled;
-    ctx.singlestep_enabled = 1;/// this is only for gdb exceptions
+    ctx.base.singlestep_enabled = cs->singlestep_enabled;
+    ctx.base.singlestep_enabled = 1;/// this is only for gdb exceptions
 
-    ctx.tb = tb;
+    ctx.base.tb = tb;
     ctx.bstate = BS_NONE;
     ctx.flags = tb->flags;
 
-    num_insns = 0;
-    max_insns = tb->cflags & CF_COUNT_MASK;
-    if (max_insns == 0) {
-        max_insns = CF_COUNT_MASK;
+    ctx.base.num_insns = 0;
+    ctx.base.max_insns = tb->cflags & CF_COUNT_MASK;
+    if (ctx.base.max_insns == 0) {
+    	ctx.base.max_insns = CF_COUNT_MASK;
     }
-    if (max_insns > TCG_MAX_INSNS) {
-        max_insns = TCG_MAX_INSNS;
+    if (ctx.base.max_insns > TCG_MAX_INSNS) {
+    	ctx.base.max_insns = TCG_MAX_INSNS;
     }
     gen_tb_start(tb);
 
     while (ctx.bstate == BS_NONE) {
         tcg_gen_insn_start(ctx.pc);
-        num_insns++;
+        ctx.base.num_insns++;
 
         if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))) {
             tcg_gen_movi_tl(cpu_pc, ctx.pc);
             ctx.bstate = BS_BRANCH;
-            gen_exception_debug();
+            gen_exception_debug(&ctx);
             /* The address covered by the breakpoint must be included in
                [tb->pc, tb->pc + tb->size) in order to for it to be
                properly cleared -- thus we increment the PC here so that
@@ -4800,14 +4988,14 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
             goto done_generating;
         }
 
-        if (num_insns == max_insns && (tb->cflags & CF_LAST_IO)) {
+        if (ctx.base.num_insns == ctx.base.max_insns && (tb->cflags & CF_LAST_IO)) {
             gen_io_start();
         }
 
-        ctx.opcode = cpu_lduw_code(env, ctx.pc);
+        ctx.opcode = cpu_lduw_code(env, ctx.pc);  // get opcode from memory
 
         if ((extract32(ctx.opcode, 9, 2) != 0x3) && (extract32(ctx.opcode, 5, 11) != 0x17)) {
-			ctx.next_pc = ctx.pc + 2;
+			ctx.base.pc_next = ctx.pc + 2;
 			decode_RH850_16(env, &ctx);		//this function includes 32-bit JR and JARL
         } else {
         	ctx.opcode = (ctx.opcode) | (cpu_lduw_code(env, ctx.pc+2) << 0x10);
@@ -4817,72 +5005,25 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 					(extract32(ctx.opcode, 5, 12) == 0x37)  || 		//48-bit JMP
 					(extract32(ctx.opcode, 5, 11) == 0x17) ) { 		//48-bit JARL and JR
         		ctx.opcode1 = cpu_lduw_code(env, ctx.pc+4);
-				ctx.next_pc = ctx.pc + 6;
+				ctx.base.pc_next = ctx.pc + 6;
 				decode_RH850_48(env, &ctx);
         	} else {
-        		ctx.next_pc = ctx.pc + 4;
+        		ctx.base.pc_next = ctx.pc + 4;
         		decode_RH850_32(env, &ctx);
         	}
         }
 
-        ctx.pc = ctx.next_pc;
+        ctx.pc = ctx.base.pc_next;
 
-        // Setting PSW to 0 so we can write new state
-
-        tcg_gen_andi_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register], 0xffffffe0);
-
-        // Writing flag values to PSW register
-
-        TCGv temp = tcg_temp_new_i32();
-
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
-
-        tcg_gen_shli_i32(temp, cpu_SF, 0x1);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_SATF, 0x4);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-		tcg_gen_shli_i32(temp, cpu_ID, 0x5);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_EP, 0x6);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_NP, 0x7);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_EBV, 0xF);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_CU0, 0x10);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_CU1, 0x11);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_CU2, 0x12);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
-
-        tcg_gen_shli_i32(temp, cpu_UM, 0x1E);
-        tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+        copyFlagsToPSW();
 
         if (cs->singlestep_enabled) {
-            break;
-        }
-        if (ctx.pc >= next_page_start) {
             break;
         }
         if (tcg_op_buf_full()) {
             break;
         }
-        if (num_insns >= max_insns) {
+        if (ctx.base.num_insns >= ctx.base.max_insns) {
             break;
         }
         if (singlestep) {
@@ -4901,7 +5042,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     case BS_NONE: /* handle end of page - DO NOT CHAIN. See gen_goto_tb. */
         tcg_gen_movi_tl(cpu_pc, ctx.pc);
         if (cs->singlestep_enabled) {
-            gen_exception_debug();
+            gen_exception_debug(&ctx);
         } else {
             tcg_gen_exit_tb(NULL, 0);
         }
@@ -4912,13 +5053,12 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         break;
     }
 done_generating:
-    gen_tb_end(tb, num_insns);
+    gen_tb_end(tb, ctx.base.num_insns);
     tb->size = ctx.pc - pc_start;
-    tb->icount = num_insns;
+    tb->icount = ctx.base.num_insns;
 
 #ifdef DEBUG_DISAS
-    if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)
-        && qemu_log_in_addr_range(pc_start)) {
+    if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)  &&  qemu_log_in_addr_range(pc_start)) {
         qemu_log("\nIN: %s\n", lookup_symbol(pc_start));
         log_target_disas(cs, pc_start, ctx.pc - pc_start);
         qemu_log("\n");
