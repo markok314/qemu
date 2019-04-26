@@ -96,20 +96,22 @@ const int MEM_IDX = 0;
  */
 typedef struct DisasContext {
     DisasContextBase base;
+    CPURH850State *env;
     target_ulong pc;  // pointer to instruction being translated
     uint32_t opcode;
     uint32_t opcode1;  // used for 48 bit instructions
-    uint32_t flags;
-
-    int bstate;
 } DisasContext;
 
-enum {
-    BS_NONE     = 0, /* When seen outside of translation while loop, indicates
-                     need to exit tb due to end of page. */
-    BS_STOP     = 1, /* Need to exit tb for syscall, sret, etc. */
-    BS_BRANCH   = 2, /* Need to exit tb for branch, jal, etc. */
-};
+/*enum {
+    BS_NONE     = 0, // When seen outside of translation while loop, indicates
+                     need to exit tb due to end of page.
+    BS_STOP     = 1, // Need to exit tb for syscall, sret, etc.
+    BS_BRANCH   = 2, // Need to exit tb for branch, jal, etc.
+}; */
+/* is_jmp field values */
+#define DISAS_INDIRECT_JUMP              DISAS_TARGET_0 /* only pc was modified dynamically */
+#define DISAS_EXIT_TB                    DISAS_TARGET_1 /* cpu state was modified dynamically */
+#define DISAS_TB_EXIT_ALREADY_GENERATED  DISAS_TARGET_2
 
 /* convert rh850 funct3 to qemu memop for load/store */
 /*
@@ -179,7 +181,7 @@ static void gen_exception_debug(DisasContext *dc)
     gen_helper_raise_exception(cpu_env, helper_tmp);
     tcg_temp_free_i32(helper_tmp);
 
-    dc->base.is_jmp = DISAS_NORETURN;
+    dc->base.is_jmp = DISAS_TB_EXIT_ALREADY_GENERATED;
 }
 /*
 static void gen_exception_illegal(DisasContext *ctx)
@@ -3057,7 +3059,7 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
     gen_goto_tb(ctx, 1, ctx->base.pc_next); // no jump, continue with next instr.
     gen_set_label(l); /* branch taken */
    	gen_goto_tb(ctx, 0, ctx->pc + bimm);  // jump
-    ctx->bstate = BS_BRANCH;
+   	ctx->base.is_jmp = DISAS_TB_EXIT_ALREADY_GENERATED;
 }
 
 static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation)
@@ -3138,7 +3140,7 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
     gen_set_label(l); 					// branch taken
     gen_goto_tb(ctx, 1, ctx->pc - disp16);
 
-    ctx->bstate = BS_BRANCH;
+    ctx->base.is_jmp = DISAS_TB_EXIT_ALREADY_GENERATED;
 }
 
 static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operation){
@@ -3379,9 +3381,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_qemu_ld16u(temp, adr, 0);
 
 		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[CTBP_register]);
-
-		tcg_gen_exit_tb(NULL, 0);
-        ctx->bstate = BS_BRANCH;
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
 	case OPC_RH850_CAXI_reg1_reg2_reg3: {
@@ -3434,8 +3434,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_or_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], temp);
 
 		tcg_temp_free_i32(temp);
-		tcg_gen_exit_tb(NULL, 0);
-
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
 	case OPC_RH850_DI:
@@ -3529,8 +3528,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_mov_i32(cpu_pc, jmpAddr);
 
 		gen_set_gpr(3, temp);
-
-		tcg_gen_exit_tb(NULL, 0);
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		}
 
 		break;
@@ -3541,14 +3539,12 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_EIRET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[EIPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[EIPSW_register]);
-		tcg_gen_exit_tb(NULL, 0);
-        ctx->bstate = BS_BRANCH;
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 	case OPC_RH850_FERET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
 		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
-		tcg_gen_exit_tb(NULL, 0);
-        ctx->bstate = BS_BRANCH;
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
 	case OPC_RH850_FETRAP_vector4: {
@@ -3577,8 +3573,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_label(cont);
 		//branch to exception handler
-		tcg_gen_exit_tb(NULL, 0);
-		ctx->bstate = BS_BRANCH;
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 	}	break;
 
 	case OPC_RH850_HALT:
@@ -3809,7 +3804,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_label(cont);
 		//branch to exception handler
-		tcg_gen_exit_tb(NULL, 0);
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 
 	}	break;
 
@@ -3839,7 +3834,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_ext16s_i32(temp, temp);
 		tcg_gen_shli_i32(temp, temp, 0x1);
 		tcg_gen_add_i32(cpu_pc, cpu_pc, temp);
-		tcg_gen_exit_tb(NULL, 0);
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
 	// SYNC instructions will not be implemented
@@ -3877,9 +3872,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[EBASE_register], offset);	//EBASE + offset
 
 		gen_set_label(cont);
-
-		tcg_gen_exit_tb(NULL, 0);
-
+	    ctx->base.is_jmp = DISAS_EXIT_TB;
 	}	break;
 
 	case OPC_RH850_SYSCALL:
@@ -3925,8 +3918,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 			tcg_gen_mov_i32(cpu_pc, t1);
 
-			tcg_gen_exit_tb(NULL, 0); /// -> clears flags!
-            ctx->bstate = BS_BRANCH;
+		    ctx->base.is_jmp = DISAS_EXIT_TB;
 			break;
 		}
 	}
@@ -4748,7 +4740,7 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 }
 
 
-static void copyFlagsToPSW()
+static void copyFlagsToPSW(void)
 {
     // Set flags in PSW to 0 so we can write new state
     tcg_gen_andi_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register], 0xffffffe0);
@@ -4802,8 +4794,8 @@ static void copyFlagsToPSW()
 static void rh850_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *dc = container_of(dcbase, DisasContext, base);
-//    CPURH850State *env = cpu->env_ptr;
-//    dc->env = env;
+    CPURH850State *env = cpu->env_ptr;
+    dc->env = env;
     dc->pc = dc->base.pc_first;
 }
 
@@ -4814,7 +4806,7 @@ static void rh850_tr_tb_start(DisasContextBase *dcbase, CPUState *cpu)
 static void rh850_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *dc = container_of(dcbase, DisasContext, base);
-    tcg_gen_insn_start(dc->base.pc_next);
+    tcg_gen_insn_start(dc->pc);
 }
 
 /*
@@ -4844,12 +4836,37 @@ static bool rh850_tr_breakpoint_check(DisasContextBase *dcbase, CPUState *cpu,
     return true;
 }
 
+
 static void rh850_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *dc = container_of(dcbase, DisasContext, base);
-    // CPURH850State *env = cpu->env_ptr;
-    // TODO uint16_t insn = read_im16(env, dc);
-    // TODO opcode_table[insn](env, dc, insn);
+    CPURH850State *env = dc->env;
+
+    dc->opcode = cpu_lduw_code(env, dc->pc);  // get opcode from memory
+
+    if ((extract32(dc->opcode, 9, 2) != 0x3) && (extract32(dc->opcode, 5, 11) != 0x17)) {
+		dc->base.pc_next = dc->pc + 2;
+		decode_RH850_16(env, &dc);		//this function includes 32-bit JR and JARL
+    } else {
+    	dc->opcode = (dc->opcode) | (cpu_lduw_code(env, dc->pc + 2) << 0x10);
+    	if (((extract32(dc->opcode, 6, 11) == 0x41e) && ((extract32(dc->opcode, 17, 2) > 0x1) ||
+    			(extract32(dc->opcode, 17, 3) == 0x4))) ||
+    			(extract32(dc->opcode, 5, 11) == 0x31) ||		//48-bit MOV
+				(extract32(dc->opcode, 5, 12) == 0x37)  || 		//48-bit JMP
+				(extract32(dc->opcode, 5, 11) == 0x17) ) { 		//48-bit JARL and JR
+    		dc->opcode1 = cpu_lduw_code(env, dc->pc + 4);
+			dc->base.pc_next = dc->pc + 6;
+			decode_RH850_48(env, &dc);
+    	} else {
+    		dc->base.pc_next = dc->pc + 4;
+    		decode_RH850_32(env, &dc);
+    	}
+    }
+
+    TODO IN MAY: recolve setting of pc / pc_next, then switch to new  gen_intermediate_code(), test GDB, test SYSCALL, run all tests
+    dc->pc = dc->base.pc_next;
+
+    copyFlagsToPSW();
 
     dc->base.pc_next = dc->pc;
     //do_release(dc);
@@ -4878,10 +4895,7 @@ static void rh850_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 #endif
 }
 
-/* is_jmp field values */
-#define DISAS_JUMP      DISAS_TARGET_0 /* only pc was modified dynamically */
-#define DISAS_EXIT      DISAS_TARGET_1 /* cpu state was modified dynamically */
-
+// Emit exit TB code according to base.is_jmp
 static void rh850_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *dc = container_of(dcbase, DisasContext, base);
@@ -4898,15 +4912,16 @@ static void rh850_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     case DISAS_TOO_MANY:
         gen_goto_tb(dc, 0, dc->pc);
         break;
-    case DISAS_JUMP:
-        /* We updated CC_OP and PC in gen_jmp/gen_jmp_im.  */
+    case DISAS_INDIRECT_JUMP:
+        /* PC in CPURH850State must have been updated!  */
         tcg_gen_lookup_and_goto_ptr();
         break;
-    case DISAS_EXIT:
-        /* We updated CC_OP and PC in gen_exit_tb, but also modified
-           other state that may require returning to the main loop.  */
+    case DISAS_EXIT_TB:
         tcg_gen_exit_tb(NULL, 0);
         break;
+    case DISAS_NORETURN:
+    case DISAS_TB_EXIT_ALREADY_GENERATED:
+    	break;
     default:
         g_assert_not_reached();
     }
@@ -4959,8 +4974,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     ctx.base.singlestep_enabled = 1;/// this is only for gdb exceptions
 
     ctx.base.tb = tb;
-    ctx.bstate = BS_NONE;
-    ctx.flags = tb->flags;
+    ctx.base.is_jmp = DISAS_NEXT;
 
     ctx.base.num_insns = 0;
     ctx.base.max_insns = tb->cflags & CF_COUNT_MASK;
@@ -4972,13 +4986,12 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     }
     gen_tb_start(tb);
 
-    while (ctx.bstate == BS_NONE) {
+    while (ctx.base.is_jmp == DISAS_NEXT) {
         tcg_gen_insn_start(ctx.pc);
         ctx.base.num_insns++;
 
         if (unlikely(cpu_breakpoint_test(cs, ctx.pc, BP_ANY))) {
             tcg_gen_movi_tl(cpu_pc, ctx.pc);
-            ctx.bstate = BS_BRANCH;
             gen_exception_debug(&ctx);
             /* The address covered by the breakpoint must be included in
                [tb->pc, tb->pc + tb->size) in order to for it to be
@@ -5035,19 +5048,23 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     if (tb->cflags & CF_LAST_IO) {
         gen_io_end();
     }
-    switch (ctx.bstate) {
-    case BS_STOP:
+    switch (ctx.base.is_jmp) {
+    case DISAS_TOO_MANY:
         gen_goto_tb(&ctx, 0, ctx.pc);
         break;
-    case BS_NONE: /* handle end of page - DO NOT CHAIN. See gen_goto_tb. */
-        tcg_gen_movi_tl(cpu_pc, ctx.pc);
-        if (cs->singlestep_enabled) {
-            gen_exception_debug(&ctx);
-        } else {
-            tcg_gen_exit_tb(NULL, 0);
-        }
-        break;
-    case BS_BRANCH: /* ops using BS_BRANCH generate own exit seq */
+    case DISAS_INDIRECT_JUMP:
+    	tcg_gen_lookup_and_goto_ptr();
+    	break;
+//    case BS_NONE: /* handle end of page - DO NOT CHAIN. See gen_goto_tb. */
+//        tcg_gen_movi_tl(cpu_pc, ctx.pc);
+//        if (cs->singlestep_enabled) {
+//            gen_exception_debug(&ctx);
+//        } else {
+//            tcg_gen_exit_tb(NULL, 0);
+//        }
+//        break;
+    case DISAS_NORETURN:
+    case DISAS_TB_EXIT_ALREADY_GENERATED: /* ops using BS_BRANCH generate own exit seq */
     	break;
     default:
         break;

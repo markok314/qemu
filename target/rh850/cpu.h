@@ -322,6 +322,10 @@ void cpu_rh850_set_fflags(CPURH850State *env, target_ulong);
 #define TB_FLAGS_MMU_MASK  3
 #define TB_FLAGS_FP_ENABLE MSTATUS_FS
 
+/*
+ * This f. is called from  tcg_gen_lookup_and_goto_ptr() to obtain PC
+ * which is then used for TB lookup.
+ */
 static inline void cpu_get_tb_cpu_state(CPURH850State *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
