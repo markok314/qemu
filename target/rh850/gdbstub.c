@@ -55,7 +55,7 @@ int rh850_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     // at the moment our GDB server has different indices for writing single register
     // will fix this if batch write will have to be supported or interfacing
     // to other GDB servers for RH850 will be needed.
-    if (n < 32) {
+    if (n > 0  &&  n < 32) {  // skip R0, because it is always 0
         env->progRegs[n] = ldtul_p(mem_buf);
     } else if (n > 31  &&  n < 36) {
         env->sysBasicRegs[n - 32] = ldtul_p(mem_buf); // eipc, eipsw, fepc, fepsw

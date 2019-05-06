@@ -102,12 +102,6 @@ typedef struct DisasContext {
     uint32_t opcode1;  // used for 48 bit instructions
 } DisasContext;
 
-/*enum {
-    BS_NONE     = 0, // When seen outside of translation while loop, indicates
-                     need to exit tb due to end of page.
-    BS_STOP     = 1, // Need to exit tb for syscall, sret, etc.
-    BS_BRANCH   = 2, // Need to exit tb for branch, jal, etc.
-}; */
 /* is_jmp field values */
 #define DISAS_INDIRECT_JUMP              DISAS_TARGET_0 /* only pc was modified dynamically */
 #define DISAS_EXIT_TB                    DISAS_TARGET_1 /* cpu state was modified dynamically */
@@ -3902,7 +3896,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
  			// gen_set_gpr(18, local_SCCFG_SIZE); // debug!
 			tcg_gen_brcond_i32(TCG_COND_LEU, local_vector, local_SCCFG_SIZE, add_scbp);
 			// {
-			// gen_set_gpr(19, local_SCCFG_SIZE); // debug!
 			tcg_gen_mov_i32(t0, cpu_sysRegs[SCBP_register]);
 			tcg_gen_br(cont);
             // } else {
@@ -4846,7 +4839,7 @@ static void rh850_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 
     if ((extract32(dc->opcode, 9, 2) != 0x3) && (extract32(dc->opcode, 5, 11) != 0x17)) {
 		dc->base.pc_next = dc->pc + 2;
-		decode_RH850_16(env, &dc);		//this function includes 32-bit JR and JARL
+		decode_RH850_16(env, dc);		//this function includes 32-bit JR and JARL
     } else {
     	dc->opcode = (dc->opcode) | (cpu_lduw_code(env, dc->pc + 2) << 0x10);
     	if (((extract32(dc->opcode, 6, 11) == 0x41e) && ((extract32(dc->opcode, 17, 2) > 0x1) ||
@@ -4856,20 +4849,16 @@ static void rh850_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 				(extract32(dc->opcode, 5, 11) == 0x17) ) { 		//48-bit JARL and JR
     		dc->opcode1 = cpu_lduw_code(env, dc->pc + 4);
 			dc->base.pc_next = dc->pc + 6;
-			decode_RH850_48(env, &dc);
+			decode_RH850_48(env, dc);
     	} else {
     		dc->base.pc_next = dc->pc + 4;
-    		decode_RH850_32(env, &dc);
+    		decode_RH850_32(env, dc);
     	}
     }
 
-    TODO IN MAY: recolve setting of pc / pc_next, then switch to new  gen_intermediate_code(), test GDB, test SYSCALL, run all tests
     dc->pc = dc->base.pc_next;
 
     copyFlagsToPSW();
-
-    dc->base.pc_next = dc->pc;
-    //do_release(dc);
 
 #ifdef RH850_HAS_MMU
     if (dc->base.is_jmp == DISAS_NEXT) {
@@ -4904,8 +4893,12 @@ static void rh850_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         return;
     }
     if (dc->base.singlestep_enabled) {
-        gen_helper_raise_exception(cpu_env, tcg_const_i32(EXCP_DEBUG));
-        return;
+    	if (dc->base.is_jmp == DISAS_NEXT  ||  dc->base.is_jmp == DISAS_TOO_MANY) {
+    		// PC is not loaded inside TB, so we have to do it here in case of
+    		// single stepping
+    	    tcg_gen_movi_tl(cpu_pc, dc->pc);
+    	}
+    	gen_exception_debug(dc);
     }
 
     switch (dc->base.is_jmp) {
@@ -4951,12 +4944,15 @@ static const TranslatorOps rh850_tr_ops = {
  * breakpoint is detected, ... - see if statements, which break
  * while loop below.
  */
-static /*TODO remove static */ void gen_intermediate_codeX(CPUState *cpu, TranslationBlock *tb)
+#define NEW_GEN_INSN
+#ifdef NEW_GEN_INSN
+void gen_intermediate_code(CPUState *cpu, TranslationBlock *tb)
 {
     DisasContext dc;
     translator_loop(&rh850_tr_ops, &dc.base, cpu, tb);
 }
 
+#else    // NEW_GEN_INSN
 
 void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 {
@@ -4965,9 +4961,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     target_ulong pc_start = tb->pc;
     ctx.pc = pc_start;
 
-    if (pc_start == 0xffffFFff) { // TODO remove, it is here only to trick compiler
-    	gen_intermediate_codeX(cs, tb);
-    }
+    if (false) translator_loop(&rh850_tr_ops, &ctx.base, cs, tb);
     /* once we have GDB, the rest of the translate.c implementation should be
        ready for singlestep */
     ctx.base.singlestep_enabled = cs->singlestep_enabled;
@@ -5064,7 +5058,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 //        }
 //        break;
     case DISAS_NORETURN:
-    case DISAS_TB_EXIT_ALREADY_GENERATED: /* ops using BS_BRANCH generate own exit seq */
+    case DISAS_TB_EXIT_ALREADY_GENERATED: // ops using BS_BRANCH generate own exit seq
     	break;
     default:
         break;
@@ -5082,7 +5076,7 @@ done_generating:
     }
 #endif
 }
-
+#endif  // OLD_GEN_INSN
 void rh850_translate_init(void)
 {
     int i;
