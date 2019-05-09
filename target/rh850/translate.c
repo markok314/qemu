@@ -426,10 +426,12 @@ static TCGv condition_satisfied(int cond)
 			break;
 
 		case S_COND:
-			return cpu_SF;
+		    tcg_gen_mov_i32(condResult, cpu_SF);
+		    break;
 
 		case C_COND:
-			return cpu_CYF;
+            tcg_gen_mov_i32(condResult, cpu_CYF);
+            break;
 
 		case NC_COND:
 			tcg_gen_not_i32(condResult, cpu_CYF);
@@ -445,14 +447,17 @@ static TCGv condition_satisfied(int cond)
 			break;
 
 		case SA_COND:
-			return cpu_SATF;
+            tcg_gen_mov_i32(condResult, cpu_SATF);
+            break;
 		case T_COND:
 			tcg_gen_movi_i32(condResult, 0x1);
 			break;
 		case V_COND:
-			return cpu_OVF;
+            tcg_gen_mov_i32(condResult, cpu_OVF);
+            break;
 		case Z_COND:
-			return cpu_ZF;
+            tcg_gen_mov_i32(condResult, cpu_ZF);
+            break;
 	}
 	return condResult;
 }
