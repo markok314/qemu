@@ -15,7 +15,6 @@ L2:		SYSCALL 2			# adr=SCBP+2*4=0xfee00208, pc = scbp + mem(0xffe00108) = 0xffe0
         SYSCALL 5           # vector greater than SIZE should branch to vector 0
         SYSCALL 250
         br .
-VT:		.word 16,18,20,0	# 30
 
 
 		.org 0x100

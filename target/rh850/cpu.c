@@ -760,7 +760,8 @@ static void rh850_cpu_class_init(ObjectClass *c, void *data)
     cc->gdb_read_register = rh850_cpu_gdb_read_register;
     cc->gdb_write_register = rh850_cpu_gdb_write_register;
     // see rh850/gdbstub.c:: rh850_cpu_gdb_read_register for number of regs supported for gdb
-    cc->gdb_num_core_regs = 79;
+    cc->gdb_num_core_regs = NUM_GDB_REGS; // not all regs are populated, see rh850/gdbstub.c,
+                                          // and GDB reg indices in winIDEA
     cc->gdb_stop_before_watchpoint = true;
 
     cc->gdb_core_xml_file = "rh850-core.xml";

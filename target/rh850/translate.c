@@ -3037,18 +3037,14 @@ static void gen_branch(CPURH850State *env, DisasContext *ctx, uint32_t cond,
                        int rs1, int rs2, target_long bimm)
 {
     TCGLabel *l = gen_new_label();
-    TCGv condTest, condOK;
-
-    condOK = tcg_temp_local_new();
-    condTest = tcg_temp_local_new();
-
-    condTest = condition_satisfied(cond);
+    TCGv condOK = tcg_temp_new();
+    TCGv condTest = condition_satisfied(cond);
     tcg_gen_movi_i32(condOK, 0x1);
 
     tcg_gen_brcond_tl(TCG_COND_EQ, condTest, condOK, l);
 
-    tcg_temp_free(condOK);
     tcg_temp_free(condTest);
+    tcg_temp_free(condOK);
 
     gen_goto_tb(ctx, 1, ctx->base.pc_next); // no jump, continue with next instr.
     gen_set_label(l); /* branch taken */

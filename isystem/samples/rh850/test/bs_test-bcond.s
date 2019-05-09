@@ -134,21 +134,21 @@ lab14:	mov 0x70000000, r4
         mov 5, r2
         mov -8, r3
         add r2, r3
-        BH lab15			# CY=0, Z=0 -> branch
+        bh lab15			# CY=0, Z=0 -> branch
 		nop
 		nop
 lab15:	mov 3, r4
 		mov -3, r5
 		add r5, r4
-		BH lab15			# CY=0, Z=1 -> no branch
+		bh lab15			# CY=0, Z=1 -> no branch
 lab16:	mov 0x80abcdef, r4
 		mov 0x8000abcd, r5
 		add r4, r5
-		BH lab15			# CY=1, Z=0 -> no branch
+		bh lab15			# CY=1, Z=0 -> no branch
 lab17:	mov 0x90000000, r4
 		mov 0x70000000, r5
 		add r4, r5
-        BH lab16			# CY=1, Z=1 -> no branch
+        bh lab16			# CY=1, Z=1 -> no branch
         mov 1, r1
 		nop
 
@@ -158,11 +158,11 @@ lab17:	mov 0x90000000, r4
         mov 5, r2
         mov 8, r3
         add r2, r3
-        BL lab17			# CY=0 -> no branch
+        bl lab17			# CY=0 -> no branch
         mov 0xb0000000, r5
 lab18:	mov 0x90000000, r4
 		add r4, r5
-		BL lab18			# CY=1 -> branch, CY=0 -> no branch
+		bl lab18			# CY=1 -> branch, CY=0 -> no branch
 		nop
 
 #----------------BNH----(CY or Z) = 1--------------------OK
@@ -170,19 +170,19 @@ lab18:	mov 0x90000000, r4
         mov 0xa0000000, r2
         mov 0x60000000, r3
         add r2, r3
-        BNH lab20			# CY=1, Z=1 -> branch
+        bnh lab20			# CY=1, Z=1 -> branch
 lab19:	mov 0, r4
 		mov 0, r5
 		add r5, r4
-		BNH lab21			# CY=0, Z=1 -> branch
+		bnh lab21			# CY=0, Z=1 -> branch
 lab20:	mov 0x80abcdef, r4
 		mov 0x8000abcd, r5
 		add r4, r5
-		BNH lab19			# CY=1, Z=0 -> branch
+		bnh lab19			# CY=1, Z=0 -> branch
 lab21:	mov 0x90000, r4
 		mov 0x700, r5
 		add r4, r5
-        BNH lab20			# CY=0, Z=0 -> no branch
+        bnh lab20			# CY=0, Z=0 -> no branch
         nop
 
 #----------------BNL----CY = 0--------------------OK
@@ -191,11 +191,11 @@ lab21:	mov 0x90000, r4
         mov 0xb0000000, r5
         mov 0x90000000, r4
         add r4, r5
-        BNL lab21			# CY=1 -> no branch
+        bnl lab21			# CY=1 -> no branch
         mov 0x90000000, r3
 lab22:	mov 0x40000000, r2
 		add r2, r3
-		BNL lab22		# CY=0 -> branch, CY=1 -> no branch
+		bnl lab22		# CY=0 -> branch, CY=1 -> no branch
 		nop
 
 #----------------BE----Z = 1--------------------OK
@@ -204,11 +204,11 @@ lab22:	mov 0x40000000, r2
         mov 1234, r5
         mov -123, r4
         add r4, r5
-        BE lab22			# Z=0 -> no branch
+        be lab22			# Z=0 -> no branch
         mov 2345, r3
 lab23:	mov -2345, r2
 		add r2, r3
-		BE lab23		# Z=1 -> branch, Z=0 -> no branch
+		be lab23		# Z=1 -> branch, Z=0 -> no branch
 		nop
 
 #----------------BNE----Z = 0--------------------OK
@@ -216,11 +216,11 @@ lab23:	mov -2345, r2
         mov 1234, r5
         mov -1234, r4
         add r4, r5
-        BNE lab23			# Z=1 -> no branch
+        bne lab23			# Z=1 -> no branch
         mov 1000, r3
 lab24:	mov -500, r2
 		add r2, r3
-		BNE lab24			# Z=0 -> branch, Z=1 -> no branch
+		bne lab24			# Z=0 -> branch, Z=1 -> no branch
 		nop
 
 #----------------BC = BL
@@ -232,11 +232,11 @@ lab24:	mov -500, r2
         mov 1234, r5
         mov -234, r4
         add r4, r5
-        BN lab24			# S=0 -> no branch
+        bn lab24			# S=0 -> no branch
         mov -1000, r3
 lab25:	mov 700, r2
 		add r2, r3
-		BN lab25		# S=1 -> branch, S=0 -> no branch
+		bn lab25		# S=1 -> branch, S=0 -> no branch
 
 #----------------BNC = BNL
 
@@ -245,11 +245,11 @@ lab25:	mov 700, r2
         mov 0x70000000, r5
         mov 0x20000000, r4
         add r4, r5
-        BNV lab25			# OV=1 -> no branch
+        bnv lab25			# OV=1 -> no branch
         mov 0x50000000, r3
 lab26:	mov 0x20000000, r2
 		add r2, r3
-		BNV lab26		# OV=0 -> branch, OV=1 -> no branch
+		bnv lab26		# OV=0 -> branch, OV=1 -> no branch
 		nop
 
 #----------------BNZ = BF = BNE
@@ -259,11 +259,11 @@ lab26:	mov 0x20000000, r2
         mov -1234, r5
         mov 234, r4
         add r4, r5
-        BP lab26			# S=1 -> no branch
+        bp lab26			# S=1 -> no branch
         mov 1000, r3
 lab27:	mov -700, r2
 		add r2, r3
-		BP lab27		# S=0 -> branch, S=1 -> no branch
+		bp lab27		# S=0 -> branch, S=1 -> no branch
 		nop
 
 #----------------BR-----always-------------------OK
@@ -271,12 +271,12 @@ lab27:	mov -700, r2
         mov -1234, r5
         mov 234, r4
         add r4, r5
-        BR lab29
+        br lab29
         mov 1000, r3
 lab28:	mov -700, r2
 		add r2, r3
-		BR lab30
-lab29:	BR lab28
+		br lab30
+lab29:	br lab28
 lab30:	mov 1, r1
 		nop
 
@@ -285,11 +285,11 @@ lab30:	mov 1, r1
         mov 0x30000000, r5
         mov 0x30000000, r4
         satadd r4, r5
-        BSA lab31			# SAT=0 -> no branch
+        bsa lab31			# SAT=0 -> no branch
         mov 0x40000000, r3
 		mov 0x50000000, r2
 		satadd r2, r3
-		BSA lab31			# SAT=1 -> branch
+		bsa lab31			# SAT=1 -> branch
 		nop
         mov 0x1234, r11
 lab31:	nop
@@ -301,11 +301,11 @@ lab31:	nop
         mov 0x40000000, r5
         mov 0x20000000, r4
         add r4, r5
-        BV lab32			# OV=0 -> no branch
+        bv lab32			# OV=0 -> no branch
         mov 0x60000000, r3
 		mov 0x40000000, r2
 		add r2, r3
-		BV lab32			# OV=1 -> branch
+		bv lab32			# OV=1 -> branch
         mov 0x1234, r11
 		nop
 lab32:	nop

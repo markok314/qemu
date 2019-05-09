@@ -346,6 +346,8 @@ target_ulong csr_read_helper(CPURH850State *env, target_ulong csrno);
 void rh850_set_local_interrupt(RH850CPU *cpu, target_ulong mask, int value);
 #endif
 
+extern const int NUM_GDB_REGS;
+
 #include "exec/cpu-all.h"
 
 #endif /* RH850_CPU_H */
