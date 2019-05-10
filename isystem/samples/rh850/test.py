@@ -1,20 +1,13 @@
 # This script is used for testing implementation of microcontroller RH850 in
-# qemu.  Script launches all files with .s extension in folder rh850/test in
-# qemu and on real microcontroller RH850 using iSYSTEM BlueBox and then
-# compares the results.
-#
-# Module checkRegisters is used for formatting a readable output of QEMU log file.
+# qemu. The script launches all files with .s extension located in folder rh850/test in
+# qemu and on real RH850 microcontroller using iSYSTEM BlueBox and then
+# compares core contexts (values of core registers).
 #
 # Module checkRegistersBlueBox is used to read registers from real
 # microcontroller RH850.
-
-# Usage:
-# Run this script in qemu/isystem/samples/rh850/
-# Example: python3 test.py
-
-# Optional
-# Check flags.
-# Default usage doesnt check flags, run script with --flag to check them also.
+#
+# Run this script in directory qemu/isystem/samples/rh850/. Use option -h to 
+# see available options.
 
 import os
 import sys
@@ -22,25 +15,34 @@ import time
 import argparse
 import subprocess
 import glob
-import checkRegistersBlueBox as crbb
+import targetcontrol
 import itertools
 
-haveBlueBox = True
-
-NUM_OF_REGISTERS = 31
-NUM_OF_PRINTED_REGISTERS = 35;
-NUM_OF_REGS_TO_NOT_CHECK = NUM_OF_REGISTERS * NUM_OF_PRINTED_REGISTERS
-NUM_OF_LINES_WITH_GPR_VALUES = 12
 PSW_MASK = 0xfffff1ff   # ignore flags for debug mode, because they are set by winIDEA
 
 # files provifing common functionality to test files
-NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s']
+DO_NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s']
 QEMU_LOG_FILE = "../../../../rh850.log"
 
 RESULT_PASSED = "PASSED"
 RESULT_FAILED = "FAILED"
 
 _g_isVerboseLog = True
+
+RH850_PC = 'PC'
+RH850_PSW = 'PSW'
+
+RH850_REGS = [
+    'R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7',
+    'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15',
+    'R16', 'R17', 'R18', 'R19', 'R20', 'R21', 'R22', 'R23',
+    'R24', 'R25', 'R26', 'R27', 'R28', 'R29', 'R30', 'R31',
+    "eipc", "eipsw", "fepc", "fepsw", "fpsr", "fpepc",  "fpst",
+    "fpcc", "fpcfg", "fpec", "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
+    "eiwr", "fewr",  "bsel", "mcfg0", "rbase","ebase","intbp ", "mctl",
+    "pid ", "sccfg", "scbp", "htcfg0","mea",  "asid", "mei"
+]
+
 
 def log(msg: str):
     if _g_isVerboseLog:
@@ -52,7 +54,22 @@ def buildElf(fileName):
     subprocess.check_call(cmd, shell=True, executable='/bin/bash')
 
 
-def quitQemuIfRunning():
+def _startQemu(asmFileStem):
+    """
+    Normally winIDEA should strat QEMU, but it has problems killing it.
+    Until this is fixed on Linux, start QEMU in advance here and have
+    winIDEA workspace configured to only attach to existing QEMU.
+    """
+    args = ['../../../rh850-softmmu/qemu-system-rh850',
+            '-M', 'rh850mini', '-s', '-S', '-singlestep',
+            '-kernel', f'test/bin/{asmFileStem}.elf']
+
+    os.check_call(args)
+
+
+def _killQemu(self):
+    # os.sheck_call('pkill qemu', shell=True)
+
     try:
         subprocess.check_output("netstat -lt | grep 55555", shell=True)
         subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
@@ -62,119 +79,78 @@ def quitQemuIfRunning():
         print("OK: QEMU not running")
 
 
+# deprecated
 def runQemu(fileName, logFile):
 
     quitQemuIfRunning()
 
-    subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -nographic "
-                          " -d nochain,exec,in_asm,cpu -D " + logFile + 
-                          " -kernel bin/" + fileName + ".elf -monitor tcp:127.0.0.1:55555,server,nowait "
-						  " | tee file1 > bin/qemu.stdout &", shell=True)
-    time.sleep(1)
+    # Runs QEMU, which stops on first isntruction and waits for winIDEA to connect as GDB client
+    # winIDEA can not run QEMU on Linux at the moment.
+    subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -S -nographic"
+                          " -kernel bin/" + fileName + ".elf",
+						  shell=True)
+    # Runs QEMU, which logs instructions and regs to file, where this script reads them from 
+    #subprocess.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -nographic "
+    #                      " -d nochain,exec,in_asm,cpu -D " + logFile + 
+    #                      " -kernel bin/" + fileName + ".elf -monitor tcp:127.0.0.1:55555,server,nowait "
+    #                      " | tee file1 > bin/qemu.stdout &", shell=True)
 
-    # wait until BR 0000, which indicated end of program, is executed by QEMU
-    # However, limit looping to avoid enless execution in case of missing end instr.
-    MAX_LOOPS = 70
-    for loopCount in range(MAX_LOOPS):
-        time.sleep(0.5)
-        print(loopCount, '/', MAX_LOOPS, ': ', fileName)
-        try:
-            subprocess.check_output("tail -1 file1 | grep \"BR          0000\"", shell=True)
-            break
-        except subprocess.CalledProcessError:
-            subprocess.check_call("echo c | nc -N 127.0.0.1 55555", shell=True)
-
-    subprocess.check_call("echo q | nc -N 127.0.0.1 55555", shell=True)
- 
-    # TODO replace with GDB control and exiting nicely
-    #subprocess.check_call('kill $(pgrep qemu-system)', shell=True, executable='/bin/bash')
-    #subprocess.check_call('kill $(pgrep tee)', shell=True, executable='/bin/bash')
+    # wait until BR 0000, which indicates the end of program
 
 
 def getQemuLogFName(asmFileStem):
     return 'bin/' + asmFileStem + '_qemu.log'
 
+
 def getBlueBoxLogFName(asmFileStem):
     return 'bin/' + asmFileStem + '_bluebox.log'
 
 
-def extract_registers(qemuLogFileName, num_of_ints_to_print, asmFileStem):
-    """
-    This function extracts instruction and registers from QEMU log file. It 
-    prints out PC, instruction, status register PSW, and 32 general purpose 
-    registers.
-    """
-    with open(getQemuLogFName(asmFileStem), 'w') as qemuRegsFile:
+def compareTargetOutputs():
+    
+    _startQemu(asmFileStem)
 
-        with open(qemuLogFileName, "r") as qemuLogFile:
+    qemuTarget = targetcontrol.TargetController(QEMU_WORKSPACE)
+    qemuTarget.initTarget()
 
-            instNumber = 0
-            counter = 0
-            out = ['','']
+    hwTarget = targetcontrol.TargetController(HW_WORKSPACE)
+    hwTarget.initTarget()
 
-            for line in qemuLogFile:
+    prevPC = -1
 
-                if line.startswith("0x"):
-                    instNumber += 1
-                    readLogLine = True
-                    counter = 0
-                    raw_line = line.split()
+    while (True):
+        qemuRegisters, qemuPC, qemuPSW = qemuTarget.readRegisters(RH850_REGS, RH850_PC)
+        hwRegisters, hwPC, hwPSW = hwTarget.readRegisters(RH850_REGS, RH850_PC)
 
-                    if len(raw_line) == 4:
-                        print(raw_line[0], raw_line[1], raw_line[2], raw_line[3], file=qemuRegsFile)
-                    elif len(raw_line) == 3:
-                        print(raw_line[0], raw_line[1], raw_line[2], file=qemuRegsFile)
+        if len(qemuRegisters) != len(hwRegisters):
+            raise Exception("Internal error - register lists size does not match!\n" + 
+                            str(qemuRegisters) + '\n' + str(hwRegisters))
 
-                elif line.startswith(" "):
-                    raw_line = line.split()
-                    if readLogLine:
-                        val = 0
-                        for i in raw_line:
-                            if val % 2 == 0:
-                                out[0] = i + ":"
-                            else:
-                                out[1] = i
-                                print(f"{out[0]:>5} {out[1]}", file=qemuRegsFile)
-                            val += 1
+        for i in range(len(RH850_REGS)):
 
-                counter += 1
-                if counter > NUM_OF_LINES_WITH_GPR_VALUES:
-                    readLogLine = False
-                if instNumber > num_of_ints_to_print:
-                    break
+            if qemuRegisters[i] != hwRegisters[i]:
+                raise Exception("Register values do not match! reg: {RH850_REGS[i]}    qemu: {qemuRegisters[i]}    hw: {hwRegisters[i]}"
+
+        if qemuPC != hwPC:
+            raise Exception("Register values do not match! reg: PC    qemu: {qemuPC}    hw: {hwPC}"
+
+        if ((qemuPSW & PSW_MASK) != (hwPSW & PSW_MASK)):
+            raise Exception("Register values do not match! reg: PSW    qemu: {qemuPSW & PSW_MASK}    hw: {hwPC & PSW_MASK}"
+
+        if prevPC == qemuPC:
+            break
+
+        qemuTarget.step()
+        hwTarget.step()
+          
+    _killQemu()
 
 
-# not used, seems to be redundant, if files are different sizes compare will fail anyway
-def _check_file_sizes(asmFileStem):
-    with open(getQemuLogFName(asmFileStem), 'r') as log_qemu: 
-        with open(getBlueBoxLogFName(asmFileStem), 'r') as log_blubox: 
 
-            num_lines_qemu = sum(1 for line in log_qemu)
-            log(f'num_lines_qemu = {num_lines_qemu}')
-            num_lines_bluebox = sum(1 for line in log_blubox)
-            log('num_lines_bluebox = {num_lines_bluebox}')
-            if num_lines_bluebox-(NUM_OF_PRINTED_REGISTERS*2) > num_lines_qemu:
-                return RESULT_FAILED
-                print("files are different size")
-        
-    return RESULT_PASSED
 
 
 def compare_qemu_and_blue_box_regs(asmFileStem):
 
-    # TODO - review algorithm
-
-    # EXAMPLE OF LOG FILE
-    # QEMU              BLUEBOX     index
-
-    # INSTRUCTION       --------    0
-    # PC                PC          1
-    # PSW               PSW         2
-    # R0                R0          3
-    # R1                R1
-    # R2                R2
-    # ...               ...
-    
     index = 0
     start = 0;
     isOkay = True
@@ -207,8 +183,6 @@ def compare_qemu_and_blue_box_regs(asmFileStem):
                         # print("CHECKING FLAGS ALSO:\nQemu:", lineQemu, 'BB:', lineBB)
                         pswQemu = int(lineQemu[lineQemu.index(':') + 2:], 16)
                         pswBB = int(lineBB[lineBB.index('=') + 2:], 16)
-                        if ((pswQemu & PSW_MASK) != (pswBB & PSW_MASK)):
-                            print("ERROR PSW:\n QEMU "  +  lineQemu + "\n BB: " +  lineBB)
                             isOkay = False
                     else:
                         #PC AND OTHER GPR
@@ -266,7 +240,7 @@ def main():
 
     args = _parseArgs()
     asmFiles = args.files
-    if not asmFiles:   # no files specified in cmd line
+    if not asmFiles:   # no files specified in cmd line, test all of them
         asmFiles = glob.glob("*.s")
         asmFiles.sort()
 
@@ -276,16 +250,14 @@ def main():
     tested_files = []
     results = []
 
-    if haveBlueBox:
-        blueBox = crbb.BlueBox()
-        blueBox.openConnection()
+    blueBox = crbb.BlueBox()
+    blueBox.openConnection()
 
     for idx, asmFile in enumerate(asmFiles):
 
-        asmFile = os.path.basename(asmFile) # strip away path from files 
-                           # specified in cmdLine. Only dir 'test' is allowed.
+        asmFile = os.path.basename(asmFile) 
 
-        if asmFile in NOT_TEST_FILES:
+        if asmFile in DO_NOT_TEST_FILES:
             print(f'- ({idx + 1}/{len(asmFiles)}) Skipped {asmFile}, this is utility file included in other tests.')
             continue
 
@@ -297,20 +269,17 @@ def main():
         log("Exec in QEMU...")
         runQemu(asmFileStem, QEMU_LOG_FILE)
 
-        if haveBlueBox:
-            log("Exec on target ...")
-            num_of_all_inst =  blueBox.check_registers_blue_box(asmFileStem, 
+        log("Exec on target ...")
+        num_of_all_inst =  blueBox.check_registers_blue_box(asmFileStem, 
                                                             getBlueBoxLogFName(asmFileStem))
         else:
             num_of_all_inst = 100
         log("Comparing registers ...")
         extract_registers(QEMU_LOG_FILE, num_of_all_inst, asmFileStem)
 
-        if haveBlueBox:
-            _check_file_sizes(asmFileStem)
-            fileRes = compare_qemu_and_blue_box_regs(asmFileStem)
-        else:
-            fileRes = ""
+        _check_file_sizes(asmFileStem)
+        fileRes = compare_qemu_and_blue_box_regs(asmFileStem)
+
         results.append(fileRes)
 
     final_results = zip(tested_files, results)
