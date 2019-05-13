@@ -6,6 +6,11 @@ import time
 import sys
 import os
 
+TRAP_MASK = 0xffffffe0
+TRAP_OPCODE = 0x010007e0
+               
+SYSCALL_MASK = 0xc7ffffe0
+SYSCALL_OPCODE = 0x0160d7e0
 
 class TargetController:
 
@@ -73,3 +78,18 @@ class TargetController:
         self.debugCtrl.stepInst()
 
 
+    def isDoubleStepInst(self, pc):
+        """
+        After some instructions real device stops only on the second instruction after the
+        instruction: TRAP, SYSCALL, HVTRAP, CALLT, FETRAP, HVCALL, RIE
+        """
+        stype = ic.SType()
+        stype.m_byType = ic.SType.tUnsigned;
+        stype.m_byBitSize = 32
+        opCodeInt = self.debugCtrl.readValue(ic.IConnectDebug.fRealTime, 0, pc, stype).getLong()
+
+        opCode = self._unsigned64(opCodeInt)
+
+        print(hex(opCode))
+        return (opCode & TRAP_MASK == TRAP_OPCODE or
+                opCode & SYSCALL_MASK == SYSCALL_OPCODE)

@@ -146,13 +146,13 @@ def runTest(asmFileStem, qemuTarget, hwTarget):
         for i in range(len(RH850_REGS)):
 
             if qemuRegisters[i] != hwRegisters[i]:
-                return f"ERROR: Register values do not match! reg: {RH850_REGS[i]}    qemu: {qemuRegisters[i]}    hw: {hwRegisters[i]}"
+                return f"ERROR: Register values do not match! {qemuPC}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
 
         if qemuPC != hwPC:
-            return f"ERROR: Register values do not match! reg: PC    qemu: {qemuPC}    hw: {hwPC}"
+            return f"ERROR: Register values do not match! {qemuPC}: PC    qemu: {qemuPC}    hw: {hwPC}"
 
         if ((qemuPSW & PSW_MASK) != (hwPSW & PSW_MASK)):
-            return f"ERROR: Register values do not match! reg: PSW    qemu: {qemuPSW & PSW_MASK}    hw: {hwPC & PSW_MASK}"
+            return f"ERROR: Register values do not match! {qemuPC}: PSW    qemu: {qemuPSW & PSW_MASK}    hw: {hwPSW & PSW_MASK}"
 
         log('PC = ' + hex(qemuPC))
         if prevPC == qemuPC:  # instruction BR 0 means end of test program
@@ -162,6 +162,10 @@ def runTest(asmFileStem, qemuTarget, hwTarget):
 
         qemuTarget.step()
         hwTarget.step()
+
+        if qemuTarget.isDoubleStepInst(qemuPC):
+            log('double step instruction detected')
+            qemuTarget.step()
           
     _killQemu()
 
