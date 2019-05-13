@@ -8,7 +8,7 @@
       <VersionLow>1</VersionLow>
      </REG_HEADER>
      <REG_ROOT>
-      <RegVer>1279696896</RegVer>
+      <RegVer>1279709184</RegVer>
      </REG_ROOT>
     </EditorOptions>
    </Editor>
@@ -20,7 +20,7 @@
       <VersionLow>1</VersionLow>
      </REG_HEADER>
      <REG_ROOT>
-      <RegVer>1279696896</RegVer>
+      <RegVer>1279709184</RegVer>
       <ANGUIData.0>
        <Filetime type="B">KCKLHCLBICFDMNAB</Filetime>
        <GUID type="B">PFGFPEGMLPEIIPEAIMCDECFBLDPHMGGM</GUID>
@@ -882,7 +882,7 @@
    </REG_HEADER>
    <REG_ROOT>
     <HServer>HGDB</HServer>
-    <RegVer>1279696896</RegVer>
+    <RegVer>1279709184</RegVer>
     <Cfg_System>
     </Cfg_System>
     <Desktop>
@@ -1447,17 +1447,17 @@
       </WatchViews>
      </ViewData>
      <ViewLayout>
-      <PrimaryDocumentPaneId>8</PrimaryDocumentPaneId>
+      <PrimaryDocumentPaneId>26</PrimaryDocumentPaneId>
       <Frames>
        <__.0>
-        <FocusedViewId>11</FocusedViewId>
+        <FocusedViewId>17</FocusedViewId>
         <FrameState>9</FrameState>
         <IsPrimary>true</IsPrimary>
         <Bounds>
-         <Bottom>1099</Bottom>
+         <Bottom>979</Bottom>
          <Left>497</Left>
          <Right>1920</Right>
-         <Top>25</Top>
+         <Top>6</Top>
         </Bounds>
         <Dock>
          <DockType>None</DockType>
@@ -1640,6 +1640,19 @@
       <Fetch>
        <Beep>True</Beep>
        <DisplayMessage>True</DisplayMessage>
+       <BP.0>
+        <__>
+         <ActionEnabled>False</ActionEnabled>
+         <ActionScript></ActionScript>
+         <ActionScriptParams></ActionScriptParams>
+         <ActionShow>False</ActionShow>
+         <Active>True</Active>
+         <Condition></Condition>
+         <Condition_Count>0</Condition_Count>
+         <ConditionEnabled>False</ConditionEnabled>
+         <Name>0x40</Name>
+        </__>
+       </BP.0>
       </Fetch>
      </Breakpoints>
      <Debug>
@@ -1663,6 +1676,63 @@
       <Download>
        <DefaultFile>-1</DefaultFile>
        <UseRealTimeWrite>0</UseRealTimeWrite>
+       <File.0>
+        <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
+        <CoreIndex>0</CoreIndex>
+        <Flags>3</Flags>
+        <Load>1</Load>
+        <LoadCode>1</LoadCode>
+        <LoadSymbols>1</LoadSymbols>
+        <MemoryArea>0</MemoryArea>
+        <Offset>0</Offset>
+        <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
+        <OptimizeTypeByName>0</OptimizeTypeByName>
+        <OverrideMemoryArea>0</OverrideMemoryArea>
+        <Path>../test/bin/bs_test-bcond.elf</Path>
+        <ProjectOutputFile>0</ProjectOutputFile>
+        <SOffset>0</SOffset>
+        <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
+        <TargetRelative>False</TargetRelative>
+        <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
+        <Type>28</Type>
+        <UseDefaultCore>1</UseDefaultCore>
+        <UseDefaultMSID>1</UseDefaultMSID>
+        <MSID>
+         <App></App>
+         <bAppID>false</bAppID>
+         <bVMID>false</bVMID>
+         <Level>Sys</Level>
+         <Secure>false</Secure>
+         <VM></VM>
+        </MSID>
+        <Options>
+         <CallStack>0</CallStack>
+         <DumpELFHeaders>0</DumpELFHeaders>
+         <GCC_ARM_double_Format>1</GCC_ARM_double_Format>
+         <IgnoreChecksum>0</IgnoreChecksum>
+         <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
+         <InsertInlinedFunctions>0</InsertInlinedFunctions>
+         <LoadCode>1</LoadCode>
+         <LoadDwarfSection>1</LoadDwarfSection>
+         <LoadSymbols>0</LoadSymbols>
+         <LoadWeakFunctions>1</LoadWeakFunctions>
+         <LoadZeros>0</LoadZeros>
+         <MergeTypes>0</MergeTypes>
+         <Override64bitVariableLocation>1</Override64bitVariableLocation>
+         <RemoveOptimizedLines>1</RemoveOptimizedLines>
+         <ReverseBitFields>0</ReverseBitFields>
+         <Cosmic>
+          <nowidden>FALSE</nowidden>
+          <sprec>FALSE</sprec>
+         </Cosmic>
+        </Options>
+        <PreProc>
+         <Analyze>none</Analyze>
+         <CommandLine></CommandLine>
+         <UseProjectDefines>FALSE</UseProjectDefines>
+         <UseProjectIncludePaths>FALSE</UseProjectIncludePaths>
+        </PreProc>
+       </File.0>
       </Download>
       <DownloadOptionsData>
        <AfterDL1>0</AfterDL1>
@@ -1909,28 +1979,28 @@
        </ID.15>
        <ID.16>
         <Data.0>
-         <__>2</__>
+         <__>4</__>
         </Data.0>
         <Data.1>
-         <__>55</__>
+         <__>22</__>
         </Data.1>
         <Data.2>
-         <__>99</__>
+         <__>20</__>
         </Data.2>
         <Data.3>
-         <__>12</__>
+         <__>55</__>
         </Data.3>
         <Data.4>
-         <__>233</__>
+         <__>23</__>
         </Data.4>
         <Data.5>
-         <__>66</__>
+         <__>2</__>
         </Data.5>
         <Data.6>
-         <__>56</__>
+         <__>99</__>
         </Data.6>
         <Data.7>
-         <__>24</__>
+         <__>12</__>
         </Data.7>
        </ID.16>
        <ID.2>
@@ -2003,7 +2073,7 @@
       </Combo>
      </History>
      <Info>
-      <winIDEA>Build 9.17.106</winIDEA>
+      <winIDEA>Build 9.17.109</winIDEA>
      </Info>
      <Options>
       <CallstackWindow>
@@ -2211,7 +2281,7 @@
     <VersionLow>1</VersionLow>
    </REG_HEADER>
    <REG_ROOT>
-    <RegVer>1279696896</RegVer>
+    <RegVer>1279709184</RegVer>
     <Project_Local>
      <Project.0>
       <DefaultTargetName>Debug</DefaultTargetName>
@@ -2226,7 +2296,7 @@
     <VersionLow>1</VersionLow>
    </REG_HEADER>
    <REG_ROOT>
-    <RegVer>1279696896</RegVer>
+    <RegVer>1279709184</RegVer>
     <Data>
      <Attach>false</Attach>
      <Target_._IP>127.0.0.1</Target_._IP>
