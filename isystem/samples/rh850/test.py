@@ -81,11 +81,19 @@ def _startQemu(asmFileStem):
     log('Starting QEMU ...')
     args = ['../../../rh850-softmmu/qemu-system-rh850',
             '-M', 'rh850mini', '-s', '-S', '-singlestep',
-            '-kernel', f'test/bin/{asmFileStem}.elf']
+            '-kernel', f'test/bin/{asmFileStem}.elf', '-monitor', 'tcp:127.0.0.1:55555,server,nowait']
 
-    # sp.check_call(args)
+    # run detached
     sp.Popen(args)
-    log('QEMU started')
+    # wait until started
+    isStarted = False
+    while not isStarted:
+        try:
+            sp.check_output("netstat -lt | grep 55555", shell=True)
+            isStarted = True
+        except sp.CalledProcessError:
+            print("Waiting for QEMU to start ...")
+            time.sleep(1)
 
 
 # deprecated
@@ -115,16 +123,11 @@ def getBlueBoxLogFName(asmFileStem):
     return 'bin/' + asmFileStem + '_bluebox.log'
 
 
-def runTest(asmFileStem):
+def runTest(asmFileStem, qemuTarget, hwTarget):
     
     _startQemu(asmFileStem)
 
-    log("Starting QEMU winIDEA ...")
-    qemuTarget = targetcontrol.TargetController(QEMU_WORKSPACE)
     qemuTarget.initTarget(asmFileStem)
-
-    log("Starting target winIDEA ...")
-    hwTarget = targetcontrol.TargetController(HW_WORKSPACE)
     hwTarget.initTarget(asmFileStem)
 
     prevPC = -1
@@ -151,7 +154,7 @@ def runTest(asmFileStem):
         if ((qemuPSW & PSW_MASK) != (hwPSW & PSW_MASK)):
             return f"ERROR: Register values do not match! reg: PSW    qemu: {qemuPSW & PSW_MASK}    hw: {hwPC & PSW_MASK}"
 
-        print('===', prevPC, qemuPC)
+        log('PC = ' + hex(qemuPC))
         if prevPC == qemuPC:  # instruction BR 0 means end of test program
             break
 
@@ -203,6 +206,14 @@ def main():
     print(f"Testing {len(asmFiles)} files:")
     print(asmFiles)
 
+    log("Starting QEMU winIDEA ...")
+    qemuTarget = targetcontrol.TargetController(QEMU_WORKSPACE)
+    qemuTarget.initWinIDEA()
+
+    log("Starting target winIDEA ...")
+    hwTarget = targetcontrol.TargetController(HW_WORKSPACE)
+    hwTarget.initWinIDEA()
+
     tested_files = []
     results = []
 
@@ -220,7 +231,7 @@ def main():
 
         buildElf(asmFileStem)
 
-        testResult = runTest(asmFileStem)
+        testResult = runTest(asmFileStem, qemuTarget, hwTarget)
 
         print(asmFileStem, testResult)
         results.append(testResult)

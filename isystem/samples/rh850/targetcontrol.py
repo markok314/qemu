@@ -35,8 +35,11 @@ class TargetController:
         self.loaderCtrl = ic.CLoaderController(cmgr)
 
 
-    def initTarget(self, asmFileStem):
+    def initWinIDEA(self, ):
         self._connectToWinIDEA()
+
+
+    def initTarget(self, asmFileStem):
 
         downloadFile = os.path.join(os.getcwd(), 'test/bin',  asmFileStem + '.elf')
         filetype = "ELF"
