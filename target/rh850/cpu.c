@@ -83,8 +83,8 @@ const char * const rh850_prog_regnames[] = {
 const char * const rh850_sys_basic_regnames[] = {
   "eipc", "eipsw", "fepc", "fepsw", "psw",  "fpsr", "fpepc",  "fpst",
   "fpcc", "fpcfg", "fpec", "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
-  "eiwr", "fewr",  "bsel", "mcfg0", "rbase","ebase","intbp ", "mctl",
-  "pid ", "sccfg", "scbp", "htcfg0","mea",  "asid", "mei",    ""
+  "eiwr", "fewr",  "bsel", "mcfg0", "rbase","ebase","intbp",  "mctl",
+  "pid",  "sccfg", "scbp", "htcfg0","mea",  "asid", "mei",    ""
 };
 
 /* Interrupt function registers (rh850_sys_intr_regnames):
@@ -269,7 +269,7 @@ static void set_feature(CPURH850State *env, int feature)
 
 static void set_resetvec(CPURH850State *env, int resetvec)
 {
-    env->sysBasicRegs[rbase_idx] = resetvec;
+    env->sysBasicRegs[RBASE_IDX] = resetvec;
 }
 
 static void rh850_any_cpu_init(Object *obj)
@@ -374,7 +374,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     int i;
 
     cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "pc", env->pc);
-    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->sysBasicRegs[psw_idx]);
+    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->sysBasicRegs[PSW_IDX]);
 
     //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "eiic    ", env->eiic);
     //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "feic    ", env->feic);
@@ -410,7 +410,7 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     cpu_fprintf(f, "\n");
 
     for (i = 0; i < 31; i++) {
-    	if (i!=psw_idx){
+    	if (i!=PSW_IDX){
         cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
             rh850_sys_basic_regnames[i], env->sysBasicRegs[i]);
     	}
@@ -687,15 +687,34 @@ static void rh850_cpu_reset(CPUState *cs)
     env->priv = PRV_M;   //sets machine privilege level, make for rh850
     env->mstatus &= ~(MSTATUS_MIE | MSTATUS_MPRV); //
     env->mcause = 0;
-    env->pc = 0;
-    env->sysBasicRegs[psw_idx] = 0x20; // reset value of PSW
-    env->sysBasicRegs[rbase_idx] = 0;
 #endif
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);
     env->pc = 0;
-    env->sysBasicRegs[psw_idx] = 0x20; // reset value of PSW
-    env->sysBasicRegs[rbase_idx] = 0;
+    env->sysBasicRegs[EIPSW_IDX] = 0x20;
+    env->sysBasicRegs[FEPSW_IDX] = 0x20;
+    env->sysBasicRegs[EIIC_IDX] = 0x0;
+    env->sysBasicRegs[FEIC_IDX] = 0x0;
+    env->sysBasicRegs[PSW_IDX] = 0x20; // reset value of PSW
+    env->sysBasicRegs[CTPSW_IDX] = 0;
+    env->sysBasicRegs[CTBP_IDX] = 0;   // only bit 0 must be set to 0
+    env->sysBasicRegs[ASID_IDX] = 0;   // only bits 31-10 must be set to 0
+    env->sysBasicRegs[HTCFG0_IDX] = 0x00018000;   // const value
+    env->sysBasicRegs[MEI_IDX] = 0;    // only some bits must be 0
+    env->sysBasicRegs[RBASE_IDX] = 0;
+    env->sysBasicRegs[EBASE_IDX] = 0;  // only bits 8-1 must be 0
+    env->sysBasicRegs[INTBP_IDX] = 0;  // only bits 8-0 must be 0
+    env->sysBasicRegs[PID_IDX] = 0x05000120;  // const
+    env->sysBasicRegs[SCCFG_IDX] = 0;  // bits 31-8 must be 0
+    env->sysBasicRegs[SCBP_IDX] = 0;  // bits 1-0 must be 0
+    env->sysBasicRegs[MCFG0_IDX] = 0x4;  // bits 31-8 must be 0
+    env->sysBasicRegs[MCTL_IDX] = 0x80000000;  // bits 31-8 must be 0
+
+    env->sysInterruptRegs[FPIPR_IDX] = 0;
+    env->sysInterruptRegs[ISPR_IDX] = 0;
+    env->sysInterruptRegs[PMR_IDX] = 0;
+    env->sysInterruptRegs[ICSR_IDX] = 0;
+    env->sysInterruptRegs[INTCFG_IDX] = 0;
 }
 
 static void rh850_cpu_disas_set_info(CPUState *s, disassemble_info *info)

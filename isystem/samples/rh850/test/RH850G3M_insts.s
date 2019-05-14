@@ -1,4 +1,3 @@
-.data
 
 # implement instructions missing in V850 (added for E3 - RH850) as macros
 
@@ -251,9 +250,24 @@
 .equ SR_FEPC, 2
 .equ SR_FEPSW, 3
 .equ SR_PSW, 5
+.equ SR_CTPC, 16
+.equ SR_CTBP, 20
+.equ SR_EIWR, 28
+.equ SR_FEWR, 29
+.equ SR_BSEL, 31
 
 # selID = 1
+.equ SR_MCFG0, 0
 .equ SR_RBASE, 2
 .equ SR_EBASE, 3
+.equ SR_INTBP, 4
+.equ SR_MCTL, 5
+.equ SR_PID, 6
 .equ SR_SCCFG, 11
 .equ SR_SCBP, 12
+
+# selID = 2
+.equ SR_HTCFG0, 0
+.equ SR_MEA, 6
+.equ SR_ASID, 7
+.equ SR_MEI, 8

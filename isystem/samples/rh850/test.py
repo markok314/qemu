@@ -39,14 +39,15 @@ RH850_REGS = [
     'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15',
     'R16', 'R17', 'R18', 'R19', 'R20', 'R21', 'R22', 'R23',
     'R24', 'R25', 'R26', 'R27', 'R28', 'R29', 'R30', 'R31',
-#    "eipc", "eipsw", 
-#    "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
-#    "eiwr", "fewr",  "mcfg0", "rbase","ebase","intbp", "mctl",
-#    "pid", "sccfg", "scbp", "htcfg0","mea",  "asid", "mei"
+    "eipc", "eipsw", "fepc", "fepsw", 
+    "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
+    "eiwr", "fewr",  "mcfg0", "rbase","ebase","intbp", "mctl",
+    "pid", "sccfg", "scbp", "htcfg0","mea",  "asid", "mei"
 ]
 # floating point regs are currently not supported in QEMU
-# "fpsr", "fepc", "fepsw", "fpepc",  "fpst", "fpcc", "fpcfg", "fpec", 
-# "bsel"
+# "fpsr", "fpepc",  "fpst", "fpcc", "fpcfg", "fpec", 
+# Not available in winIDEA
+# "bsel", 
 
 def log(msg: str):
     if _g_isVerboseLog:
@@ -91,28 +92,10 @@ def _startQemu(asmFileStem):
         try:
             sp.check_output("netstat -lt | grep 55555", shell=True)
             isStarted = True
+            print("QEMU started ...")
         except sp.CalledProcessError:
             print("Waiting for QEMU to start ...")
             time.sleep(1)
-
-
-# deprecated
-def runQemu(fileName, logFile):
-
-    quitQemuIfRunning()
-
-    # Runs QEMU, which stops on first isntruction and waits for winIDEA to connect as GDB client
-    # winIDEA can not run QEMU on Linux at the moment.
-    sp.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -S -nographic"
-                          " -kernel bin/" + fileName + ".elf",
-						  shell=True)
-    # Runs QEMU, which logs instructions and regs to file, where this script reads them from 
-    #sp.check_call("../../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -singlestep -nographic "
-    #                      " -d nochain,exec,in_asm,cpu -D " + logFile + 
-    #                      " -kernel bin/" + fileName + ".elf -monitor tcp:127.0.0.1:55555,server,nowait "
-    #                      " | tee file1 > bin/qemu.stdout &", shell=True)
-
-    # wait until BR 0000, which indicates the end of program
 
 
 def getQemuLogFName(asmFileStem):

@@ -56,7 +56,7 @@ class TargetController:
 
         # The first N instructions are used to initialize all registers, which have
         # random value on reset, so execute them in one big step.
-        self.debugCtrl.setBP(0, 0x3e)
+        self.debugCtrl.setBP(0, 0x70)
         self.debugCtrl.run()
         self.debugCtrl.waitUntilStopped()
 
@@ -65,11 +65,11 @@ class TargetController:
         REG_PREFIX = '@' 
         regValues = []
         for reg in registerNames:
-            value = self.debugCtrl.evaluate(ic.IConnectDebug.fRealTime, REG_PREFIX + reg.upper())
+            value = self.debugCtrl.evaluate(ic.IConnectDebug.fMonitor, REG_PREFIX + reg.upper())
             regValues.append(self._unsigned64(value.getLong()))
 
-        pc = self.debugCtrl.evaluate(ic.IConnectDebug.fRealTime, REG_PREFIX + pcName.upper())
-        psw = self.debugCtrl.evaluate(ic.IConnectDebug.fRealTime, REG_PREFIX + pswName.upper())
+        pc = self.debugCtrl.evaluate(ic.IConnectDebug.fMonitor, REG_PREFIX + pcName.upper())
+        psw = self.debugCtrl.evaluate(ic.IConnectDebug.fMonitor, REG_PREFIX + pswName.upper())
         
         return regValues, self._unsigned64(pc.getLong()), self._unsigned64(psw.getLong())
                 
@@ -86,7 +86,7 @@ class TargetController:
         stype = ic.SType()
         stype.m_byType = ic.SType.tUnsigned;
         stype.m_byBitSize = 32
-        opCodeInt = self.debugCtrl.readValue(ic.IConnectDebug.fRealTime, 0, pc, stype).getLong()
+        opCodeInt = self.debugCtrl.readValue(ic.IConnectDebug.fMonitor, 0, pc, stype).getLong()
 
         opCode = self._unsigned64(opCodeInt)
 
