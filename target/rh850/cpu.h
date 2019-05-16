@@ -136,8 +136,50 @@ struct CPURH850State {
 
     uint32_t condSatisfied;
 
+    target_ulong misa;
 
+    uint32_t features;
+    target_ulong mstatus;       //machine status
 
+    target_ulong cpu_LLbit;     // register for mutual exclusion (LDL.W, STC.W)
+    target_ulong cpu_LLAddress;     // register for mutual exclusion (LDL.W, STC.W)
+
+    target_ulong load_res;      // inst addr for TCG
+    target_ulong load_val;      // inst val for TCG
+
+    float_status fp_status;     // not used yet in rh850, left for floating-point support.
+
+    // the following items were copied from original proc, remove them
+    uint32_t mip;
+    target_ulong mie;       //machine interrupt enable
+    target_ulong mepc;      //machine exception program counter
+    target_ulong sepc;      //supervisor exception program counter
+    target_ulong mscratch;
+    target_ulong priv_ver;
+    target_ulong priv;
+
+    target_ulong frm;           //  CSR floating point rounding mode
+    target_ulong mideleg;   //machine interrupt delegation register
+    target_ulong medeleg;
+
+    target_ulong stvec;     //supervisor trap vector base
+    target_ulong scause;    //suprevisor cause register
+    target_ulong mhartid;       //hardware thread ID  ===> is this same as HTCFG0.PEID ???? rh850 doesnt support multithread?
+    uint32_t mucounteren;   //user counter enable
+    uint32_t mscounteren;   //supervisor counter enable
+    target_ulong sscratch;
+    target_ulong mtvec;     //machine trap handler base address
+    target_ulong mcause;    //machine trap cause
+    target_ulong scounteren;
+    target_ulong mcounteren;
+    target_ulong sptbr;
+    target_ulong satp;
+    target_ulong sbadaddr;
+    target_ulong mbadaddr;
+    target_ulong badaddr;       //changed to mea
+    // physical memory protection
+    pmp_table_t pmp_state;              //this should be modified
+/*
     target_ulong icsr;		//interrupt control status register
     target_ulong intcfg;	//interrupt function setting
 
@@ -147,72 +189,16 @@ struct CPURH850State {
     target_ulong mpm;		//memory protection operation mode
 
 
-    target_ulong load_res;    	// inst addr for TCG
-    target_ulong load_val;    	// inst val for TCG
-
-    target_ulong cpu_LLbit;    	// register for mutual exclusion (LDL.W, STC.W)
-    target_ulong cpu_LLAddress;    	// register for mutual exclusion (LDL.W, STC.W)
-
-    target_ulong frm;			//  CSR floating point rounding mode
-
-    target_ulong badaddr;		//changed to mea
-
     //target_ulong user_ver;
-    target_ulong priv_ver;
-
-    target_ulong misa;
-
-    uint32_t features;
-
-#ifndef CONFIG_USER_ONLY
-    target_ulong priv;
-
-    target_ulong mhartid;		//hardware thread ID  ===> is this same as HTCFG0.PEID ???? rh850 doesnt support multithread?
-    target_ulong mstatus;		//machine status
+*/
     /*
-     * CAUTION! Unlike the rest of this struct, mip is accessed asynchonously
-     * by I/O threads and other vCPUs, so hold the iothread mutex before
-     * operating on it.  CPU_INTERRUPT_HARD should be in effect iff this is
-     * non-zero.  Use rh850_cpu_set_local_interrupt.
-     */
-    uint32_t mip;        /* allow atomic_read for >= 32-bit hosts */
-    target_ulong mie; 		//machine interrupt enable
-    target_ulong mideleg;	//machine interrupt delegation register
+#ifndef CONFIG_USER_ONLY
 
-    target_ulong sptbr;  /* until: priv-1.9.1 */
-    target_ulong satp;   /* since: priv-1.10.0 */
-    target_ulong sbadaddr;
-    target_ulong mbadaddr;
-    target_ulong medeleg;
+    target_ulong mtval;
 
-    target_ulong stvec;		//supervisor trap vector base
-    target_ulong sepc;		//supervisor exception program counter
-    target_ulong scause;	//suprevisor cause register
-
-    target_ulong mtvec;		//machine trap handler base address
-    target_ulong mepc;		//machine exception program counter
-    target_ulong mcause;	//machine trap cause
-    target_ulong mtval;  /* since: priv-1.10.0 */
-
-    uint32_t mucounteren;	//user counter enable
-    uint32_t mscounteren;	//supervisor counter enable
-    target_ulong scounteren; /* since: priv-1.10.0 */
-    target_ulong mcounteren; /* since: priv-1.10.0 */
-
-    target_ulong sscratch;
-    target_ulong mscratch;
-
-    /* temporary htif regs */
-    //uint64_t mfromhost;
-    //uint64_t mtohost;
-    //uint64_t timecmp;
-
-    /* physical memory protection */
-    pmp_table_t pmp_state;				//this should be modified
 #endif
 
-    float_status fp_status;
-
+*/
     /* QEMU */
     CPU_COMMON
 
@@ -334,7 +320,7 @@ static inline void cpu_get_tb_cpu_state(CPURH850State *env, target_ulong *pc,
 #ifdef CONFIG_USER_ONLY
     *flags = TB_FLAGS_FP_ENABLE;
 #else
-    *flags = cpu_mmu_index(env, 0) | (env->mstatus & MSTATUS_FS);
+    *flags = cpu_mmu_index(env, 0);
 #endif
 }
 

@@ -487,13 +487,7 @@ static void rh850_cpu_synchronize_from_tb(CPUState *cs, TranslationBlock *tb)
 static bool rh850_cpu_has_work(CPUState *cs)
 {
 #ifndef CONFIG_USER_ONLY
-    RH850CPU *cpu = RH850_CPU(cs);
-    CPURH850State *env = &cpu->env;
-    /*
-     * Definition of the WFI instruction requires it to ignore the privilege
-     * mode and delegation registers, but respect individual enables
-     */
-    return (atomic_read(&env->mip) & env->mie) != 0;
+    return true;
 #else
     return true;
 #endif
@@ -684,9 +678,7 @@ static void rh850_cpu_reset(CPUState *cs)
 
     mcc->parent_reset(cs);
 #ifndef CONFIG_USER_ONLY
-    env->priv = PRV_M;   //sets machine privilege level, make for rh850
     env->mstatus &= ~(MSTATUS_MIE | MSTATUS_MPRV); //
-    env->mcause = 0;
 #endif
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);

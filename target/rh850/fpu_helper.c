@@ -55,7 +55,7 @@ void helper_set_rounding_mode(CPURH850State *env, uint32_t rm)
     int softrm;
 
     if (rm == 7) {
-        rm = env->frm;
+        rm = 0; //env->frm;
     }
     switch (rm) {
     case 0:
