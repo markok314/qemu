@@ -35,7 +35,7 @@
        131, //      fpcc      8
        132, //      fpcfg     9
        133, //      fpec     10
-        44, //      SESR     NA
+        44, //      SESR    N/A
         45, //      EIIC     11
         46, //  	FEIC     12
         48, //      CTPC     13
@@ -57,36 +57,43 @@
        189, //      asid     29
        190  //      mei      30
 */
+#define BANK_MASK  0xf0000
+#define BANK_SHIFT 16
+#define SRI(selID, regID) (((selID) << BANK_SHIFT) | (regID))
+#define SRI0(regID) (regID)
+#define SRI1(regID) SRI(1, (regID))
+#define SRI2(regID) SRI(2, (regID))
+
 typedef int IdxType;
 const IdxType winIdeaRegIdx2qemuSysRegIdx[] = {
-//     1     2     3     4     5     6     7     8     9
+// 0          1            2            3            4            5            6            7            8            9
 // ---------------------------------------------
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, //  0
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, //  1
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, //  2
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        //  0
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        //  1
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        //  2
 
--1,   -1,    0,    1,    2,    3,   -1,    4,   -1,   -1, //  3
--1,   -1,   -1,   -1,   -1,   11,   12,   -1,   13,   14, //  4
--1,   -1,   15,   -1,   -1,   -1,   -1,   -1,   -1,   -1, //  5
+-1,          -1, SRI0(EIPC_IDX), SRI0(EIPSW_IDX),SRI0(FEPC_IDX),SRI0(FEPSW_IDX),-1, SRI0(PSW_IDX),      -1,          -1,        //  3
+-1,          -1,          -1,          -1,          -1, SRI0(EIIC_IDX),SRI0(FEIC_IDX),-1,SRI0(CTPC_IDX),SRI0(CTPSW_IDX),        //  4
+-1,          -1,   SRI0(CTBP_IDX),     -1,          -1,          -1,          -1,          -1,          -1,          -1,        //  5
 
-16,   17,   -1,   18,   -1,   -1,   -1,   -1,   -1,   -1, //  6
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, //  7
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, //  8
+SRI0(EIWR_IDX),SRI0(FEWR_IDX),-1,SRI0(BSEL_IDX),    -1,          -1,          -1,          -1,          -1,          -1,        //  6
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        //  7
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        //  8
 
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, //  9
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, // 10
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, // 11
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        //  9
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        // 10
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        // 11
 
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,    5,    6, // 12
- 7,    8,    9,   10,   -1,   -1,   -1,   -1,   -1,   -1, // 13
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, // 14
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1, SRI0(FPSR_IDX), SRI0(FEPC_IDX),        // 12
+SRI0(FPST_IDX),SRI0(FPCC_IDX),SRI0(FPCFG_IDX),SRI0(FPEC_IDX), -1,-1,          -1,          -1,          -1,          -1,        // 13
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        // 14
 
-19,   -1,   20,   21,   22,   23,   24,   -1,   -1,   -1, // 15
--1,   25,   26,   -1,   -1,   -1,   -1,   -1,   -1,   -1, // 16
--1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, // 17
+SRI1(MCFG0_IDX1),-1,SRI1(RBASE_IDX1),SRI1(EBASE_IDX1),SRI1(INTBP_IDX1),SRI1(MCTL_IDX1),SRI1(PID_IDX1),-1,-1,          -1,       // 15
+-1, SRI1(SCCFG_IDX1), SRI1(SCBP_IDX1),  -1,          -1,          -1,          -1,          -1,          -1,          -1,       // 16
+-1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        // 17
 
--1,   -1,   27,   -1,   -1,   -1,   -1,   -1,   28,   29, // 18
-30,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1, // 19
+-1,          -1,SRI2(HTCFG0_IDX2),     -1,          -1,          -1,          -1,          -1,SRI2(MEA_IDX2),SRI2(ASID_IDX2),   // 18
+SRI2(MEI_IDX2), -1,       -1,          -1,          -1,          -1,          -1,          -1,          -1,          -1,        // 19
 };
 
 const int NUM_GDB_REGS = sizeof(winIdeaRegIdx2qemuSysRegIdx) / sizeof(IdxType);
@@ -97,13 +104,15 @@ int rh850_cpu_gdb_read_register(CPUState *cs, uint8_t *mem_buf, int n)
     CPURH850State *env = &cpu->env;
 
     if (n < 32) {
-        return gdb_get_regl(mem_buf, env->progRegs[n]);  //gpr is now supposed to be progRegs
+        return gdb_get_regl(mem_buf, env->gpRegs[n]);  //gpr is now supposed to be progRegs
     } else if (n == 64) {
         return gdb_get_regl(mem_buf, env->pc);
     } else if (n < NUM_GDB_REGS) {
     	int sysRegIdx = winIdeaRegIdx2qemuSysRegIdx[n];
     	if (sysRegIdx >= 0) {
-            return gdb_get_regl(mem_buf, env->sysBasicRegs[sysRegIdx]); // eipc, eipsw, fepc, fepsw, psw, ...
+            int selID = sysRegIdx >> BANK_SHIFT;
+            int regID = sysRegIdx & ~BANK_MASK;
+            return gdb_get_regl(mem_buf, env->systemRegs[selID][regID]); // eipc, eipsw, fepc, fepsw, psw, ...
     	}
     }
 
@@ -119,13 +128,15 @@ int rh850_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     // will fix this if batch write will have to be supported or interfacing
     // to other GDB servers for RH850 will be needed.
     if (n > 0  &&  n < 32) {  // skip R0, because it is always 0
-        env->progRegs[n] = ldtul_p(mem_buf);
+        env->gpRegs[n] = ldtul_p(mem_buf);
     } else if (n == 64) {
         env->pc = ldtul_p(mem_buf);
     } else if (n < NUM_GDB_REGS) {
     	int sysRegIdx = winIdeaRegIdx2qemuSysRegIdx[n];
     	if (sysRegIdx >= 0) {
-    	    env->sysBasicRegs[sysRegIdx] = ldtul_p(mem_buf); // eipc, eipsw, fepc, fepsw, psw, ...
+    	    int selID = sysRegIdx >> BANK_SHIFT;
+    	    int regID = sysRegIdx & ~BANK_MASK;
+    	    env->systemRegs[selID][regID] = ldtul_p(mem_buf); // eipc, eipsw, fepc, fepsw, psw, ...
     	}
     }
 

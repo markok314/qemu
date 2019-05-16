@@ -102,22 +102,25 @@ typedef struct CPURH850State CPURH850State;
 
 #include "register_indices.h"
 
+#define NUM_GP_REGS 32
+#define NUM_SYS_REG_BANKS 7
+#define MAX_SYS_REGS_IN_BANK 32
+#define BANK_ID_BASIC_0 0
+#define BANK_ID_BASIC_1 1
+#define BANK_ID_BASIC_2 2
+
 struct CPURH850State {
 
 
-    //target_ulong gpr[32];   /*rh850 program registers*/
-    //uint64_t fpr[32]; /* assume both F and D extensions */
-    //target_ulong pc;
-
-
-    target_ulong progRegs[32];
-    target_ulong sysBasicRegs[31];
-    target_ulong sysInterruptRegs[5];
-    uint64_t sysFpuRegs[6];  //using rh850 basic system registers(sr6-sr11), 32-bit or 64-bit precision
-    target_ulong sysMpuRegs[56];
-    target_ulong sysCacheRegs[7];
-    target_ulong sysDatabuffRegs[1];
+    target_ulong gpRegs[NUM_GP_REGS];
     target_ulong pc;
+    target_ulong sysDatabuffRegs[1];
+    target_ulong systemRegs[NUM_SYS_REG_BANKS][MAX_SYS_REGS_IN_BANK];
+    //target_ulong sysBasicRegs[31];
+    //target_ulong sysInterruptRegs[5];
+    //uint64_t sysFpuRegs[6];  //using rh850 basic system registers(sr6-sr11), 32-bit or 64-bit precision
+    //target_ulong sysMpuRegs[56];
+    //target_ulong sysCacheRegs[7];
 
     // flags contained in PSW register
     uint32_t Z_flag;
@@ -260,12 +263,8 @@ static inline bool rh850_feature(CPURH850State *env, int feature)
 #include "cpu_user.h"
 #include "cpu_bits.h"
 
-extern const char * const rh850_prog_regnames[];
-extern const char * const rh850_sys_basic_regnames[];
-extern const char * const rh850_sys_intr_regnames[];
-extern const char * const rh850_sys_fpr_regnames[];
-extern const char * const rh850_sys_mpu_regnames[];
-extern const char * const rh850_sys_cacheop_regnames[];
+extern const char * const rh850_gp_regnames[];
+extern const char * const rh850_sys_regnames[][MAX_SYS_REGS_IN_BANK];
 extern const char * const rh850_sys_databuff_regnames[];
 
 extern const char * const rh850_excp_names[];

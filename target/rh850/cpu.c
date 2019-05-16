@@ -39,170 +39,60 @@ static const char rh850_exts[26] = "IMAFDQECLBJTPVNSUHKORWXYZG";
  * r31 - link pointer
  */
 
-const char * const rh850_prog_regnames[] = {
+const char * const rh850_gp_regnames[] = {
   "r0-zero", "r1", "r2", "r3-sp", "r4", "r5", "r6", "r7",
   "r8", "r9", "r10 ", "r11", "r12", "r13", "r14", "r15",
   "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r2 ",
   "r24", "r25", "r26", "r27", "r28", "r29", "r30-ep", "r31-lp"
 };
 
-/* Basic system registers (rh850_sys__basic_regnames):
- * sr0, 0  - eipc
- * sr1, 0  - eipsw
- * sr2, 0  - fepc
- * sr3, 0  - fepsw
- * sr5, 0  - psw
- * sr6, 0  - fpsr
- * sr7, 0  - fpepc
- * sr8, 0  - fpst
- * sr9, 0  - fpcc
- * sr10, 0 - fpcfg
- * sr11, 0 - fpec
- * sr13, 0 - eiic
- * sr14, 0 - feic
- * sr16, 0 - ctpc
- * sr17, 0 - ctpsw
- * sr20, 0 - ctbp
- * sr28, 0 - eiwr
- * sr29, 0 - fewr
- * sr31, 0 - bsel (backward compatibility with v850e2)
- * sr0, 1  - mcfg0
- * sr2, 1  - rbase
- * sr3, 1  - ebase
- * sr4, 1  - intbp
- * sr5, 1  - mctl
- * sr6, 1  - pid
- * sr11, 1 - sccfg
- * sr12, 1 - scbp
- * sr0, 2  - htcfg0
- * sr6, 2  - mea
- * sr7, 2  - asid
- * sr8, 2  - mei
- */
+// Basic system registers
+const char * const rh850_sys_regnames[][MAX_SYS_REGS_IN_BANK] = {
 
-const char * const rh850_sys_basic_regnames[] = {
-  "eipc", "eipsw", "fepc", "fepsw", "psw",  "fpsr", "fpepc",  "fpst",
-  "fpcc", "fpcfg", "fpec", "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
-  "eiwr", "fewr",  "bsel", "mcfg0", "rbase","ebase","intbp",  "mctl",
-  "pid",  "sccfg", "scbp", "htcfg0","mea",  "asid", "mei",    ""
+{ // SELECTION ID 0
+  "eipc",  "eipsw", "fepc",   "fepsw", "",    "psw",    "fpsr",   "fpepc", "fpst",  "fpcc",
+  "fpcfg", "fpec",  "",       "eiic",  "feic", "",      "ctpc",   "ctpsw", "",      "",
+  "ctbp",  "",      "",       "",      "",     "",      "",       "",      "eiwr",  "fewr"
+  "",      "bsel"},
+{ // SELECTION ID 1
+  "mcfg0", "",      "rbase",  "ebase", "intbp", "mctl", "pid",    "fpipr", "",      "",
+  "",      "sccfg", "scbp",
+},
+{ // SELECTION ID 2
+  "htcfg0","",      "",       "",      "",      "",     "mea",    "asid",  "mei",   "",
+  "ispr",  "pmr",   "icsr",   "intcfg"
+},
+{ // SELECTION ID 3
+    ""    ,"",      "",       "",      "",      "",     "",       "",      "",      ""
+},
+{ // SELECTION ID 4
+  "",      "",      "",       "",      "",      "",      "",       "",      "",      ""
+  "",      "",      "",       "",      "",      "",      "ictagl", "ictagh","icdatl","icdath",
+  "",      "",      "",       "",      "icctrl","",      "iccfg",  "",      "icerr", ""
+},
+{ // SELECTION ID 5
+  "mpm",   "mprc",  "",       "",      "mpbrgn","mptrgn","",       "",      "mca",   "mcs"
+  "mcc",   "mcr"
+},
+{ // SELECTION ID 6
+  "mpla0", "mpua0", "mpat0",  "",      "mpla1", "mpua1", "mpat1",  "",      "mpla2", "mpua2",
+  "mpat2", "",      "mpla3",  "mpua3", "mpat3", "",      "mpla4",  "mpua4", "mpat4", "",
+  "mpla5", "mpua5", "mpat5",  "",      "mpla6",  "mpua6", "mpat6", "",      "mpla7", "mpua7",
+  "mpat7", ""
+},
+{ // SELECTION ID 7
+    /* MPU function system registers */
+  "mpla8", "mpua8", "mpat8",  "",      "mpla9",  "mpua9", "mpat9", "",      "mpla10","mpua10",
+  "mpat10","",      "mpla11", "mpua11", "mpat11","",      "mpla12","mpua12","mpat12","",
+  "mpla13","mpua13","mpat13", "",       "mpla14","mpua14","mpat14","",      "mpla15","mpua15",
+  "mpat15",""
+}
 };
 
-/* Interrupt function registers (rh850_sys_intr_regnames):
- * sr7,  1 - fpipr
- * sr10, 2 - ispr
- * sr11, 2 - pmr
- * sr12, 2 - icsr
- * sr13, 2 - intcfg
- */
 
-const char * const rh850_sys_intr_regnames[] = { /*Interrupt function registers*/
-  "fpipr", "ispr", "pmr", "icsr", "intcfg"
-};
-
-/* Floating point function registers (rh850_sys_fpr_regnames):
- * sr6, 0  - fpsr
- * sr7, 0  - fpepc
- * sr8, 0  - fpst
- * sr9, 0  - fpcc
- * sr10, 0 - fpcfg
- * sr11, 0 - fpec
- */
-
-
-const char * const rh850_sys_fpr_regnames[] = { /*Floating point function registers*/
-  "fpsr ", "fpepc ", "fpst ", "fpcc ", "fpcfg ", "fpec "
-};
-
-/* MPU function system registers (rh850_sys_mpu_regnames):
- * sr0, 5  - mpm
- * sr1, 5  - mprc
- * sr4, 5  - mpbrgn
- * sr5, 5  - mptrgn
- * sr8, 5  - mca
- * sr9, 5  - mcs
- * sr10, 5 - mcc
- * sr11, 5 - mcr
- * sr0, 6  - mpla0
- * sr1, 6  - mpua0
- * sr2, 6  - mpat0
- * sr4, 6  - mpla1
- * sr5, 6  - mpua1
- * sr6, 6  - mpat1
- * sr8, 6  - mpla2
- * sr9, 6  - mpua2
- * sr10, 6 - mpat2
- * sr12, 6 - mpla3
- * sr13, 6 - mpua3
- * sr14, 6 - mpat3
- * sr16, 6 - mpla4
- * sr17, 6 - mpua4
- * sr18, 6 - mpat4
- * sr20, 6 - mpla5
- * sr21, 6 - mpua5
- * sr22, 6 - mpat5
- * sr24, 6 - mpla6
- * sr25, 6 - mpua6
- * sr26, 6 - mpat6
- * sr28, 6 - mpla7
- * sr29, 6 - mpua7
- * sr30, 6 - mpat7
- * sr0, 7  - mpla8
- * sr1, 7  - mpua8
- * sr2, 7  - mpat8
- * sr4, 7  - mpla9
- * sr5, 7  - mpua9
- * sr6, 7  - mpat9
- * sr8, 7  - mpla10
- * sr9, 7  - mpua10
- * sr10, 7 - mpat10
- * sr12, 7 - mpla11
- * sr13, 7 - mpua11
- * sr14, 7 - mpat11
- * sr16, 7 - mpla12
- * sr17, 7 - mpua12
- * sr18, 7 - mpat12
- * sr20, 7 - mpla13
- * sr21, 7 - mpua13
- * sr22, 7 - mpat13
- * sr24, 7 - mpla14
- * sr25, 7 - mpua14
- * sr26, 7 - mpat14
- * sr28, 7 - mpla15
- * sr29, 7 - mpua15
- * sr30, 7 - mpat15
- */
-
-const char * const rh850_sys_mpu_regnames[] = { /* MPU function system registers */
-		"mpm", "mprc", "mpbrgn", "mptrgn", "mca", "mcs",
-		"mcc", "mcr", "mpla0", "mpua0", "mpat0", "mpla1",
-		"mpua1", "mpat1", "mpla2", "mpua2", "mpat2", "mpla3",
-		"mpua3", "mpat3", "mpla4", "mpua4", "mpat4", "mpla5",
-		"mpua5", "mpat5", "mpla6", "mpua6", "mpat6", "mpla7",
-		"mpua7", "mpat7", "mpla8", "mpua8", "mpat8", "mpla9",
-		"mpua9", "mpat9", "mpla10", "mpua10", "mpat10", "mpla11",
-		"mpua11", "mpat11", "mpla12", "mpua12", "mpat12", "mpla13",
-		"mpua13", "mpat13", "mpla14", "mpua14", "mpat14", "mpla15",
-		"mpua15", "mpat15"
-};
-
-/* Cache operation function registers (rh850_sys_cacheop_regnames):
- * sr16, 4 - ictagl
- * sr17, 4 - ictagh
- * sr18, 4 - icdatl
- * sr19, 4 - icdath
- * sr24, 4 - icctrl
- * sr26, 4 - iccfg
- * sr28, 4 - icerr
- */
-
-const char * const rh850_sys_cacheop_regnames[] = { /* Cache operation function registers */
-  "ictagl", "ictagh", "icdatl", "icdath", "icctrl", "iccfg", "icerr"
-};
 
 /*Data Buffer Operation Registers (rh850_sys_databuff_regnames):
- * sr24, 13 - cbdcr
- */
-
+ * sr24, 13 - cbdcr */
 const char * const rh850_sys_databuff_regnames[] = { /* Data buffer operation registers */
   "cbdcr"
 };
@@ -269,7 +159,7 @@ static void set_feature(CPURH850State *env, int feature)
 
 static void set_resetvec(CPURH850State *env, int resetvec)
 {
-    env->sysBasicRegs[RBASE_IDX] = resetvec;
+    // env->systemRegs[RBASE_IDX] = resetvec; // RBASE is read-only
 }
 
 static void rh850_any_cpu_init(Object *obj)
@@ -374,34 +264,11 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     int i;
 
     cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "pc", env->pc);
-    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->sysBasicRegs[PSW_IDX]);
+    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->systemRegs[BANK_ID_BASIC_0][PSW_IDX]);
 
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "eiic    ", env->eiic);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "feic    ", env->feic);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mcfg0   ", env->mcfg0);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "rbase   ", env->rbase);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "ebase   ", env->ebase);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mctl    ", env->mctl);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "pid     ", env->pid);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "htcfg0  ", env->htcfg0);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mea     ", env->mea);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mei     ", env->mei);
-#ifndef CONFIG_USER_ONLY
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mhartid ", env->mhartid);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mstatus ", env->mstatus);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mip     ",
-    //    (target_ulong)atomic_read(&env->mip));
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mie     ", env->mie);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mideleg ", env->mideleg);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "medeleg ", env->medeleg);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mtvec   ", env->mtvec);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mepc    ", env->mepc);
-    //cpu_fprintf(f, " %s " TARGET_FMT_lx "\n", "mcause  ", env->mcause);
-#endif
-
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < NUM_GP_REGS; i++) {
         cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
-            rh850_prog_regnames[i], env->progRegs[i]);
+            rh850_gp_regnames[i], env->gpRegs[i]);
         if ((i & 3) == 3) {
             cpu_fprintf(f, "\n");
         }
@@ -409,61 +276,20 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
 
     cpu_fprintf(f, "\n");
 
-    for (i = 0; i < 31; i++) {
-    	if (i!=PSW_IDX){
-        cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
-            rh850_sys_basic_regnames[i], env->sysBasicRegs[i]);
-    	}
-        if ((i & 3) == 3) {
-            cpu_fprintf(f, "\n");
+    for (int bankIdx = 0; bankIdx < NUM_SYS_REG_BANKS; bankIdx++) {
+        for (int regIdx = 0; regIdx < MAX_SYS_REGS_IN_BANK; regIdx++) {
+            if (rh850_sys_regnames[bankIdx][regIdx]  &&  bankIdx != BANK_ID_BASIC_0  &&  regIdx != PSW_IDX){
+                cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
+                        rh850_sys_regnames[bankIdx][regIdx],
+                        env->systemRegs[bankIdx][regIdx]);
+            }
+            if ((i % 4) == 0) {
+                cpu_fprintf(f, "\n");
+            }
         }
     }
 
     cpu_fprintf(f, "\n");
-
-    for (i = 0; i < 5; i++) {
-        cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
-            rh850_sys_intr_regnames[i], env->sysInterruptRegs[i]);
-        if ((i & 3) == 3) {
-            cpu_fprintf(f, "\n");
-        }
-
-    }
-
-    cpu_fprintf(f, "\n");
-
-
-    for (i = 0; i < 6; i++) {
-        cpu_fprintf(f, " %s %016" PRIx64,
-        		rh850_sys_fpr_regnames[i], env->sysFpuRegs[i]);
-        if ((i & 3) == 3) {
-            cpu_fprintf(f, "\n");
-        }
-    }
-
-    cpu_fprintf(f, "\n");
-
-    for (i = 0; i < 56; i++) {
-		cpu_fprintf(f, " %s " TARGET_FMT_lx,
-			rh850_sys_mpu_regnames[i], env->sysMpuRegs[i]);
-		if ((i & 3) == 3) {
-			cpu_fprintf(f, "\n");
-		}
-
-	}
-
-	cpu_fprintf(f, "\n");
-
-	for (i = 0; i < 7; i++) {
-		cpu_fprintf(f, " %s " TARGET_FMT_lx,
-			rh850_sys_cacheop_regnames[i], env->sysCacheRegs[i]);
-		if ((i & 3) == 3) {
-			cpu_fprintf(f, "\n");
-		}
-
-	}
-
-	cpu_fprintf(f, "\n");
 
 	cpu_fprintf(f, " %s " TARGET_FMT_lx,
 				rh850_sys_databuff_regnames[0], env->sysDatabuffRegs[0]);
@@ -683,30 +509,30 @@ static void rh850_cpu_reset(CPUState *cs)
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);
     env->pc = 0;
-    env->sysBasicRegs[EIPSW_IDX] = 0x20;
-    env->sysBasicRegs[FEPSW_IDX] = 0x20;
-    env->sysBasicRegs[EIIC_IDX] = 0x0;
-    env->sysBasicRegs[FEIC_IDX] = 0x0;
-    env->sysBasicRegs[PSW_IDX] = 0x20; // reset value of PSW
-    env->sysBasicRegs[CTPSW_IDX] = 0;
-    env->sysBasicRegs[CTBP_IDX] = 0;   // only bit 0 must be set to 0
-    env->sysBasicRegs[ASID_IDX] = 0;   // only bits 31-10 must be set to 0
-    env->sysBasicRegs[HTCFG0_IDX] = 0x00018000;   // const value
-    env->sysBasicRegs[MEI_IDX] = 0;    // only some bits must be 0
-    env->sysBasicRegs[RBASE_IDX] = 0;
-    env->sysBasicRegs[EBASE_IDX] = 0;  // only bits 8-1 must be 0
-    env->sysBasicRegs[INTBP_IDX] = 0;  // only bits 8-0 must be 0
-    env->sysBasicRegs[PID_IDX] = 0x05000120;  // const
-    env->sysBasicRegs[SCCFG_IDX] = 0;  // bits 31-8 must be 0
-    env->sysBasicRegs[SCBP_IDX] = 0;  // bits 1-0 must be 0
-    env->sysBasicRegs[MCFG0_IDX] = 0x4;  // bits 31-8 must be 0
-    env->sysBasicRegs[MCTL_IDX] = 0x80000000;  // bits 31-8 must be 0
+    env->systemRegs[BANK_ID_BASIC_0][EIPSW_IDX] = 0x20;
+    env->systemRegs[BANK_ID_BASIC_0][FEPSW_IDX] = 0x20;
+    env->systemRegs[BANK_ID_BASIC_0][EIIC_IDX] = 0x0;
+    env->systemRegs[BANK_ID_BASIC_0][FEIC_IDX] = 0x0;
+    env->systemRegs[BANK_ID_BASIC_0][PSW_IDX] = 0x20; // reset value of PSW
+    env->systemRegs[BANK_ID_BASIC_0][CTPSW_IDX] = 0;
+    env->systemRegs[BANK_ID_BASIC_0][CTBP_IDX] = 0;   // only bit 0 must be set to 0
+    env->systemRegs[BANK_ID_BASIC_2][ASID_IDX2] = 0;   // only bits 31-10 must be set to 0
+    env->systemRegs[BANK_ID_BASIC_2][HTCFG0_IDX2] = 0x00018000;   // const value
+    env->systemRegs[BANK_ID_BASIC_2][MEI_IDX2] = 0;    // only some bits must be 0
+    env->systemRegs[BANK_ID_BASIC_1][RBASE_IDX1] = 0;
+    env->systemRegs[BANK_ID_BASIC_1][EBASE_IDX1] = 0;  // only bits 8-1 must be 0
+    env->systemRegs[BANK_ID_BASIC_1][INTBP_IDX1] = 0;  // only bits 8-0 must be 0
+    env->systemRegs[BANK_ID_BASIC_1][PID_IDX1] = 0x05000120;  // const
+    env->systemRegs[BANK_ID_BASIC_1][SCCFG_IDX1] = 0;  // bits 31-8 must be 0
+    env->systemRegs[BANK_ID_BASIC_1][SCBP_IDX1] = 0;  // bits 1-0 must be 0
+    env->systemRegs[BANK_ID_BASIC_1][MCFG0_IDX1] = 0x4;  // bits 31-8 must be 0
+    env->systemRegs[BANK_ID_BASIC_1][MCTL_IDX1] = 0x80000000;  // bits 31-8 must be 0
 
-    env->sysInterruptRegs[FPIPR_IDX] = 0;
-    env->sysInterruptRegs[ISPR_IDX] = 0;
-    env->sysInterruptRegs[PMR_IDX] = 0;
-    env->sysInterruptRegs[ICSR_IDX] = 0;
-    env->sysInterruptRegs[INTCFG_IDX] = 0;
+    env->systemRegs[BANK_ID_BASIC_2][FPIPR_IDX1] = 0;
+    env->systemRegs[BANK_ID_BASIC_2][ISPR_IDX2] = 0;
+    env->systemRegs[BANK_ID_BASIC_2][PMR_IDX2] = 0;
+    env->systemRegs[BANK_ID_BASIC_2][ICSR_IDX2] = 0;
+    env->systemRegs[BANK_ID_BASIC_2][INTCFG_IDX2] = 0;
 }
 
 static void rh850_cpu_disas_set_info(CPUState *s, disassemble_info *info)

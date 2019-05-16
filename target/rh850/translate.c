@@ -32,9 +32,13 @@
 #include "instmap.h"
 
 /* global register indices */
-static TCGv cpu_gpr[32], cpu_pc, cpu_sysRegs[31], cpu_sysIntrRegs[5], cpu_sysMpuRegs[56],
-			cpu_sysCacheRegs[7], cpu_sysDatabuffRegs[1], cpu_LLbit, cpu_LLAddress;
-static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
+static TCGv cpu_gpr[32];
+static TCGv cpu_pc;
+static TCGv cpu_sysRegs[7][31];
+//          cpu_sysIntrRegs[5], cpu_sysMpuRegs[56],
+// 			cpu_sysCacheRegs[7],
+// static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
+static TCGv cpu_sysDatabuffRegs[1], cpu_LLbit, cpu_LLAddress;
 static TCGv load_res;
 static TCGv load_val;
 
@@ -43,40 +47,40 @@ TCGv_i32 cpu_ZF, cpu_SF, cpu_OVF, cpu_CYF, cpu_SATF, cpu_ID, cpu_EP, cpu_NP,
 		cpu_EBV, cpu_CU0, cpu_CU1, cpu_CU2, cpu_UM;
 
 
-// system registers indices
-enum{
-	EIPC_register 	= 0,
-	EIPSW_register 	= 1,
-	FEPC_register 	= 2,
-	FEPSW_register 	= 3,
-	PSW_register 	= 4,
-	FPSR_register	= 5,
-	FPEPC_register	= 6,
-	FPST_register 	= 7,
-	FPCC_register	= 8,
-	FPCFG_register	= 9,
-	FPEC_register	= 10,
-	EIIC_register	= 11,
-	FEIC_register 	= 12,
-	CTPC_register	= 13,
-	CTPSW_register	= 14,
-	CTBP_register	= 15,
-	EIWR_register	= 16,
-	FEWR_register	= 17,
-	BSEL_register	= 18,
-	MCFG0_register	= 19,
-	RBASE_register	= 20,
-	EBASE_register	= 21,
-	INTBP_register	= 22,
-	MCTL_register	= 23,
-	PID_register	= 24,
-	SCCFG_register	= 25,
-	SCBP_register	= 26,
-	HTCFG0_register	= 27,
-	MEA_register	= 28,
-	ASID_register	= 29,
-	MEI_register	= 30,
-};
+//// system registers indices
+//enum{
+//	EIPC_IDX 	= 0,
+//	EIPSW_register 	= 1,
+//	FEPC_register 	= 2,
+//	FEPSW_register 	= 3,
+//	PSW_register 	= 4,
+//	FPSR_register	= 5,
+//	FPEPC_register	= 6,
+//	FPST_register 	= 7,
+//	FPCC_register	= 8,
+//	FPCFG_register	= 9,
+//	FPEC_register	= 10,
+//	EIIC_register	= 11,
+//	FEIC_register 	= 12,
+//	CTPC_register	= 13,
+//	CTPSW_register	= 14,
+//	CTBP_register	= 15,
+//	EIWR_register	= 16,
+//	FEWR_register	= 17,
+//	BSEL_register	= 18,
+//	MCFG0_register	= 19,
+//	RBASE_register	= 20,
+//	EBASE_register	= 21,
+//	INTBP_register	= 22,
+//	MCTL_register	= 23,
+//	PID_register	= 24,
+//	SCCFG_register	= 25,
+//	SCBP_register	= 26,
+//	HTCFG0_register	= 27,
+//	MEA_register	= 28,
+//	ASID_register	= 29,
+//	MEI_register	= 30,
+//};
 
 #include "exec/gen-icount.h"
 
@@ -184,126 +188,6 @@ static void gen_exception_illegal(DisasContext *ctx)
 }
 */
 
-static int decode_register(int regID,int selID){
-	/*
-	 *
-	This functions take regID and sellID and output single number for specific register,
-	beacuse here we use only 1D table to store all system registers
-	*
-	*/
-	int value = -1;
-
-	switch(selID){
-		case 0:
-				switch(regID){
-				case 0:
-					value = 0;
-					break;
-				case 1:
-					value = 1;
-					break;
-				case 2:
-					value = 2;
-					break;
-				case 3:
-					value = 3;
-					break;
-				case 5:
-					value = 4;
-					break;
-				case 6:
-					value = 5;
-					break;
-				case 7:
-					value = 6;
-					break;
-				case 8:
-					value = 7;
-					break;
-				case 9:
-					value = 8;
-					break;
-				case 10:
-					value = 9;
-					break;
-				case 11:
-					value = 10;
-					break;
-				case 13:
-					value = 11;
-					break;
-				case 14:
-					value = 12;
-					break;
-				case 16:
-					value = 13;
-					break;
-				case 17:
-					value = 14;
-					break;
-				case 20:
-					value = 15;
-					break;
-				case 28:
-					value = 16;
-					break;
-				case 29:
-					value = 17;
-					break;
-				case 31:
-					value = 18;
-					break;
-				}
-			break;
-		case 1:
-			switch(regID){
-				case 0:
-					value = 19;
-					break;
-				case 2:
-					value = 20;
-					break;
-				case 3:
-					value = 21;
-					break;
-				case 4:
-					value = 22;
-					break;
-				case 5:
-					value = 23;
-					break;
-				case 6:
-					value = 24;
-					break;
-				case 11:
-					value = 25;
-					break;
-				case 12:
-					value = 26;
-					break;
-			}
-			break;
-		case 2:
-			switch(regID){
-				case 0:
-					value = 27;
-					break;
-				case 6:
-					value = 28;
-					break;
-				case 7:
-					value = 29;
-					break;
-				case 8:
-					value = 30;
-					break;
-			}
-			break;
-	}
-
-	return value;
-}
-
 
 static void gen_goto_tb(DisasContext *ctx, int n, target_ulong dest)
 {
@@ -333,11 +217,10 @@ static inline void gen_get_gpr(TCGv t, int reg_num)
 
 /* Selection based on group ID needs to be added, once
  * the system register groups are implemented
- */
 static inline void gen_get_sysreg(TCGv t, int reg_num)
 {
-     tcg_gen_mov_tl(t, cpu_sysRegs[reg_num]);
 }
+*/
 
 /* Wrapper for setting reg values - need to check of reg is zero since
  * cpu_gpr[0] is not actually allocated. this is more for safety purposes,
@@ -352,29 +235,20 @@ static inline void gen_set_gpr(int reg_num_dst, TCGv t)
 }
 
 
-/*
- * TODO: Selection based on group ID needs to be added,
- * once the system register groups are implemented
- */
-static inline void gen_set_sysreg(int reg_num_dst, TCGv t)
-{
-	tcg_gen_mov_tl(cpu_sysRegs[reg_num_dst], t);
-}
-
 static inline void gen_set_psw(TCGv t)
 {
-	tcg_gen_mov_tl(cpu_sysRegs[PSW_register], t);
+	tcg_gen_mov_tl(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], t);
 }
 
 static inline void gen_get_psw(TCGv t)
 {
-	tcg_gen_mov_tl(t, cpu_sysRegs[PSW_register]);
+	tcg_gen_mov_tl(t, cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
 }
 
 static inline void gen_restore_flags(DisasContext *ctx)
 {
 	TCGv temp = tcg_temp_new_i32();
-	tcg_gen_mov_i32(temp, cpu_sysRegs[PSW_register]);
+	tcg_gen_mov_i32(temp, cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
 	tcg_gen_andi_i32(cpu_ZF, temp, 0x1);
 	tcg_gen_shri_i32(temp, temp, 0x1);
 	tcg_gen_andi_i32(cpu_SF, temp, 0x1);
@@ -3116,13 +2990,13 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
 
 	// update psw register
     TCGv temp = tcg_temp_new_i32();
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_ZF);
     tcg_gen_shli_i32(temp, cpu_SF, 0x1);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
     tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
     tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
     tcg_temp_free(temp);
 
 	tcg_gen_brcond_tl(TCG_COND_NE, r1_local, zero_local, l);
@@ -3347,9 +3221,8 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	TCGLabel *excFromEbase;
 	TCGLabel * add_scbp;
 	int regID;
-	int selID;
+	int selID = 0;
 	int imm;
-	int valueldsr;
 
 	TCGv t0 = tcg_temp_local_new();
 	TCGv t1 = tcg_temp_local_new();
@@ -3358,24 +3231,24 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_CALLT_imm6:
 
 		//setting CTPC to PC+2
-		tcg_gen_addi_i32(cpu_sysRegs[CTPC_register], cpu_pc, 0x2);
+		tcg_gen_addi_i32(cpu_sysRegs[BANK_ID_BASIC_0][CTPC_IDX], cpu_pc, 0x2);
 		//extracting PSW bits 0:4
-		tcg_gen_andi_i32(temp, cpu_sysRegs[PSW_register], 0x1f);
+		tcg_gen_andi_i32(temp, cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0x1f);
 
 		//clearing CTPSW bits 0:4
-		tcg_gen_andi_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], 0xffffffe0);
+		tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][CTPSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][CTPSW_IDX], 0xffffffe0);
 		//setting CPTSW bits 0:4
-		tcg_gen_or_i32(cpu_sysRegs[CTPSW_register], cpu_sysRegs[CTPSW_register], temp);
+		tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][CTPSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][CTPSW_IDX], temp);
 
 		imm = extract32(ctx->opcode, 0, 6);
 		tcg_gen_movi_i32(adr, imm);
 		tcg_gen_shli_i32(adr, adr, 0x1);
 		tcg_gen_ext8s_i32(adr, adr);
-		tcg_gen_add_i32(adr, cpu_sysRegs[CTBP_register], adr);
+		tcg_gen_add_i32(adr, cpu_sysRegs[BANK_ID_BASIC_0][CTBP_IDX], adr);
 
 		tcg_gen_qemu_ld16u(temp, adr, 0);
 
-		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[CTBP_register]);
+		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[BANK_ID_BASIC_0][CTBP_IDX]);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
@@ -3420,13 +3293,13 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 	case OPC_RH850_CTRET:
 
-		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[CTPC_register]);
-		tcg_gen_andi_i32(temp, cpu_sysRegs[CTPSW_register], 0x1f);
+		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][CTPC_IDX]);
+		tcg_gen_andi_i32(temp, cpu_sysRegs[BANK_ID_BASIC_0][CTPSW_IDX], 0x1f);
 
 		//clearing lower 5 bits of PSW
-		tcg_gen_andi_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], 0xffffffe0);
+		tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xffffffe0);
 		//setting lower 5 bits of PSW
-		tcg_gen_or_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[PSW_register], temp);
+		tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], temp);
 
 		tcg_temp_free_i32(temp);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
@@ -3532,13 +3405,13 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_movi_i32(cpu_ID, 0x0);
 		break;
 	case OPC_RH850_EIRET:
-		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[EIPC_register]);
-		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[EIPSW_register]);
+		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][EIPC_IDX]);
+		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][EIPSW_IDX]);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 	case OPC_RH850_FERET:
-		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[FEPC_register]);
-		tcg_gen_mov_i32(cpu_sysRegs[PSW_register], cpu_sysRegs[FEPSW_register]);
+		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][FEPC_IDX]);
+		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][FEPSW_IDX]);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
@@ -3547,12 +3420,12 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		cont = gen_new_label();
 		excFromEbase = gen_new_label();
 		int vector = extract32(ctx->opcode, 11, 4);
-		tcg_gen_addi_i32(cpu_sysRegs[FEPC_register], cpu_pc, 0x2);
-		tcg_gen_mov_i32(cpu_sysRegs[FEPSW_register], cpu_sysRegs[PSW_register]);
+		tcg_gen_addi_i32(cpu_sysRegs[BANK_ID_BASIC_0][FEPC_IDX], cpu_pc, 0x2);
+		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][FEPSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
 
 		//writing the exception cause code
 		vector += 0x30;
-		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], vector);
+		tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][FEIC_IDX], vector);
 		tcg_gen_movi_i32(cpu_UM, 0x0);
 		tcg_gen_movi_i32(cpu_NP, 0x1);
 		tcg_gen_movi_i32(cpu_EP, 0x1);
@@ -3560,11 +3433,11 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		//writing the except. handler address based on PSW.EBV
 		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[RBASE_register], 0x30);	//RBASE + 0x30
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_1][RBASE_IDX1], 0x30);	//RBASE + 0x30
 		tcg_gen_br(cont);
 
 		gen_set_label(excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[EBASE_register], 0x30); //EBASE + 0x30
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_1][EBASE_IDX1], 0x30); //EBASE + 0x30
 
 		gen_set_label(cont);
 		//branch to exception handler
@@ -3574,30 +3447,16 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_HALT:
 		break;
 
-	case OPC_RH850_LDSR_reg2_regID_selID:
-		regID=rs2;
-		selID = extract32(ctx->opcode, 27, 5);
-
-		valueldsr = decode_register(regID,selID);
-
-		gen_get_gpr(r2, rs1);
-		gen_set_sysreg(valueldsr, r2);
-
-		if(regID==PSW_register){
-			gen_restore_flags(ctx);
-		}
-		break;
-
-	case OPC_RH850_LDSR_reg2_regID:
-		regID=rs2;
-		selID = 0 ;
-
-		valueldsr = decode_register(regID,selID);
+    case OPC_RH850_LDSR_reg2_regID_selID:
+        selID = extract32(ctx->opcode, 27, 5);
+        // no break, continue with LDSR
+    case OPC_RH850_LDSR_reg2_regID:  // selID is set to 0 above
+        regID = rs2;
 
 		gen_get_gpr(r2, rs1);
-		gen_set_sysreg(valueldsr, r2);
+	    tcg_gen_mov_tl(cpu_sysRegs[selID][regID], r2);
 
-		if(valueldsr==PSW_register){
+		if(selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX){
 			gen_restore_flags(ctx);
 		}
 		break;
@@ -3781,21 +3640,21 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		cont = gen_new_label();
 		excFromEbase = gen_new_label();
 
-		tcg_gen_mov_i32(cpu_sysRegs[FEPC_register], cpu_pc);
-		tcg_gen_mov_i32(cpu_sysRegs[FEPSW_register], cpu_sysRegs[PSW_register]);
+		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][FEPC_IDX], cpu_pc);
+		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][FEPSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
 		//writing exception cause code
-		tcg_gen_movi_i32(cpu_sysRegs[FEIC_register], 0x60);
+		tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][FEIC_IDX], 0x60);
 		tcg_gen_movi_i32(cpu_UM, 0x0);
 		tcg_gen_movi_i32(cpu_NP, 0x1);
 		tcg_gen_movi_i32(cpu_EP, 0x1);
 		tcg_gen_movi_i32(cpu_ID, 0x1);
 
 		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[RBASE_register], 0x60);	//RBASE + 0x60
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_1][RBASE_IDX1], 0x60);	//RBASE + 0x60
 		tcg_gen_br(cont);
 
 		gen_set_label(excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[EBASE_register], 0x60);	//EBASE + 0x60
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_1][EBASE_IDX1], 0x60);	//EBASE + 0x60
 
 		gen_set_label(cont);
 		//branch to exception handler
@@ -3812,9 +3671,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_STSR_regID_reg2_selID:
 		regID=rs1;
 		selID = extract32(ctx->opcode, 27, 5);
-		int value =  decode_register(regID,selID);
-		gen_get_sysreg(r2, value);
-		gen_set_gpr(rs2, r2);
+		gen_set_gpr(rs2, cpu_sysRegs[selID][regID]);
 		break;
 
 	case OPC_RH850_SWITCH_reg1:
@@ -3846,9 +3703,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		uint32_t offset;
 		int vector5 = rs1;
-		tcg_gen_addi_i32(cpu_sysRegs[EIPC_register], cpu_pc, 0x4);
-		tcg_gen_mov_i32(cpu_sysRegs[EIPSW_register], cpu_sysRegs[PSW_register]);
-		tcg_gen_movi_i32(cpu_sysRegs[EIIC_register], (0x40 + vector5));
+		tcg_gen_addi_i32(cpu_sysRegs[BANK_ID_BASIC_0][EIPC_IDX], cpu_pc, 0x4);
+		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][EIPSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
+		tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][EIIC_IDX], (0x40 + vector5));
 		tcg_gen_movi_i32(cpu_UM, 0x0);
 		tcg_gen_movi_i32(cpu_EP, 0x1);
 		tcg_gen_movi_i32(cpu_ID, 0x1);
@@ -3860,11 +3717,11 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		}
 
 		tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_EBV, 0x1, excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[RBASE_register], offset);	//RBASE + offset
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_1][RBASE_IDX1], offset);	//RBASE + offset
 		tcg_gen_br(cont);
 
 		gen_set_label(excFromEbase);
-		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[EBASE_register], offset);	//EBASE + offset
+		tcg_gen_addi_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_1][EBASE_IDX1], offset);	//EBASE + offset
 
 		gen_set_label(cont);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
@@ -3877,11 +3734,11 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 			int vector = extract32(ctx->opcode, 0, 5) | ( (extract32(ctx->opcode,27, 3)) << 5);
 
-			tcg_gen_addi_i32(cpu_sysRegs[EIPC_register], cpu_pc, 0x4);
-			tcg_gen_mov_i32(cpu_sysRegs[EIPSW_register], cpu_sysRegs[PSW_register]);
+			tcg_gen_addi_i32(cpu_sysRegs[BANK_ID_BASIC_0][EIPC_IDX], cpu_pc, 0x4);
+			tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][EIPSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
 			int exception_code = vector + 0x8000;
 
-			tcg_gen_movi_i32(cpu_sysRegs[EIIC_register], exception_code);
+			tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][EIIC_IDX], exception_code);
 			tcg_gen_movi_i32(cpu_UM, 0x0);
 			tcg_gen_movi_i32(cpu_EP, 0x1);
 			tcg_gen_movi_i32(cpu_ID, 0x1);
@@ -3890,25 +3747,25 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			tcg_gen_movi_i32(local_vector, vector);
 
 			TCGv local_SCCFG_SIZE = tcg_temp_local_new_i32();
-			tcg_gen_mov_i32(local_SCCFG_SIZE, cpu_sysRegs[SCCFG_register]);
+			tcg_gen_mov_i32(local_SCCFG_SIZE, cpu_sysRegs[BANK_ID_BASIC_1][SCCFG_IDX1]);
 
 			// if vector <= SCCFG
 			// gen_set_gpr(17, local_vector);  // debug!
  			// gen_set_gpr(18, local_SCCFG_SIZE); // debug!
 			tcg_gen_brcond_i32(TCG_COND_LEU, local_vector, local_SCCFG_SIZE, add_scbp);
 			// {
-			tcg_gen_mov_i32(t0, cpu_sysRegs[SCBP_register]);
+			tcg_gen_mov_i32(t0, cpu_sysRegs[BANK_ID_BASIC_1][SCBP_IDX1]);
 			tcg_gen_br(cont);
             // } else {
 			gen_set_label(add_scbp);
 			tcg_gen_shli_tl(local_vector, local_vector, 0x2);
-			tcg_gen_add_i32(t0, local_vector, cpu_sysRegs[SCBP_register]); // t0 = adr
+			tcg_gen_add_i32(t0, local_vector, cpu_sysRegs[BANK_ID_BASIC_1][SCBP_IDX1]); // t0 = adr
             // }
 			gen_set_label(cont);
 
 			//currently loading unsigned word
 			tcg_gen_qemu_ld_tl(t1, t0, MEM_IDX, MO_TEUL);
-			tcg_gen_add_i32(t1,t1,cpu_sysRegs[SCBP_register]);
+			tcg_gen_add_i32(t1,t1,cpu_sysRegs[BANK_ID_BASIC_1][SCBP_IDX1]);
 
 			tcg_gen_mov_i32(cpu_pc, t1);
 
@@ -4737,47 +4594,47 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 static void copyFlagsToPSW(void)
 {
     // Set flags in PSW to 0 so we can write new state
-    tcg_gen_andi_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register], 0xffffffe0);
+    tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xffffffe0);
 
     TCGv temp = tcg_temp_new_i32();
 
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],cpu_ZF);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_ZF);
 
     tcg_gen_shli_i32(temp, cpu_SF, 0x1);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_SATF, 0x4);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
 	tcg_gen_shli_i32(temp, cpu_ID, 0x5);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_EP, 0x6);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_NP, 0x7);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_EBV, 0xF);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_CU0, 0x10);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_CU1, 0x11);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_CU2, 0x12);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 
     tcg_gen_shli_i32(temp, cpu_UM, 0x1E);
-    tcg_gen_or_i32(cpu_sysRegs[PSW_register],cpu_sysRegs[PSW_register],temp);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
 }
 
 
@@ -5084,37 +4941,19 @@ void rh850_translate_init(void)
 
     /* cpu_gpr[0] is a placeholder for the zero register. Do not use it. */
     /* Use the gen_set_gpr and gen_get_gpr helper functions when accessing */
-    /* registers, unless you specifically block reads/writes to reg 0 */
-    cpu_gpr[0] = NULL;
+    /* registers, unless you specifically block writes to reg 0 */
 
-    for (i = 1; i < 32; i++) {
+    for (i = 0; i < NUM_GP_REGS; i++) {
         cpu_gpr[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPURH850State, progRegs[i]), rh850_prog_regnames[i]);
+            offsetof(CPURH850State, gpRegs[i]), rh850_gp_regnames[i]);
     }
 
-    for (i = 0; i < 31; i++) {
-        cpu_sysRegs[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPURH850State, sysBasicRegs[i]), rh850_sys_basic_regnames[i]);
-    }
-
-    for (i = 0; i < 5; i++) {
-    	cpu_sysIntrRegs[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPURH850State, sysInterruptRegs[i]), rh850_sys_intr_regnames[i]);
-    }
-
-    for (i = 0; i < 6; i++) {
-        cpu_fpr[i] = tcg_global_mem_new_i64(cpu_env,
-            offsetof(CPURH850State, sysFpuRegs[i]), rh850_sys_fpr_regnames[i]);
-    }
-
-    for (i = 0; i < 56; i++) {
-        cpu_sysMpuRegs[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPURH850State, sysMpuRegs[i]), rh850_sys_mpu_regnames[i]);
-    }
-
-    for (i = 0; i < 7; i++) {
-        cpu_sysCacheRegs[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPURH850State, sysCacheRegs[i]), rh850_sys_cacheop_regnames[i]);
+    for (int bankIdx = 0; bankIdx < NUM_SYS_REG_BANKS; bankIdx++) {
+        for (int regIdx = 0; regIdx < MAX_SYS_REGS_IN_BANK; regIdx++) {
+            cpu_sysRegs[bankIdx][regIdx] = tcg_global_mem_new(cpu_env,
+                                                              offsetof(CPURH850State, systemRegs[bankIdx][regIdx]),
+                                                              rh850_sys_regnames[bankIdx][regIdx]);
+        }
     }
 
     for (i = 0; i < 1; i++) {
