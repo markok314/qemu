@@ -89,6 +89,15 @@ const char * const rh850_sys_regnames[][MAX_SYS_REGS_IN_BANK] = {
 }
 };
 
+const uint32_t const rh850_sys_reg_read_only_masks[][MAX_SYS_REGS_IN_BANK] = {
+        {}
+};
+
+
+const uint32_t const rh850_sys_reg_read_only_velues[][MAX_SYS_REGS_IN_BANK] = {
+        {}
+};
+
 
 
 /*Data Buffer Operation Registers (rh850_sys_databuff_regnames):
