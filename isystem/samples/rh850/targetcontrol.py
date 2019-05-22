@@ -12,6 +12,18 @@ TRAP_OPCODE = 0x010007e0
 SYSCALL_MASK = 0xc7ffffe0
 SYSCALL_OPCODE = 0x0160d7e0
 
+CALLT_MASK = 0xffc0
+CALLT_OPCODE = 0x0200
+
+FETRAP_MASK = 0x87ff
+FETRAP_OPCODE = 0x0040
+
+RIE_MASK_16bit = 0xffff
+RIE_OPCODE_16bit = 0x0040
+
+RIE_MASK_32bit = 0xffff07f0
+RIE_OPCODE_32bit = 0x000007f0
+
 class TargetController:
 
     def __init__(self, workspaceFileName):
@@ -92,4 +104,9 @@ class TargetController:
 
         print(hex(opCode))
         return (opCode & TRAP_MASK == TRAP_OPCODE or
-                opCode & SYSCALL_MASK == SYSCALL_OPCODE)
+                opCode & SYSCALL_MASK == SYSCALL_OPCODE or
+		opCode & CALLT_MASK == CALLT_OPCODE or
+		opCode & FETRAP_MASK == FETRAP_OPCODE or
+		opCode & RIE_MASK_16bit == RIE_OPCODE_16bit or
+		opCode & RIE_MASK_32bit == RIE_OPCODE_32bit)
+
