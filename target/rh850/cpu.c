@@ -90,7 +90,7 @@ const char * const rh850_sys_regnames[][MAX_SYS_REGS_IN_BANK] = {
 };
 
 // Where bits are read only, mask is set to 0
-const uint32_t const rh850_sys_reg_read_only_masks[][MAX_SYS_REGS_IN_BANK] = {
+const uint32_t rh850_sys_reg_read_only_masks[][MAX_SYS_REGS_IN_BANK] = {
 
 {	//SELECTION ID 0
 	0xFFFFFFFF, 0x40078EFF, 0xFFFFFFFF, 0x40078EFF, 0x0,		0x40078EFF, 0xFFEEFFFF, 0xFFFFFFFE, 0x00003F3F, 0x000000FF,
@@ -133,7 +133,7 @@ const uint32_t const rh850_sys_reg_read_only_masks[][MAX_SYS_REGS_IN_BANK] = {
 };
 
 
-const uint32_t const rh850_sys_reg_read_only_velues[][MAX_SYS_REGS_IN_BANK] = {
+const uint32_t rh850_sys_reg_read_only_values[][MAX_SYS_REGS_IN_BANK] = {
 {	//SELECTION ID 0
 	0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0,
 	0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0, 		0x0,
