@@ -35,15 +35,17 @@
 	mov 0x0,r29
 	mov 0x0,r30
 	mov 0x5a,r31
-    LDSR_ID R31, SR_EIPC, 0
-    LDSR_ID R31, SR_FEPC, 0
+    LDSR_ID R31, SR_ASID, 2
     LDSR_ID R31, SR_CTPC, 0
     LDSR_ID R31, SR_CTBP, 0
-    LDSR_ID R31, SR_ASID, 2
+    LDSR_ID R31, SR_EIPC, 0
     LDSR_ID R31, SR_EIWR, 0
+    LDSR_ID R31, SR_EBASE, 1
+    LDSR_ID R31, SR_FEPC, 0
     LDSR_ID R31, SR_FEWR, 0
+    LDSR_ID R31, SR_INTBP, 1
+    LDSR_ID R31, SR_SCCFG, 1
+    LDSR_ID R31, SR_SCBP, 1
     LDSR_ID R31, SR_MEA, 2
     LDSR_ID R31, SR_MEI, 2  # only some bits are undefined
-    LDSR_ID R31, SR_EBASE, 1
-    LDSR_ID R31, SR_INTBP, 1
     mov 0x0, r31

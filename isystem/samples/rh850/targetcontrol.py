@@ -68,12 +68,12 @@ class TargetController:
 
         # The first N instructions are used to initialize all registers, which have
         # random value on reset, so execute them in one big step.
-        self.debugCtrl.setBP(0, 0x70)
+        self.debugCtrl.setBP(0, 0x78)
         self.debugCtrl.run()
         self.debugCtrl.waitUntilStopped()
 
 
-    def readRegisters(self, registerNames, pcName, pswName):
+    def readRegisters(self, registerNames, pcName):
         REG_PREFIX = '@' 
         regValues = []
         for reg in registerNames:
@@ -81,9 +81,8 @@ class TargetController:
             regValues.append(self._unsigned64(value.getLong()))
 
         pc = self.debugCtrl.evaluate(ic.IConnectDebug.fMonitor, REG_PREFIX + pcName.upper())
-        psw = self.debugCtrl.evaluate(ic.IConnectDebug.fMonitor, REG_PREFIX + pswName.upper())
         
-        return regValues, self._unsigned64(pc.getLong()), self._unsigned64(psw.getLong())
+        return regValues, self._unsigned64(pc.getLong())
                 
 
     def step(self):

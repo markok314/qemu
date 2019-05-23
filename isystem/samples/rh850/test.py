@@ -32,18 +32,23 @@ RESULT_FAILED = "FAILED"
 _g_isVerboseLog = True
 
 RH850_PC = 'PC'
-RH850_PSW = 'PSW'
 
 RH850_REGS = [
     'R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7',
     'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15',
     'R16', 'R17', 'R18', 'R19', 'R20', 'R21', 'R22', 'R23',
     'R24', 'R25', 'R26', 'R27', 'R28', 'R29', 'R30', 'R31',
-    "eipc", "eipsw", "fepc", "fepsw", 
+    "psw", "eipc", "eipsw", "fepc", "fepsw", 
     "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
     "eiwr", "fewr",  "mcfg0", "rbase","ebase","intbp", "mctl",
     "pid", "sccfg", "scbp", "htcfg0","mea",  "asid", "mei"
 ]
+
+PSW_IDX = RH850_REGS.index('psw')
+EIPSW_IDX = RH850_REGS.index('eipsw')
+FEPSW_IDX = RH850_REGS.index('fepsw')
+CTPSW_IDX = RH850_REGS.index('ctpsw')
+
 # floating point regs are currently not supported in QEMU
 # "fpsr", "fpepc",  "fpst", "fpcc", "fpcfg", "fpec", 
 # Not available in winIDEA
@@ -119,8 +124,8 @@ def runTest(asmFileStem, qemuTarget, hwTarget):
 
     log("Stepping ...")
     while (True):
-        qemuRegisters, qemuPC, qemuPSW = qemuTarget.readRegisters(RH850_REGS, RH850_PC, RH850_PSW)
-        hwRegisters, hwPC, hwPSW = hwTarget.readRegisters(RH850_REGS, RH850_PC, RH850_PSW)
+        qemuRegisters, qemuPC = qemuTarget.readRegisters(RH850_REGS, RH850_PC)
+        hwRegisters, hwPC = hwTarget.readRegisters(RH850_REGS, RH850_PC)
 
         if len(qemuRegisters) != len(hwRegisters):
             return ("ERROR: Internal error - register lists size does not match!\n" + 
@@ -128,14 +133,19 @@ def runTest(asmFileStem, qemuTarget, hwTarget):
 
         for i in range(len(RH850_REGS)):
 
+            if i == PSW_IDX  or  i == EIPSW_IDX  or  i == FEPSW_IDX  or  i == CTPSW_IDX:
+                if ((qemuRegisters[i] & PSW_MASK) != (hwRegisters[i] & PSW_MASK)):
+                    _killQemu()
+                    return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
+                continue
+
             if qemuRegisters[i] != hwRegisters[i]:
-                return f"ERROR: Register values do not match! {qemuPC}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
+                _killQemu()
+                return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
 
         if qemuPC != hwPC:
-            return f"ERROR: Register values do not match! {qemuPC}: PC    qemu: {qemuPC}    hw: {hwPC}"
-
-        if ((qemuPSW & PSW_MASK) != (hwPSW & PSW_MASK)):
-            return f"ERROR: Register values do not match! {qemuPC}: PSW    qemu: {qemuPSW & PSW_MASK}    hw: {hwPSW & PSW_MASK}"
+            _killQemu()
+            return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: PC    qemu: {hex(qemuPC)}    hw: {hex(hwPC)}"
 
         log('PC = ' + hex(qemuPC))
         if prevPC == qemuPC:  # instruction BR 0 means end of test program

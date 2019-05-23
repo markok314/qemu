@@ -195,7 +195,6 @@ enum{		//enum for gen_data_manipulation cases
 enum{
 	OPC_RH850_LDSR_reg2_regID_selID	= 1,
 	OPC_RH850_STSR_regID_reg2_selID = 2,
-	OPC_RH850_LDSR_reg2_regID = 11,
 	//check for unintentional matching
 	OPC_RH850_PREPARE_list12_imm5	= 12,
 	OPC_RH850_PREPARE_list12_imm5_sp	= 13,

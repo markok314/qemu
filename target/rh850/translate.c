@@ -258,6 +258,30 @@ static inline void gen_restore_flags(DisasContext *ctx)
 	tcg_gen_andi_i32(cpu_CYF, temp, 0x1);
 	tcg_gen_shri_i32(temp, temp, 0x1);
 	tcg_gen_andi_i32(cpu_SATF, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x1);
+    tcg_gen_andi_i32(cpu_ID, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x1);
+    tcg_gen_andi_i32(cpu_EP, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x1);
+    tcg_gen_andi_i32(cpu_NP, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x8);
+    tcg_gen_andi_i32(cpu_EBV, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x1);
+    tcg_gen_andi_i32(cpu_CU0, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x1);
+    tcg_gen_andi_i32(cpu_CU1, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x1);
+    tcg_gen_andi_i32(cpu_CU2, temp, 0x1);
+
+    tcg_gen_shri_i32(temp, temp, 0x12);
+    tcg_gen_andi_i32(cpu_UM, temp, 0x1);
 }
 
 static TCGv condition_satisfied(int cond)
@@ -3407,11 +3431,13 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_EIRET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][EIPC_IDX]);
 		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][EIPSW_IDX]);
+        gen_restore_flags(ctx);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 	case OPC_RH850_FERET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][FEPC_IDX]);
 		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][FEPSW_IDX]);
+        gen_restore_flags(ctx);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
@@ -3449,12 +3475,14 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
     case OPC_RH850_LDSR_reg2_regID_selID:
         selID = extract32(ctx->opcode, 27, 5);
-        // no break, continue with LDSR
-    case OPC_RH850_LDSR_reg2_regID:  // selID is set to 0 above
         regID = rs2;
 
-		gen_get_gpr(r2, rs1);
-	    tcg_gen_mov_tl(cpu_sysRegs[selID][regID], r2);
+        TCGv tmp = tcg_temp_new();
+		gen_get_gpr(tmp, rs1);
+		tcg_gen_andi_i32(tmp, tmp, rh850_sys_reg_read_only_masks[selID][regID]);
+        tcg_gen_ori_i32(tmp, tmp, rh850_sys_reg_read_only_values[selID][regID]);
+
+	    tcg_gen_mov_tl(cpu_sysRegs[selID][regID], tmp);
 
 		if(selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX){
 			gen_restore_flags(ctx);
@@ -4019,12 +4047,7 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						}
 						break;
 					case OPC_RH850_LDSR_reg2_regID_selID:
-						if(extract32(ctx->opcode, 27, 5)== 0){
-							gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID);
-						} else {
-							gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
-						}
-
+					    gen_special(ctx, env, rs1, rs2, OPC_RH850_LDSR_reg2_regID_selID);
 						break;
 					case OPC_RH850_STSR_regID_reg2_selID:
 						gen_special(ctx, env, rs1, rs2, OPC_RH850_STSR_regID_reg2_selID);

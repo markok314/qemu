@@ -269,6 +269,8 @@ extern const char * const rh850_sys_databuff_regnames[];
 
 extern const char * const rh850_excp_names[];
 extern const char * const rh850_intr_names[];
+extern const uint32_t rh850_sys_reg_read_only_values[][MAX_SYS_REGS_IN_BANK];
+extern const uint32_t rh850_sys_reg_read_only_masks[][MAX_SYS_REGS_IN_BANK];
 
 #define ENV_GET_CPU(e) CPU(rh850_env_get_cpu(e))
 #define ENV_OFFSET offsetof(RH850CPU, env)
