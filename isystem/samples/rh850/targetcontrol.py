@@ -68,9 +68,15 @@ class TargetController:
 
         # The first N instructions are used to initialize all registers, which have
         # random value on reset, so execute them in one big step.
-        self.debugCtrl.setBP(0, 0x78)
-        self.debugCtrl.run()
-        self.debugCtrl.waitUntilStopped()
+        endOfInitAddr = 0x78    # adjust this address if modifying gpr_init.s
+        self.debugCtrl.setBP(0, endOfInitAddr)  
+
+        while (True):    # repeat, because QEMU stops execution on every branch
+            self.debugCtrl.run()
+            self.debugCtrl.waitUntilStopped()
+            pc = self.debugCtrl.getCPUStatus().getExecutionPoint()
+            if pc == endOfInitAddr:
+                break
 
 
     def readRegisters(self, registerNames, pcName):

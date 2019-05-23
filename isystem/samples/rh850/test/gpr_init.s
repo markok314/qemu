@@ -49,3 +49,6 @@
     LDSR_ID R31, SR_MEA, 2
     LDSR_ID R31, SR_MEI, 2  # only some bits are undefined
     mov 0x0, r31
+
+# Update breakpoint address in targetcontrol.py if modifying this file
+

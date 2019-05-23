@@ -1,9 +1,11 @@
 .include "RH850G3M_insts.s"
-lock_adr: .word		0, 0, 0
 
+.data
+lock_adr: .word		0, 0, 0
 start = 0xfee00000
 
 .include "gpr_init.s"
+
 
 		mov start, R1
 		movea lock_adr - .data, R1, R20

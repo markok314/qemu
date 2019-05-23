@@ -1,5 +1,4 @@
-.include "RH850G3M_insts.s"
-
+include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
     # check if QEMU sets/reads PSW the same way as real device

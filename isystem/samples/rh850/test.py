@@ -23,7 +23,7 @@ PSW_MASK = 0xfffff1ff   # ignore flags for debug mode, because they are set by w
 # files provifing common functionality to test files
 DO_NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s']
 QEMU_LOG_FILE = "../../../../rh850.log"
-# path to workspace must be relative, it seems winIDEA can not open apbs path on Linux.
+# path to workspace must be relative, it seems winIDEA can not open abs path on Linux.
 QEMU_WORKSPACE = "RH850_F1L_IAR/SampleGDB.xjrf"
 HW_WORKSPACE = "RH850_F1L_IAR/SampleiC5k-testStand.xjrf"
 RESULT_PASSED = "PASSED"

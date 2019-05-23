@@ -1,7 +1,7 @@
 .include "RH850G3M_insts.s"
 
+.data
 stack:		.word 0, 0, 0, 0, 0 	# last 0 has address stack+16
-
 start = 0xfee00000
 
 .include "gpr_init.s"
