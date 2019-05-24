@@ -1,36 +1,33 @@
+# This test fails, because hardware does not match documentation.
+# Register (R21 in code below) is not modified to contain 0 or 1 on STC.W, 
+# but remains unchanged.
+
+
 .include "RH850G3M_insts.s"
 
 .data
 lock_adr: .word		0, 0, 0
-start = 0xfee00000
 
 .include "gpr_init.s"
 
 
-		mov start, R1
-		movea lock_adr - .data, R1, R20
-		mov 0, R21
-		mov 0x1f, R3		# R3 = 0x1f
-        st.w R3, 0[R20]		# M[lock_adr] = 0x1f
-        ld.w 0[R20], R4		# R4 = 0x1f
+		mov     hilo(lock_adr), r20
+		mov     0, r21
+		mov     0x45, r3
+        st.w    r3, 0[r20]		# [lock_adr] = 0x1f
+        ld.w    0[r20], r4		# r4 = 0x1f
 
-	 	LDL_W [R20], R21	# R21 = 0x1f, LLbit = 1
-        #st.w R3, 0[R20]	# Does st.w clear LLbit?
+	 	LDL_W   R20, R21    # R21 = 0x1f, LLbit = 1
+		STC_W   R21, R20    # STC.W fails (R21 = 0)
+
+	 	LDL_W   R20, R21
 		CLL
-		STC_W R21, [R20]	# STC.W fails (R21 = 0)
+		STC_W   R21, R20		# STC.W suceeds (R21 = 1)
 
-	 	LDL_W R20, R21
-	 	mov 6, R2
-		STC_W R21, R20		# STC.W suceeds (R21 = 1)
+	 	LDL_W   R20, R21
+	 	addi    4, r20, r20
+		STC_W   R21, R20		# STC.W fails (due to different address)
+	 	addi    -4, r20, r20
 
-	 	LDL_W R20, R21
-	 	addi 4, R20, R20
-		STC_W R21, R20		# STC.W fails (due to different address)
-	 	addi -4, R20, R20
-
-	 	LDL_W R20, R21
-	 	CLL
-		STC_W R21, R20		# STC.W fails (due to CLL)
-
-Lbl:	BR Lbl
+Lbl:	br Lbl
 

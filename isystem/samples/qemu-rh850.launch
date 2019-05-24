@@ -18,7 +18,7 @@
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_START_MODE" value="run"/>
 <booleanAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN" value="true"/>
 <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN_SYMBOL" value="main"/>
-<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="-M rh850mini -s -S -d in_asm -D rh850.log -singlestep -kernel isystem/samples/rh850/test/bin/bs_test-syscall.elf"/>
+<stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="-M rh850mini -s -S -d in_asm -D rh850.log -singlestep -kernel isystem/samples/rh850/test/bin/test_ldsr_stsr.elf"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="rh850-softmmu/qemu-system-rh850"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="qemu"/>
 <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="true"/>

@@ -32,11 +32,9 @@
 #include "instmap.h"
 
 /* global register indices */
-static TCGv cpu_gpr[32];
+static TCGv cpu_gpr[NUM_GP_REGS];
 static TCGv cpu_pc;
-static TCGv cpu_sysRegs[7][31];
-//          cpu_sysIntrRegs[5], cpu_sysMpuRegs[56],
-// 			cpu_sysCacheRegs[7],
+static TCGv cpu_sysRegs[NUM_SYS_REG_BANKS][MAX_SYS_REGS_IN_BANK];
 // static TCGv_i64 cpu_fpr[32]; /* assume F and D extensions */
 static TCGv cpu_sysDatabuffRegs[1], cpu_LLbit, cpu_LLAddress;
 static TCGv load_res;
@@ -3479,10 +3477,12 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
         TCGv tmp = tcg_temp_new();
 		gen_get_gpr(tmp, rs1);
+		// clear read-only bits in value, all other bits in sys reg. This way
+		// read-only bits preserve their value given at reset
 		tcg_gen_andi_i32(tmp, tmp, rh850_sys_reg_read_only_masks[selID][regID]);
-        tcg_gen_ori_i32(tmp, tmp, rh850_sys_reg_read_only_values[selID][regID]);
+        tcg_gen_andi_i32(cpu_sysRegs[selID][regID], cpu_sysRegs[selID][regID], ~rh850_sys_reg_read_only_masks[selID][regID]);
 
-	    tcg_gen_mov_tl(cpu_sysRegs[selID][regID], tmp);
+		tcg_gen_or_i32(cpu_sysRegs[selID][regID], cpu_sysRegs[selID][regID], tmp);
 
 		if(selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX){
 			gen_restore_flags(ctx);

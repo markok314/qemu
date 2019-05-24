@@ -107,7 +107,6 @@ class TargetController:
 
         opCode = self._unsigned64(opCodeInt)
 
-        print(hex(opCode))
         return (opCode & TRAP_MASK == TRAP_OPCODE or
                 opCode & SYSCALL_MASK == SYSCALL_OPCODE or
 		opCode & CALLT_MASK == CALLT_OPCODE or

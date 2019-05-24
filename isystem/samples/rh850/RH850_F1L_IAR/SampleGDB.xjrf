@@ -1201,33 +1201,29 @@
         <ViewId>19</ViewId>
         <ViewType>Memory</ViewType>
        </__.1>
-       <__.10>
-        <ViewId>20</ViewId>
-        <ViewType>SFR</ViewType>
-       </__.10>
        <__.2>
-        <ViewId>11</ViewId>
-        <ViewType>Disassembly</ViewType>
+        <ViewId>23</ViewId>
+        <ViewType>SFR</ViewType>
        </__.2>
        <__.3>
-        <ViewId>18</ViewId>
-        <ViewType>CoreRegisters</ViewType>
+        <ViewId>11</ViewId>
+        <ViewType>Disassembly</ViewType>
        </__.3>
        <__.4>
-        <ViewId>-1</ViewId>
-        <ViewType>Locals</ViewType>
+        <ViewId>18</ViewId>
+        <ViewType>CoreRegisters</ViewType>
        </__.4>
        <__.5>
         <ViewId>-1</ViewId>
-        <ViewType>CustomWatch</ViewType>
+        <ViewType>Locals</ViewType>
        </__.5>
        <__.6>
-        <ViewId>12</ViewId>
-        <ViewType>Output</ViewType>
+        <ViewId>-1</ViewId>
+        <ViewType>CustomWatch</ViewType>
        </__.6>
        <__.7>
-        <ViewId>-1</ViewId>
-        <ViewType>Watch2</ViewType>
+        <ViewId>12</ViewId>
+        <ViewType>Output</ViewType>
        </__.7>
        <__.8>
         <ViewId>15</ViewId>
@@ -1328,17 +1324,13 @@
         <ViewType>Output</ViewType>
        </__.0>
        <__.1>
-        <ViewId>-1</ViewId>
-        <ViewType>Watch2</ViewType>
-       </__.1>
-       <__.2>
         <ViewId>15</ViewId>
         <ViewType>Symbols</ViewType>
-       </__.2>
-       <__.3>
+       </__.1>
+       <__.2>
         <ViewId>17</ViewId>
         <ViewType>Output_Progress</ViewType>
-       </__.3>
+       </__.2>
       </OtherViews>
       <ProjectViews>
        <__.0>
@@ -1364,7 +1356,7 @@
        <__.0>
         <CustomSfrName></CustomSfrName>
         <IsCustomSfr>false</IsCustomSfr>
-        <ViewId>20</ViewId>
+        <ViewId>23</ViewId>
         <ViewType>SFR</ViewType>
         <ColumnData.Address>
          <Pos>0</Pos>
@@ -1493,10 +1485,10 @@
       </WatchViews>
      </ViewData>
      <ViewLayout>
-      <PrimaryDocumentPaneId>8</PrimaryDocumentPaneId>
+      <PrimaryDocumentPaneId>10</PrimaryDocumentPaneId>
       <Frames>
        <__.0>
-        <FocusedViewId>18</FocusedViewId>
+        <FocusedViewId>23</FocusedViewId>
         <FrameState>9</FrameState>
         <IsPrimary>true</IsPrimary>
         <Bounds>
@@ -1600,6 +1592,16 @@
                <ViewId>-1</ViewId>
                <Children>
                 <__.0>
+                 <DockType>View</DockType>
+                 <Extent>1</Extent>
+                 <IsDocumentPane>false</IsDocumentPane>
+                 <IsPinned>false</IsPinned>
+                 <IsTabbed>false</IsTabbed>
+                 <Orientation>None</Orientation>
+                 <TopTabViewId>-1</TopTabViewId>
+                 <ViewId>23</ViewId>
+                </__.0>
+                <__.1>
                  <DockType>None</DockType>
                  <Extent>0</Extent>
                  <IsDocumentPane>true</IsDocumentPane>
@@ -1608,16 +1610,6 @@
                  <Orientation>None</Orientation>
                  <TopTabViewId>-1</TopTabViewId>
                  <ViewId>-1</ViewId>
-                </__.0>
-                <__.1>
-                 <DockType>View</DockType>
-                 <Extent>1</Extent>
-                 <IsDocumentPane>false</IsDocumentPane>
-                 <IsPinned>false</IsPinned>
-                 <IsTabbed>false</IsTabbed>
-                 <Orientation>None</Orientation>
-                 <TopTabViewId>-1</TopTabViewId>
-                 <ViewId>20</ViewId>
                 </__.1>
                </Children>
               </__.1>
@@ -1705,6 +1697,19 @@
          <Name>0x70</Name>
         </__>
        </BP.2>
+       <BP.3>
+        <__>
+         <ActionEnabled>False</ActionEnabled>
+         <ActionScript></ActionScript>
+         <ActionScriptParams></ActionScriptParams>
+         <ActionShow>False</ActionShow>
+         <Active>True</Active>
+         <Condition></Condition>
+         <Condition_Count>0</Condition_Count>
+         <ConditionEnabled>False</ConditionEnabled>
+         <Name>0x78</Name>
+        </__>
+       </BP.3>
       </Fetch>
      </Breakpoints>
      <Debug>
@@ -1740,7 +1745,7 @@
         <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
         <OptimizeTypeByName>0</OptimizeTypeByName>
         <OverrideMemoryArea>0</OverrideMemoryArea>
-        <Path>/home/isystem/proj/qemu/isystem/samples/rh850/test/bin/bs_test-syscall.elf</Path>
+        <Path>/home/isystem/proj/qemu/isystem/samples/rh850/test/bin/test_ldsr_stsr.elf</Path>
         <ProjectOutputFile>0</ProjectOutputFile>
         <SOffset>0</SOffset>
         <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>

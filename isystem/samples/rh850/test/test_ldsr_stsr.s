@@ -1,11 +1,15 @@
-include "RH850G3M_insts.s"
+.include "RH850G3M_insts.s"
 .include "gpr_init.s"
 
     # check if QEMU sets/reads PSW the same way as real device
     # bit 30 = 0 to stay in supervisor mode
-    mov 0xBFFFFFFF, r5
+    # bits 16, 17, 18 are set to 0, because not all devices have coprocessor,
+    #     and bits can't beset in HW, but can be set in QEMU
+    mov 0xBFF8FFFF, r5
     LDSR r5, SR_PSW
-    STSR SR_PSW, r6    # only bits 0-7 are read ==> r6 = 0xff
+    # works, but can not be tested with the current test suite, because
+    # R6 contains also debug bits set, which are missing in QEMU
+    # STSR SR_PSW, r6    # only bits 0-7 are read ==> r6 = 0xff
 
     mov 0x02ab34cd, r5
 	LDSR_ID R5, SR_EIPC, 0
@@ -20,17 +24,17 @@ include "RH850G3M_insts.s"
 
     # also always 0
     mov 0x02ab34cd, r15
-	LDSR_ID R15, SR_BSEL, 1
-    STSR_ID SR_BSEL, R13, 1
+	LDSR_ID R15, SR_BSEL, 0
+    STSR_ID SR_BSEL, R13, 0
 
     # const, contains CPU identifier
     mov 0x02ab34cd, r15
-	LDSR_ID R15, SR_HTCFG0, 1
-    STSR_ID SR_HTCFG0, R14, 1
+	LDSR_ID R15, SR_HTCFG0, 2
+    STSR_ID SR_HTCFG0, R14, 2
 
     mov 0xffffFFFF, r15
-	LDSR_ID R15, SR_MEI, 1
-    STSR_ID SR_MEI, R14, 1
+	LDSR_ID R15, SR_MEI, 2
+    STSR_ID SR_MEI, R14, 2
 
     mov 0xffffFFFF, r15
 	LDSR_ID R15, SR_INTBP, 1
@@ -48,7 +52,10 @@ include "RH850G3M_insts.s"
     LDSR_ID R6, SR_SCCFG, 1
     STSR_ID SR_SCCFG, R7, 1
 
-    mov 0xa5b4c5d7, r6
+    # if some bits above bit 24 are 1 (eg 0xa5), then SCBP bits 24:31 = 0xFD
+    # this is currently not implemented in QEMU, as detailed doc is missing - 
+    # it seems this value depends on RAM location.
+    mov 0x00b4c5d7, r6
     LDSR_ID R6, SR_SCBP, 1
     STSR_ID SR_SCBP, R7, 1
 
