@@ -50,42 +50,42 @@ const char * const rh850_gp_regnames[] = {
 const char * const rh850_sys_regnames[][MAX_SYS_REGS_IN_BANK] = {
 
 { // SELECTION ID 0
-  "eipc",  "eipsw", "fepc",   "fepsw", "",    "psw",    "fpsr",   "fpepc", "fpst",  "fpcc",
-  "fpcfg", "fpec",  "",       "eiic",  "feic", "",      "ctpc",   "ctpsw", "",      "",
-  "ctbp",  "",      "",       "",      "",     "",      "",       "",      "eiwr",  "fewr"
-  "",      "bsel"},
+  "eipc",  "eipsw", "fepc",   "fepsw", NULL,  "psw",    "fpsr",   "fpepc", "fpst",  "fpcc",
+  "fpcfg", "fpec",  NULL,     "eiic",  "feic", NULL,    "ctpc",   "ctpsw", NULL,    NULL,
+  "ctbp",  NULL,    NULL,     NULL,    NULL,   NULL,    NULL,     NULL,    "eiwr",  "fewr",
+  NULL,    "bsel"},
 { // SELECTION ID 1
-  "mcfg0", "",      "rbase",  "ebase", "intbp", "mctl", "pid",    "fpipr", "",      "",
-  "",      "sccfg", "scbp",
+  "mcfg0", NULL,    "rbase",  "ebase", "intbp", "mctl", "pid",    "fpipr", NULL,    NULL,
+  NULL,    "sccfg", "scbp",
 },
 { // SELECTION ID 2
-  "htcfg0","",      "",       "",      "",      "",     "mea",    "asid",  "mei",   "",
+  "htcfg0",NULL,    NULL,     NULL,    NULL,    NULL,   "mea",    "asid",  "mei",   NULL,
   "ispr",  "pmr",   "icsr",   "intcfg"
 },
 { // SELECTION ID 3
-    ""    ,"",      "",       "",      "",      "",     "",       "",      "",      ""
+    NULL,  NULL,    NULL,     NULL,    NULL,    NULL,   NULL,     NULL,    NULL,    NULL
 },
 { // SELECTION ID 4
-  "",      "",      "",       "",      "",      "",      "",       "",      "",      ""
-  "",      "",      "",       "",      "",      "",      "ictagl", "ictagh","icdatl","icdath",
-  "",      "",      "",       "",      "icctrl","",      "iccfg",  "",      "icerr", ""
+  NULL,    NULL,    NULL,     NULL,    NULL,    NULL,    NULL,     NULL,    NULL,    NULL,
+  NULL,    NULL,    NULL,     NULL,    NULL,    NULL,    "ictagl", "ictagh","icdatl","icdath",
+  NULL,    NULL,    NULL,     NULL,    "icctrl",NULL,    "iccfg",  NULL,    "icerr", NULL
 },
 { // SELECTION ID 5
-  "mpm",   "mprc",  "",       "",      "mpbrgn","mptrgn","",       "",      "mca",   "mcs"
+  "mpm",   "mprc",  NULL,     NULL,    "mpbrgn","mptrgn",NULL,     NULL,    "mca",   "mcs"
   "mcc",   "mcr"
 },
 { // SELECTION ID 6
-  "mpla0", "mpua0", "mpat0",  "",      "mpla1", "mpua1", "mpat1",  "",      "mpla2", "mpua2",
-  "mpat2", "",      "mpla3",  "mpua3", "mpat3", "",      "mpla4",  "mpua4", "mpat4", "",
-  "mpla5", "mpua5", "mpat5",  "",      "mpla6",  "mpua6", "mpat6", "",      "mpla7", "mpua7",
-  "mpat7", ""
+  "mpla0", "mpua0", "mpat0",  NULL,    "mpla1", "mpua1", "mpat1",  NULL,    "mpla2", "mpua2",
+  "mpat2", NULL,    "mpla3",  "mpua3", "mpat3", NULL,    "mpla4",  "mpua4", "mpat4", NULL,
+  "mpla5", "mpua5", "mpat5",  NULL,    "mpla6",  "mpua6", "mpat6", NULL,    "mpla7", "mpua7",
+  "mpat7", NULL
 },
 { // SELECTION ID 7
     /* MPU function system registers */
-  "mpla8", "mpua8", "mpat8",  "",      "mpla9",  "mpua9", "mpat9", "",      "mpla10","mpua10",
-  "mpat10","",      "mpla11", "mpua11", "mpat11","",      "mpla12","mpua12","mpat12","",
-  "mpla13","mpua13","mpat13", "",       "mpla14","mpua14","mpat14","",      "mpla15","mpua15",
-  "mpat15",""
+  "mpla8", "mpua8", "mpat8",  NULL,    "mpla9",  "mpua9", "mpat9", NULL,    "mpla10","mpua10",
+  "mpat10",NULL,    "mpla11", "mpua11", "mpat11",NULL,    "mpla12","mpua12","mpat12",NULL,
+  "mpla13","mpua13","mpat13", NULL,     "mpla14","mpua14","mpat14",NULL,    "mpla15","mpua15",
+  "mpat15",NULL
 }
 };
 
@@ -346,15 +346,14 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
 {
     RH850CPU *cpu = RH850_CPU(cs);
     CPURH850State *env = &cpu->env;
-    int i;
 
     cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "pc", env->pc);
     cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->systemRegs[BANK_ID_BASIC_0][PSW_IDX]);
 
-    for (i = 0; i < NUM_GP_REGS; i++) {
+    for (int gpRegIdx = 0; gpRegIdx < NUM_GP_REGS; gpRegIdx++) {
         cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
-            rh850_gp_regnames[i], env->gpRegs[i]);
-        if ((i & 3) == 3) {
+            rh850_gp_regnames[gpRegIdx], env->gpRegs[gpRegIdx]);
+        if ((gpRegIdx & 3) == 3) {
             cpu_fprintf(f, "\n");
         }
     }
@@ -362,19 +361,25 @@ static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
     cpu_fprintf(f, "\n");
 
     for (int bankIdx = 0; bankIdx < NUM_SYS_REG_BANKS; bankIdx++) {
+        int numPrinted = 0;
         for (int regIdx = 0; regIdx < MAX_SYS_REGS_IN_BANK; regIdx++) {
-            if (rh850_sys_regnames[bankIdx][regIdx]  &&  bankIdx != BANK_ID_BASIC_0  &&  regIdx != PSW_IDX){
+            if (rh850_sys_regnames[bankIdx][regIdx]  &&  !(bankIdx == 0  && regIdx == PSW_IDX)) {
                 cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
-                        rh850_sys_regnames[bankIdx][regIdx],
-                        env->systemRegs[bankIdx][regIdx]);
-            }
-            if ((i % 4) == 0) {
-                cpu_fprintf(f, "\n");
+                            rh850_sys_regnames[bankIdx][regIdx],
+                            env->systemRegs[bankIdx][regIdx]);
+                if ((numPrinted & 3) == 3) {
+                    cpu_fprintf(f, "\n");
+                }
+                numPrinted++;
             }
         }
+        if (((numPrinted - 1) & 3) != 3) {
+            cpu_fprintf(f, "\n");
+        }
+        if (numPrinted) { // zero means empty bank, no newline needed
+            cpu_fprintf(f, "\n");
+        }
     }
-
-    cpu_fprintf(f, "\n");
 
 	cpu_fprintf(f, " %s " TARGET_FMT_lx,
 				rh850_sys_databuff_regnames[0], env->sysDatabuffRegs[0]);
