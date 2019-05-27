@@ -600,6 +600,7 @@ static void rh850_cpu_reset(CPUState *cs)
     cs->exception_index = EXCP_NONE;
     set_default_nan_mode(1, &env->fp_status);
     env->pc = 0;
+    env->ID_flag = 1;   // interrupts are disable on reset
     env->systemRegs[BANK_ID_BASIC_0][EIPSW_IDX] = 0x20;
     env->systemRegs[BANK_ID_BASIC_0][FEPSW_IDX] = 0x20;
     env->systemRegs[BANK_ID_BASIC_0][EIIC_IDX] = 0x0;
