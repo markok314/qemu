@@ -14,6 +14,7 @@
 
     .org 0x50            # TRAP, vector5 >= 16
     mov     0xf12345, r7
+    mov  0x1234567, R1
     eiret
 
         .org 0x78   # breakpoint is set to this address in targetcontrol.py

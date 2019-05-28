@@ -19,6 +19,8 @@ import targetcontrol
 import itertools
 
 PSW_MASK = 0xfffff1ff   # ignore flags for debug mode, because they are set by winIDEA
+EIPSW_MASK = 0xfffff1df # ignore ID flag, because HW behavior does not match doc - EIPSW.ID is set,
+                        # but PSW.ID is not???
 
 # files provifing common functionality to test files
 DO_NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s']
@@ -133,7 +135,12 @@ def runTest(asmFileStem, qemuTarget, hwTarget):
 
         for i in range(len(RH850_REGS)):
 
-            if i == PSW_IDX  or  i == EIPSW_IDX  or  i == FEPSW_IDX  or  i == CTPSW_IDX:
+            if i == EIPSW_IDX:
+                if ((qemuRegisters[i] & EIPSW_MASK) != (hwRegisters[i] & EIPSW_MASK)):
+                    _killQemu()
+                    return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
+                continue
+            if i == PSW_IDX  or  i == FEPSW_IDX  or  i == CTPSW_IDX:
                 if ((qemuRegisters[i] & PSW_MASK) != (hwRegisters[i] & PSW_MASK)):
                     _killQemu()
                     return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"

@@ -1,4 +1,5 @@
 .include "RH850G3M_insts.s"
+.include "gpr_init.s"
 
 # This test proves only that QEMU recognizes the instructions and that it has no effect
 # on CPU state. Cache manipulation has no meaning in QEMU anyway.

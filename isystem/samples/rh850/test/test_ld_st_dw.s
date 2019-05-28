@@ -1,9 +1,8 @@
 .include "RH850G3M_insts.s"
-
-start = 0xfee00000
+.include "gpr_init.s"
 
 .text
-		mov start, R1
+		mov hilo(.data), R1
 		movea 0, R1, R2
 
 #-----------------------------------ld.dw -> macro LD_DW---------OK

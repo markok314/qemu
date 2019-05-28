@@ -1,6 +1,6 @@
 .include "RH850G3M_insts.s"
+.include "gpr_init.s"
 
-.text
 	CACHE 0b0000000,R1
 	CACHE 0b0100000,R2
 	CACHE 0b1000000,R3

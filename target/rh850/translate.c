@@ -3309,9 +3309,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		break;
 	}
-	case OPC_RH850_CLL:
-
-		break;
 
 	case OPC_RH850_CTRET:
 
@@ -3324,6 +3321,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], temp);
 
 		tcg_temp_free_i32(temp);
+        gen_restore_flags(ctx);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
@@ -3736,7 +3734,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][EIIC_IDX], (0x40 + vector5));
 		tcg_gen_movi_i32(cpu_UM, 0x0);
 		tcg_gen_movi_i32(cpu_EP, 0x1);
-		tcg_gen_movi_i32(cpu_ID, 0x1);
+		tcg_gen_movi_i32(cpu_ID, 0x1);  // This bit is under control of winIDEA in single-stepping.
+		// Additionally EIPSW.ID is set in interrupts in single-stepping, because winIDEA
+		// sets this bit before executing TRAP instruction.
 
 		if( vector5 > 0xf ){
 			offset = 0x50;
@@ -3806,22 +3806,23 @@ static void gen_cache(DisasContext *ctx, int rs1, int rs2, int operation){
 	int cache_op = (extract32(ctx->opcode,11, 2) << 5 ) | (extract32(ctx->opcode, 27, 5));
 	switch(cache_op){
 		case CHBII:
-			printf("CHBII\n");
+			// printf("CHBII\n");
 			break;
 		case CIBII:
-			printf("CIBII\n");
+			// printf("CIBII\n");
 			break;
 		case CFALI:
-			printf("CFALI\n");
+			// printf("CFALI\n");
 			break;
 		case CISTI:
-			printf("CISTI\n");
+			// printf("CISTI\n");
 			break;
 		case CILDI:
-			printf("CILDI\n");
+			// printf("CILDI\n");
 			break;
 		case CLL:
-			printf("CLL\n");
+			// printf("CLL\n");
+		    // this operation is not implemented on single core
 			break;
 	}
 }
@@ -4183,9 +4184,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						case OPC_RH850_PUSHSP_rh_rt:
 							gen_special(ctx, env, rs1, rs2, OPC_RH850_PUSHSP_rh_rt);
 							break;
-						//case OPC_RH850_CLL:
-							//if (extract32(ctx->opcode, 23, 9) == 0x1E2)
-							//break;
 						default:
 							if ((extract32(ctx->opcode, 13, 12) == 0xB07))
 							{

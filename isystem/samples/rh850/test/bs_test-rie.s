@@ -19,7 +19,7 @@ mainProg:
         nop    # RIE above may be 16 or 32-bit
 
         # set PSW.EBV bit, to use EBASE
-        # STSR_ID SR_PSW, R2, 0  # this causes erro in test, because of debug bits set in PSW
+        # STSR_ID SR_PSW, R2, 0  # this causes error in test, because of debug bits set in PSW
         # ori     0x8000, r2, r2
         mov     0x8020, r2   # ignore state of other bits in PSW
         ldsr    R2, SR_PSW
