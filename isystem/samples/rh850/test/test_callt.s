@@ -3,42 +3,30 @@
 
 	
 #----------------------Testing the CALLT instruction-----
-
-	# check value of CTBP on bluebox, to generate valid address
-	# DONE CTBP can be modified with ldsr command
 start:
 	mov 0xff,r10
 	ldsr r10,PSW
-	#modify psw reg to 0xff	
 
 	mov  hilo(callTable),r11
-	ldsr r11,20
-	#20 is CTBP
+	ldsr r11, SR_CTBP
 	
 	CALLT 1
     
     mov  0x12345, r1
-    br Lbl
+
+Lbl:	br Lbl
+
 callTable:
     .hword 0xffff
     .hword subrutine - callTable
     .hword 0xe2b3
 
-	subrutine:	
+subrutine:	
+		mov 0x0,r10
+		ldsr r10,PSW   # modify psw reg to test restore
 
-		#check registers with stsr regID,reg,sellID
-		stsr CTPC,r1
-		stsr CTPSW,r2
-		#here we should get only PSW(4:0) TEST THAT
-
-		mov 0x1111,r10
-		ldsr r10,PSW
-		#modify psw reg to 0xff	
-
-		CTRET
-		#with that we should return to back after CALLT
+		CTRET          
 
     # should never get here
     br  start
 
-Lbl:	br Lbl

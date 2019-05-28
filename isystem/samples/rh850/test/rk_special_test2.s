@@ -1,88 +1,72 @@
 .include "RH850G3M_insts.s"
-.include "gpr_init.s"
 
-#
+.text   
+        jr   initCore    # init code was moved, because otherwise it occupies 
+                         # exception address 0x30
+
+    .org 0x30
+    mov     12345, r7
+    feret
+
+    .org 0x40            # TRAP, vector5 < 16
+    mov     0x12345, r7
+    eiret
+
+    .org 0x50            # TRAP, vector5 >= 16
+    mov     0xf12345, r7
+    eiret
+
+        .org 0x78   # breakpoint is set to this address in targetcontrol.py
+mainProg: 
+        nop
 # Testing instructions:
 # FETRAP, FERET, TRAP, EIRET, RIE
-#
 
-
-
-
-
-#--------------------FETRAP------------offset=0x30
-
-	mov 0x4000, r1
-	LDSR_ID R1, 2, 1	# RBASE = 0x4000
-
-	mov 0x6000, r1
-	LDSR_ID R1, 3, 1	# EBASE = 0x6000
+# -------------------- FETRAP ------------ offset = 0x30
 
 	fetrap 1
 
-	fetrap 2
+	mov 0x6000, r1
+	LDSR_ID R1, SR_EBASE, 1	# EBASE = 0x6000
 
-	fetrap 3
+    # set PSW.EBV bit, to use EBASE
+    # STSR_ID SR_PSW, R2, 0  # this causes error in test, because of debug bits set in PSW
+    # ori     0x8000, r2, r2
+    mov     0x8020, r2   # ignore state of other bits in PSW
+    mov     0x0020, r3   # ignore state of other bits in PSW
+    LDSR_ID R2, SR_PSW, 0
 
 	fetrap 0xc
 
 
 
-#---------------------TRAP--------------------offset=40/50
+# --------------------- TRAP -------------------- offset = 40/50
 
-	mov 0xb000, r1
-	LDSR_ID R1, 2, 1	# RBASE = 0xb000
-
-	mov 0xd000, r1
-	LDSR_ID R1, 3, 1	# EBASE = 0xd000
-
+    LDSR_ID R3, SR_PSW, 0    # use RBASE
+	trap 0x1	
 	trap 0x11	
 
-	trap 0x1f
+	mov 0xd000, r1
+	LDSR_ID R1, SR_EBASE, 1	# EBASE = 0xd000
+    LDSR_ID R2, SR_PSW, 0    # use EBASE
 
+	trap 0x1f
 	trap 0x0
 
-	trap 0xc
 
-	trap 0x7
+Lbl: br Lbl
 
+initCore:
+    .include "gpr_init.s"
+    jr  mainProg
 
-#---------------------RIE--------------------offset=0x60
-
-	mov 0x1000, r1
-	LDSR_ID R1, 2, 1	# RBASE = 0x1000
-
-	mov 0x2000, r1
-	LDSR_ID R1, 3, 1	# EBASE = 0x2000
-
-	rie		# stores this PC as return addr
-
-
-	# rie imm/imm What does this instruciton do on target?
-
-	br Lbl
-
-.org 0x1060
-	feret
-
-.org 0x4030
-	mov 5, R5
-	nop
-	nop
-	feret
 
 .org 0x6030
+	mov 9, R5
 	feret
 
-
-
-.org 0xb040
-	eiret
-
-.org 0xb050
-	eiret
-
 .org 0xd040
+	mov 99, R5
 	eiret
 
 .org 0xd050
@@ -92,4 +76,3 @@
 
 	
 
-Lbl: br Lbl

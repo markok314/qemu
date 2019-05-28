@@ -4,7 +4,7 @@
 #----------------Tests for PUSHSP - POPSP -------------------
 
 
-	mov 0xfee00100, r3	# stack pointer
+	mov hilo(.data + 100), r3	# stack pointer
 
 	mov 0x324, r20
 	mov 0x124a, r21
@@ -40,8 +40,6 @@
 
 #------------------------------------------------
 
-	mov 0xfee00800, r3	# stack pointer
-
 	mov 0x324, r5
 	mov 0x124a, r6
 	mov 0xfffc, r7
@@ -72,11 +70,9 @@
 	mov 0x0,r15
 	mov 0x0,r16
 
-	POPSP R20 R28
+	POPSP R5 R11
 
 #------------------------------------------------
-
-	mov 0xfee00900, r3	# stack pointer
 
 	mov 0x324, r5
 	mov 0x124a, r6
@@ -108,12 +104,10 @@
 	mov 0x0,r15
 	mov 0x0,r16
 
-	POPSP R10 R15
+	POPSP R8 R16
 	
 
 #------------------------------------------------
-
-	mov 0xfee00300, r3	# stack pointer
 
 	mov 0x324, r5
 	mov 0x124a, r6
@@ -143,7 +137,7 @@
 	mov 0x0,r15
 	mov 0x0,r16
 
-	POPSP R10 R20
+	POPSP R9 R9
 
 
 Lbl: br Lbl

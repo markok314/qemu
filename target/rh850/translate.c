@@ -4617,7 +4617,8 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 static void copyFlagsToPSW(void)
 {
     // Set flags in PSW to 0 so we can write new state
-    tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xffffffe0);
+    tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0);
+    // tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xffffffe0);
 
     TCGv temp = tcg_temp_new_i32();
 
