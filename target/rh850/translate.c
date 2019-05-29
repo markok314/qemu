@@ -3600,8 +3600,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_gpr(3, temp);
 
-		//printf("this is ff or sp: %x \n", ff);
-
 		switch(ff){
 
 			case 0x0:
@@ -3617,8 +3615,6 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				break;
 
 			case 0x2:
-				printf("OK! The 'ff' field in instruction PREPARE is set to 0x2."
-						" \n Delete this printout!!! \n");
 				imm = cpu_lduw_code(env, ctx->base.pc_next); // fetching additional 16bits from memory
 				tcg_gen_movi_i32(temp, imm);
 				tcg_gen_shli_i32(temp, temp, 0x10);
@@ -4062,7 +4058,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						if (extract32(ctx->opcode, 20, 1) == 1){
 							//BINS0
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BINS);
-							printf("BINS0\n");
 						}
 						else{
 							if (extract32(ctx->opcode, 17, 1) == 0){
@@ -4076,7 +4071,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						if (extract32(ctx->opcode, 20, 1) == 1){
 							//BINS1
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BINS);
-							printf("BINS1\n");
 						}
 						else{
 							if (extract32(ctx->opcode, 17, 1) == 0){
@@ -4090,7 +4084,6 @@ static void decode_RH850_32(CPURH850State *env, DisasContext *ctx)
 						if (extract32(ctx->opcode, 20, 1) == 1){
 							//BINS2
 							gen_data_manipulation(ctx, rs1, rs2, OPC_RH850_BINS);
-							printf("BINS2\n");
 						}
 						else{
 							if (extract32(ctx->opcode, 17, 1) == 0){
