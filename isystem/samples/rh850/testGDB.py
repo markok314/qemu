@@ -23,14 +23,27 @@ import targetcontrol
 # cmd = ['../../../rh850-softmmu/qemu-system-rh850 -M rh850mini -s -S -singlestep -kernel ./test/bin/rk_arithmetic_test.elf']
 # sp.Popen(cmd, shell=True, executable='/bin/bash')
 
+if len(sys.argv) < 4:
+	print("Arguments missing!")
+	print("Usage:")
+	print("    python3 testGDB.py path_to_winIDEA path_to_winIDEA_workspace path_to_QEMU path_to_ELF_file")
+	print("-----------------------------------------------------------------")
+	print("Using default paths (Robert @ win10)")
+	workspacePath = "C:/Users/student2/proj/qemu/isystem/samples/cortexM3/SampleSTM32-GDB.xjrf"
+	winidea = "winidea"
+	qemuPath = 'C:/Users/student2/Desktop\VBshared/qemu-system-arm.exe'
+	elfPath = 'C:/Users/student2/proj/qemu/isystem/samples/cortexM3/build/exe/stm32/release/lm3s.elf'
+else:
+	winidea = sys.argv[1]
+	workspacePath = sys.argv[2]
+	qemuPath = sys.argv[3]
+	elfPath = sys.argv[4]
 
-# workspace on win10
-workspacePath = "C:/Users/student2/proj/qemu/isystem/samples/cortexM3/SampleSTM32-GDB.xjrf"
-winidea = "winidea"
+time.sleep(3)
 
 # Start QEMU on win10
 print("Starting QEMU...")
-cmd = 'C:/Users/student2/Desktop\VBshared/qemu-system-arm.exe -M lm3s6965evb -m 256M -s -S -kernel C:/Users/student2/proj/qemu/isystem/samples/cortexM3/build/exe/stm32/release/lm3s.elf'
+cmd = qemuPath + ' -M lm3s6965evb -m 256M -s -S -kernel ' + elfPath
 p = sp.Popen(cmd, shell=True)
 
 # Start winIDEA and connect to it
@@ -99,7 +112,7 @@ def testGotoAddress(gotoAddr):
 	status = debugCtrl.getCPUStatus()
 	currentAddress = status.getExecutionPoint()
 	if gotoAddr == currentAddress:
-		print("Goto address : OK")
+		print("Goto address "+ str(hex(gotoAddr)) +": OK")
 	else:
 		print("Goto address : NOT OK!")
 
