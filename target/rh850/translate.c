@@ -4677,7 +4677,7 @@ static void rh850_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
 
 /*
  * This f. is called when breakpoint is hit. It should implement
- * handling of breakpoint - for example HW breskpoints may be
+ * handling of breakpoint - for example HW breakpoints may be
  * handled differently from SW breakpoints (see arm/translate.c).
  * However, in RH850 we currently implement only SW breakpoints.
  *

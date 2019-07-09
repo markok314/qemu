@@ -493,14 +493,11 @@ static void rh850_debug_excp_handler(CPUState *cs)
          * since singlestep is also done by generating a debug internal
          * exception.
          */
-        if (cpu_breakpoint_test(cs, pc, BP_GDB)
-            || !cpu_breakpoint_test(cs, pc, BP_CPU)) {
-            return;
-        }
+        if (!cpu_breakpoint_test(cs, pc, BP_GDB)  &&
+             cpu_breakpoint_test(cs, pc, BP_CPU)) {
 
-        // env->exception.fsr = arm_debug_exception_fsr(env);
-        // env->exception.vaddress = 0;
-        rh850_raise_exception(env, 0, 0, 0);
+            rh850_raise_exception(env, 0, 0, 0);
+        }
     }
 }
 

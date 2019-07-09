@@ -380,10 +380,6 @@ int rh850_cpu_handle_mmu_fault(CPUState *cs, vaddr address, int size,
 }
 
 /*
- * Handle Traps
- *
- * Adapted from Spike's processor_t::take_trap.
- *
  */
 void rh850_cpu_do_interrupt(CPUState *cs)
 {
@@ -402,100 +398,101 @@ void rh850_cpu_do_interrupt(CPUState *cs)
                 rh850_excp_names[log_cause], env->pc);
         }
     }
+// exceptions are not yet implemented on rh850
 
-    target_ulong fixed_cause = 0;
-    if (cs->exception_index & (RH850_EXCP_INT_FLAG)) {
-        /* hacky for now. the MSB (bit 63) indicates interrupt but cs->exception
-           index is only 32 bits wide */
-        fixed_cause = cs->exception_index & RH850_EXCP_INT_MASK;
-        fixed_cause |= ((target_ulong)1) << (TARGET_LONG_BITS - 1);
-    } else {
-        /* fixup User ECALL -> correct priv ECALL */
-        if (cs->exception_index == RH850_EXCP_U_ECALL) {
-            switch (env->priv) {
-            case PRV_U:
-                fixed_cause = RH850_EXCP_U_ECALL;
-                break;
-            case PRV_S:
-                fixed_cause = RH850_EXCP_S_ECALL;
-                break;
-            case PRV_H:
-                fixed_cause = RH850_EXCP_H_ECALL;
-                break;
-            case PRV_M:
-                fixed_cause = RH850_EXCP_M_ECALL;
-                break;
-            }
-        } else {
-            fixed_cause = cs->exception_index;
-        }
-    }
-
-    target_ulong backup_epc = env->pc;
-
-    target_ulong bit = fixed_cause;
-    target_ulong deleg = env->medeleg;
-
-    int hasbadaddr =
-        (fixed_cause == RH850_EXCP_INST_ADDR_MIS) ||
-        (fixed_cause == RH850_EXCP_INST_ACCESS_FAULT) ||
-        (fixed_cause == RH850_EXCP_LOAD_ADDR_MIS) ||
-        (fixed_cause == RH850_EXCP_STORE_AMO_ADDR_MIS) ||
-        (fixed_cause == RH850_EXCP_LOAD_ACCESS_FAULT) ||
-        (fixed_cause == RH850_EXCP_STORE_AMO_ACCESS_FAULT) ||
-        (fixed_cause == RH850_EXCP_INST_PAGE_FAULT) ||
-        (fixed_cause == RH850_EXCP_LOAD_PAGE_FAULT) ||
-        (fixed_cause == RH850_EXCP_STORE_PAGE_FAULT);
-
-    if (bit & ((target_ulong)1 << (TARGET_LONG_BITS - 1))) {
-        deleg = env->mideleg;
-        bit &= ~((target_ulong)1 << (TARGET_LONG_BITS - 1));
-    }
-
-    if (env->priv <= PRV_S && bit < 64 && ((deleg >> bit) & 1)) {
-        /* handle the trap in S-mode */
-        /* No need to check STVEC for misaligned - lower 2 bits cannot be set */
-        env->pc = env->stvec;
-        env->scause = fixed_cause;
-        env->sepc = backup_epc;
-
-        if (hasbadaddr) {
-            if (RH850_DEBUG_INTERRUPT) {
-                qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
-                    ": badaddr 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
-            }
-            //env->sbadaddr = env->mea;  Is sbadaddr=any badaddr????
-        }
-
-        target_ulong s = env->mstatus;
-        s = set_field(s, MSTATUS_SPIE, env->priv_ver >= PRIV_VERSION_1_10_0 ?
-            get_field(s, MSTATUS_SIE) : get_field(s, MSTATUS_UIE << env->priv));
-        s = set_field(s, MSTATUS_SPP, env->priv);
-        s = set_field(s, MSTATUS_SIE, 0);
-        csr_write_helper(env, s, CSR_MSTATUS);
-        rh850_set_mode(env, PRV_S);
-    } else {
-        /* No need to check MTVEC for misaligned - lower 2 bits cannot be set */
-        env->pc = env->mtvec;
-        env->mepc = backup_epc;
-        env->mcause = fixed_cause;
-
-        if (hasbadaddr) {
-            if (RH850_DEBUG_INTERRUPT) {
-                qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
-                    ": mea 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
-            }
-            //env->mbadaddr = env->badaddr;
-        }
-
-        target_ulong s = env->mstatus;
-        s = set_field(s, MSTATUS_MPIE, env->priv_ver >= PRIV_VERSION_1_10_0 ?
-            get_field(s, MSTATUS_MIE) : get_field(s, MSTATUS_UIE << env->priv));
-        s = set_field(s, MSTATUS_MPP, env->priv);
-        s = set_field(s, MSTATUS_MIE, 0);
-        csr_write_helper(env, s, CSR_MSTATUS);
-        rh850_set_mode(env, PRV_M);
-    }
+//    target_ulong fixed_cause = 0;
+//    if (cs->exception_index & (RH850_EXCP_INT_FLAG)) {
+//        /* hacky for now. the MSB (bit 63) indicates interrupt but cs->exception
+//           index is only 32 bits wide */
+//        fixed_cause = cs->exception_index & RH850_EXCP_INT_MASK;
+//        fixed_cause |= ((target_ulong)1) << (TARGET_LONG_BITS - 1);
+//    } else {
+//        /* fixup User ECALL -> correct priv ECALL */
+//        if (cs->exception_index == RH850_EXCP_U_ECALL) {
+//            switch (env->priv) {
+//            case PRV_U:
+//                fixed_cause = RH850_EXCP_U_ECALL;
+//                break;
+//            case PRV_S:
+//                fixed_cause = RH850_EXCP_S_ECALL;
+//                break;
+//            case PRV_H:
+//                fixed_cause = RH850_EXCP_H_ECALL;
+//                break;
+//            case PRV_M:
+//                fixed_cause = RH850_EXCP_M_ECALL;
+//                break;
+//            }
+//        } else {
+//            fixed_cause = cs->exception_index;
+//        }
+//    }
+//
+//    target_ulong backup_epc = env->pc;
+//
+//    target_ulong bit = fixed_cause;
+//    target_ulong deleg = env->medeleg;
+//
+//    int hasbadaddr =
+//        (fixed_cause == RH850_EXCP_INST_ADDR_MIS) ||
+//        (fixed_cause == RH850_EXCP_INST_ACCESS_FAULT) ||
+//        (fixed_cause == RH850_EXCP_LOAD_ADDR_MIS) ||
+//        (fixed_cause == RH850_EXCP_STORE_AMO_ADDR_MIS) ||
+//        (fixed_cause == RH850_EXCP_LOAD_ACCESS_FAULT) ||
+//        (fixed_cause == RH850_EXCP_STORE_AMO_ACCESS_FAULT) ||
+//        (fixed_cause == RH850_EXCP_INST_PAGE_FAULT) ||
+//        (fixed_cause == RH850_EXCP_LOAD_PAGE_FAULT) ||
+//        (fixed_cause == RH850_EXCP_STORE_PAGE_FAULT);
+//
+//    if (bit & ((target_ulong)1 << (TARGET_LONG_BITS - 1))) {
+//        deleg = env->mideleg;
+//        bit &= ~((target_ulong)1 << (TARGET_LONG_BITS - 1));
+//    }
+//
+//    if (env->priv <= PRV_S && bit < 64 && ((deleg >> bit) & 1)) {
+//        /* handle the trap in S-mode */
+//        /* No need to check STVEC for misaligned - lower 2 bits cannot be set */
+//        env->pc = env->stvec;
+//        env->scause = fixed_cause;
+//        env->sepc = backup_epc;
+//
+//        if (hasbadaddr) {
+//            if (RH850_DEBUG_INTERRUPT) {
+//                qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
+//                    ": badaddr 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
+//            }
+//            //env->sbadaddr = env->mea;  Is sbadaddr=any badaddr????
+//        }
+//
+//        target_ulong s = env->mstatus;
+//        s = set_field(s, MSTATUS_SPIE, env->priv_ver >= PRIV_VERSION_1_10_0 ?
+//            get_field(s, MSTATUS_SIE) : get_field(s, MSTATUS_UIE << env->priv));
+//        s = set_field(s, MSTATUS_SPP, env->priv);
+//        s = set_field(s, MSTATUS_SIE, 0);
+////        csr_write_helper(env, s, CSR_MSTATUS);
+//        rh850_set_mode(env, PRV_S);
+//    } else {
+//        /* No need to check MTVEC for misaligned - lower 2 bits cannot be set */
+//        env->pc = env->mtvec;
+//        env->mepc = backup_epc;
+//        env->mcause = fixed_cause;
+//
+//        if (hasbadaddr) {
+//            if (RH850_DEBUG_INTERRUPT) {
+//                qemu_log_mask(LOG_TRACE, "core " TARGET_FMT_ld
+//                    ": mea 0x" TARGET_FMT_lx, env->mhartid, env->badaddr);
+//            }
+//            //env->mbadaddr = env->badaddr;
+//        }
+//
+//        target_ulong s = env->mstatus;
+//        s = set_field(s, MSTATUS_MPIE, env->priv_ver >= PRIV_VERSION_1_10_0 ?
+//            get_field(s, MSTATUS_MIE) : get_field(s, MSTATUS_UIE << env->priv));
+//        s = set_field(s, MSTATUS_MPP, env->priv);
+//        s = set_field(s, MSTATUS_MIE, 0);
+////        csr_write_helper(env, s, CSR_MSTATUS);
+//        rh850_set_mode(env, PRV_M);
+//    }
     /* TODO yield load reservation  */
 #endif
     cs->exception_index = EXCP_NONE; /* mark handled to qemu */

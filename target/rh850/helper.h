@@ -67,12 +67,12 @@ DEF_HELPER_FLAGS_2(fcvt_d_lu, TCG_CALL_NO_RWG, i64, env, tl)
 DEF_HELPER_FLAGS_1(fclass_d, TCG_CALL_NO_RWG_SE, tl, i64)
 
 /* Special functions */
-DEF_HELPER_3(csrrw, tl, env, tl, tl)
-DEF_HELPER_4(csrrs, tl, env, tl, tl, tl)
-DEF_HELPER_4(csrrc, tl, env, tl, tl, tl)
+//DEF_HELPER_3(csrrw, tl, env, tl, tl)
+//DEF_HELPER_4(csrrs, tl, env, tl, tl, tl)
+//DEF_HELPER_4(csrrc, tl, env, tl, tl, tl)
 #ifndef CONFIG_USER_ONLY
-DEF_HELPER_2(sret, tl, env, tl)
-DEF_HELPER_2(mret, tl, env, tl)
-DEF_HELPER_1(wfi, void, env)
+//DEF_HELPER_2(sret, tl, env, tl)
+//DEF_HELPER_2(mret, tl, env, tl)
+//DEF_HELPER_1(wfi, void, env)
 DEF_HELPER_1(tlb_flush, void, env)
 #endif

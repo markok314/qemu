@@ -1,0 +1,26 @@
+                            qemu/             accel/tcg                 accel/tcg                   target/rh850                accel/tcg      target/rh850
+                            cpus.c            cpu_exec.c                translate_all.c             translate.c                 translator.c   cpu.c
+                             |
+qemu_tcg_rr_cpu_thread_fn()->|
+                               v                   |
+                        r = tcg_cpu_exec           |
+                               |-- r = cpu_exec()->|
+                               |if r==EXCP_DEBUG:   
+                               |     break
+                               |qemu_tcg_rr_wait_io_event() // waits for 'cont' from monitor, ...
+
+                                                    v
+                                                    tb_find()
+                                                   |   |--> tb_gen_code()    |
+                                                   |                         |--> gen_intermediate_code() |
+                                                   |                                                      |--> translator_loop()   |
+                                                   |                                                                               |
+                                                   |                                                         rh850_tr_tb_stop() <--|
+                                                   |                                                         ...
+                                                   --v
+                                                     cpu_handle_exception() 
+                                                        v
+                                                        if cpu->exception_index == EXCP_DEBUG:
+                                                            cpu_handle_debug_exception()   
+                                                                    |
+                                                                    |--- rh850_debug_excp_handler()                                             -->   |
