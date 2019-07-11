@@ -79,5 +79,7 @@ int main(void)
 
     targetShutdown();
     
-    for (;;);
+    for (;isITest < 10;) {
+        dummyFunction(100);
+    }
 }

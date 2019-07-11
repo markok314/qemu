@@ -69,6 +69,7 @@ class TargetController:
         # The first N instructions are used to initialize all registers, which have
         # random value on reset, so execute them in one big step.
         endOfInitAddr = 0x78    # adjust this address if modifying gpr_init.s
+        self.debugCtrl.deleteAll()
         self.debugCtrl.setBP(0, endOfInitAddr)  
 
         while (True):    # repeat, because QEMU stops execution on every branch

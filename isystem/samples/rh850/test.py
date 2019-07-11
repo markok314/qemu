@@ -23,7 +23,8 @@ EIPSW_MASK = 0xfffff1df # ignore ID flag, because HW behavior does not match doc
                         # but PSW.ID is not???
 
 # files provifing common functionality to test files
-DO_NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s']
+DO_NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s', 'br.s']  # br.s does not end 
+                            # properly - for manual testing during development only
 QEMU_LOG_FILE = "../../../../rh850.log"
 # path to workspace must be relative, it seems winIDEA can not open abs path on Linux.
 QEMU_WORKSPACE = "RH850_F1L_IAR/SampleGDB.xjrf"
