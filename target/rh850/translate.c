@@ -3095,7 +3095,6 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation)
 	int rs2, rs3;
 	TCGv link_addr = tcg_temp_new();
 	TCGv dest_addr = tcg_temp_new();
-	gen_get_gpr(dest_addr, rs1);
 
 	switch(operation){
 	case OPC_RH850_JR_imm22:
@@ -3114,10 +3113,13 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation)
 		gen_set_gpr(rs1, link_addr);
 		break;
 	case OPC_RH850_JARL_reg1_reg3:
+	    gen_get_gpr(dest_addr, rs1);
 		rs3 = extract32(ctx->opcode, 27, 5);
 		tcg_gen_addi_i32(link_addr, cpu_pc, 0x4);
 		gen_set_gpr(rs3, link_addr);
 		break;
+	default:  // JMP instruction
+        gen_get_gpr(dest_addr, rs1);
 	}
 
 	if (disp32) {
@@ -3130,7 +3132,7 @@ static void gen_jmp(DisasContext *ctx, int rs1, uint32_t disp32, int operation)
     tcg_temp_free(link_addr);
     tcg_temp_free(dest_addr);
 
-    gen_goto_tb(ctx, 0, cpu_pc);     // no jump, continue with next instr.
+    gen_goto_tb(ctx, 0, cpu_pc);
     ctx->base.is_jmp = DISAS_TB_EXIT_ALREADY_GENERATED;
 }
 
