@@ -3374,10 +3374,6 @@ static void gen_bit_manipulation(DisasContext *ctx, int rs1, int rs2, int operat
 
 static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2, int operation){
 
-	TCGv temp = tcg_temp_new_i32();
-	TCGv adr = tcg_temp_new_i32();
-	TCGv r2 = tcg_temp_new();
-	TCGv r3 = tcg_temp_new();
 	TCGLabel *storeReg3;
 	TCGLabel *cont;
 	TCGLabel *excFromEbase;
@@ -3386,11 +3382,10 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	int selID = 0;
 	int imm;
 
-	TCGv t0 = tcg_temp_local_new();
-	TCGv t1 = tcg_temp_local_new();
-
 	switch(operation){
-	case OPC_RH850_CALLT_imm6:
+	case OPC_RH850_CALLT_imm6: {
+        TCGv temp = tcg_temp_new_i32();
+        TCGv adr = tcg_temp_new_i32();
 
 		//setting CTPC to PC+2
 		tcg_gen_addi_i32(cpu_sysRegs[BANK_ID_BASIC_0][CTPC_IDX], cpu_pc, 0x2);
@@ -3412,9 +3407,16 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		tcg_gen_add_i32(cpu_pc, temp, cpu_sysRegs[BANK_ID_BASIC_0][CTBP_IDX]);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
-		break;
+
+	    tcg_temp_free(temp);
+	    tcg_temp_free(adr);
+	} break;
 
 	case OPC_RH850_CAXI_reg1_reg2_reg3: {
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
+	    TCGv r2 = tcg_temp_new();
+	    TCGv r3 = tcg_temp_new();
 
 		storeReg3 = gen_new_label();
 		gen_get_gpr(adr, rs1);
@@ -3447,10 +3449,15 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		gen_set_label(cont);
 		gen_set_gpr(rs3, local_temp);
 
+        tcg_temp_free(temp);
+        tcg_temp_free(adr);
+        tcg_temp_free(r2);
+        tcg_temp_free(r3);
 		break;
 	}
 
-	case OPC_RH850_CTRET:
+	case OPC_RH850_CTRET: {
+	    TCGv temp = tcg_temp_new_i32();
 
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][CTPC_IDX]);
 		tcg_gen_andi_i32(temp, cpu_sysRegs[BANK_ID_BASIC_0][CTPSW_IDX], 0x1f);
@@ -3460,16 +3467,19 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		//setting lower 5 bits of PSW
 		tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], temp);
 
-		tcg_temp_free_i32(temp);
         gen_restore_flags(ctx);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
-		break;
+
+	    tcg_temp_free(temp);
+	} break;
 
 	case OPC_RH850_DI:
 		tcg_gen_movi_i32(cpu_ID, 0x1);
 		break;
 
 	case OPC_RH850_DISPOSE_imm5_list12: {
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
 
 		int list [12] = {31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20};
 		int numOfListItems = sizeof(list) / sizeof(list[0]);
@@ -3508,11 +3518,16 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			test = test << 1;
 		}
 		gen_set_gpr(3, temp);
+
+		tcg_temp_free(temp);
+        tcg_temp_free(adr);
 		}
 
 		break;
 
 	case OPC_RH850_DISPOSE_imm5_list12_reg1: {
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
 
 		int list [12] = {31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20};
 		int numOfListItems = sizeof(list) / sizeof(list[0]);
@@ -3557,9 +3572,11 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 		gen_set_gpr(3, temp);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
-		}
 
-		break;
+	    tcg_temp_free(temp);
+        tcg_temp_free(adr);
+		}
+	    break;
 
 	case OPC_RH850_EI:
 		tcg_gen_movi_i32(cpu_ID, 0x0);
@@ -3634,6 +3651,8 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		//break;
 
 	case OPC_RH850_POPSP_rh_rt:  {
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
 
 		uint32_t rs3 = extract32(ctx->opcode, 27, 5);
 
@@ -3657,9 +3676,13 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 			gen_set_gpr(3, temp);
 		}
 
+        tcg_temp_free(temp);
+        tcg_temp_free(adr);
 	}	break;
 
 	case OPC_RH850_PREPARE_list12_imm5:{
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
 
 		// how to manually affect the ff field?
 
@@ -3697,9 +3720,13 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_subi_i32(temp, temp, (extract32(ctx->opcode, 1, 5) << 2));
 		gen_set_gpr(3, temp);
 
+        tcg_temp_free(temp);
+        tcg_temp_free(adr);
 	}	break;
 
 	case OPC_RH850_PREPARE_list12_imm5_sp:{
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
 
 		int list [12] = {20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
 		uint32_t list12 = extract32(ctx->opcode, 0, 1) | ( (extract32(ctx->opcode, 21, 11)) << 1);
@@ -3773,9 +3800,13 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				break;
 		}
 
+        tcg_temp_free(temp);
+        tcg_temp_free(adr);
 		}	break;
 
 	case OPC_RH850_PUSHSP_rh_rt: {
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
 
 		uint32_t rs3 = extract32(ctx->opcode, 27, 5);
 
@@ -3795,6 +3826,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 				}
 			gen_set_gpr(3, temp);
 		}
+
+        tcg_temp_free(temp);
+        tcg_temp_free(adr);
 	}	break;
 
 	case OPC_RH850_RIE: {
@@ -3836,7 +3870,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		gen_set_gpr(rs2, cpu_sysRegs[selID][regID]);
 		break;
 
-	case OPC_RH850_SWITCH_reg1:
+	case OPC_RH850_SWITCH_reg1: {
+	    TCGv temp = tcg_temp_new_i32();
+	    TCGv adr = tcg_temp_new_i32();
 
 		gen_get_gpr(adr, rs1);
 		tcg_gen_shli_i32(adr, adr, 0x1);
@@ -3849,7 +3885,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_shli_i32(temp, temp, 0x1);
 		tcg_gen_add_i32(cpu_pc, cpu_pc, temp);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
-		break;
+	} break;
 
 	// SYNC instructions will not be implemented
 	case OPC_RH850_SYNCE:
@@ -3893,6 +3929,9 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 
 	case OPC_RH850_SYSCALL:
 		{
+		    TCGv t0 = tcg_temp_local_new();
+		    TCGv t1 = tcg_temp_local_new();
+
 			cont = gen_new_label();
 			add_scbp = gen_new_label();
 
@@ -3937,16 +3976,11 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
             tcg_temp_free(local_SCCFG_SIZE);
 
 		    ctx->base.is_jmp = DISAS_EXIT_TB;
+		    tcg_temp_free(t0);
+		    tcg_temp_free(t1);
 			break;
 		}
 	}
-    tcg_temp_free(t0);
-    tcg_temp_free(t1);
-
-    tcg_temp_free(temp);
-    tcg_temp_free(adr);
-    tcg_temp_free(r2);
-    tcg_temp_free(r3);
 }
 
 
