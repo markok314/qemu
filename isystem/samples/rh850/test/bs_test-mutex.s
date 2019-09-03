@@ -1,4 +1,5 @@
-# This test fails, because hardware does not match documentation.
+# This test fails, because test hardware does not match documentation - these
+# instructions are implemented on multicore devices only.
 # Register (R21 in code below) is not modified to contain 0 or 1 on STC.W, 
 # but remains unchanged.
 
