@@ -1,22 +1,4 @@
-# This script is used for building and deploying of ARM, RH850, POWERPC and TRICORE 
-# qemu for Windows.
-# Script downloads and launches docker, configures it and starts building. Target .exe
-# files and dll files are copied to windows32 or windows64.
-# The script also filters DLLs and copies required DLLs to dir `filtered_dlls`.
-#
-# You should have docker, python3 and wine installed.
-#
-# Usage:
-#
-# sudo python3 createWindowsDistro.py
-#
-# Possible flags:
-# -t         - builds only targets which are listed here
-# -a [32|64] - selects arhitecture
-#
-# Examples:
-#   sudo python3 createWindowsDistro.py -t rh850,arm -a 64
-#   This builds RH850 and ARM for Windows x64.
+# This script builds quemu and creates distributables. See help for more info.
 
 import sys
 import os
@@ -27,7 +9,14 @@ import shutil
 import argparse
 import shutil
 
+g_isVerbose = False
 BIN_DIR = 'build'
+
+
+def log(msg: str):
+    if g_isVerbose:
+        print(msg)
+
 
 def check_dlls(arch: str, targets):
     """
@@ -49,6 +38,7 @@ def check_dlls(arch: str, targets):
         try:
 
             cmd = ["su -c 'wine qemu-system-" + check + ".exe -M help > /dev/null 2>&1 '"]
+            log('check_dlls: ' + ' '.join(cmd))
             subprocess.check_call(cmd, shell=True, executable='/bin/bash')
             print()
             os.rename(file + '_tst', file)
@@ -61,7 +51,7 @@ def check_dlls(arch: str, targets):
 
 
 def zip_files():
-    if os.path.exists(f'{BIN_DIR}32}'):
+    if os.path.exists(f'{BIN_DIR}32'):
         shutil.make_archive("qemu-i686", 'zip', f'{BIN_DIR}32')
     if os.path.exists(f'{BIN_DIR}64'):
         shutil.make_archive("qemu-x64", 'zip', f'{BIN_DIR}64')
@@ -71,6 +61,7 @@ def start_docker():
 
     os.chdir('..')
     cmd = ['sudo make docker-test-mingw@fedora V=1 DEBUG=1 J=4 /bin/bash']
+    log('Start docker: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 
     isStarted = False
@@ -82,9 +73,10 @@ def start_docker():
             isStarted = True
             id = id[2:]
             id = id[:-4]
-            print('Started docker with id: {id}')
+            print(f'Started docker with id: {id}')
 
     os.chdir('isystem')
+    log('Started docker with id: ' + id)
     return id
 
 
@@ -93,7 +85,9 @@ def stop_docker():
     print(os.getcwd())
 
     cmd = ["sudo docker stop " + id]
+    log('Stop docker: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+
     p.wait()
 
     # remove docker
@@ -130,15 +124,18 @@ def _dockerBuild(dockerId, arch: str, targets):
                                 f" cd QEMU_SRC ; ./configure --cross-prefix={xarch}-w64-mingw32- "
                                          "--target-list="+ ','.join(targets) + " ;make'"]
 
+    log('docker build: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
     cmd = [f"sudo docker exec -i {dockerId} sh -c 'mkdir ~/dlls{arch};  cd /usr/{xarch}-w64-mingw32/sys-root/mingw/bin/ ;"
                                          f" cp *.dll ~/dlls{arch}'"]
+    log('docker build: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
     cmd = [f"sudo docker cp {dockerId}:/root/dlls{arch}/ {BIN_DIR}{arch}"]
+    log('docker build: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
@@ -148,7 +145,7 @@ def _buildWinExecutables(arch, targets):
     :param arch: architecture, should be '32' or '64'
     :param targets: list of strings for targets, eg. ['arm', 'ppc']
     """
-    print("---------Building: " + targets + f" for {arch}-bit Windows---------")
+    print("---------Building: " + ','.join(targets) + f" for {arch}-bit Windows---------")
     if os.path.exists(f"{BIN_DIR}{arch}"):
         shutil.rmtree(f"{BIN_DIR}{arch}")
     os.makedirs(f"{BIN_DIR}{arch}")
@@ -158,13 +155,36 @@ def _buildWinExecutables(arch, targets):
 
     _dockerBuild(dockerId, arch, targets)
     _copyFromDockerToSharedDir(dockerId, arch, targets)
-    check_dlls(isBuild32, isBuild64, copyRh850, copyArm, copyTricore, copyPowerPc)
+    check_dlls(arch, targets)
     zip_files()
     stop_docker()
 
 
 def parseArgs():
-    parser = argparse.ArgumentParser()
+
+    usage = f"""
+This script is used for building and deploying of ARM, RH850, POWERPC and 
+TRICORE qemu for Windows. Script downloads and launches docker, configures 
+it and starts building. Target '.exe' files and dll files are copied to 
+{BIN_DIR}32 or {BIN_DIR}64. The script also filters DLLs and copies required 
+DLLs to dir `filtered_dlls`.
+
+You should have docker, python3 and wine installed.
+
+Usage:
+
+sudo python3 createWindowsDistro.py
+
+Examples:
+   To build RH850 and ARM for Windows x64:
+
+   sudo python3 createWindowsDistro.py -t rh850,arm -a 64
+"""
+    parser = argparse.ArgumentParser(description=usage)
+
+    parser.add_argument("-v", '--verbose', dest="isVerbose", action='store_true', default=False,
+                        help="Writes more info during execution.")
+
     parser.add_argument('-t', '--targets', nargs='+', default=['arm', 'ppc', 'tricore', 'rh850'],
                         choices=['arm', 'ppc', 'tricore', 'rh850'])
 
@@ -176,6 +196,8 @@ def main():
 
     args = parseArgs() 
    
+    g_isVerbose = args.isVerbose
+
     if not os.getcwd().endswith('/isystem'):
         print("ERROR: This script should be run in directory 'qemu/isystem'!")
         sys.exit(-1)
