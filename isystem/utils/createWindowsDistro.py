@@ -3,7 +3,7 @@
 import sys
 import os
 import glob
-import subprocess
+import subprocess as sp
 import time
 import shutil
 import argparse
@@ -16,6 +16,48 @@ BIN_DIR = 'build'
 def log(msg: str):
     if g_isVerbose:
         print('\033[1;32;40m ' + msg + '\033[0;37;40m')
+
+
+def start_docker_and_build(architectures, targets):
+
+    os.chdir('..')
+    # Optione: V=1 for verbose build
+    targetsStr = ','.join(targets).replace(',', '-softmmu'] + '.softmmu'
+    # in case of problems run this command with additional option 'V=1'
+    cmd = ['make', 'docker-test-mingw@fedora', 'J=4', 'TARGET_LIST=' + targetsStr]
+    log('Start docker: ' + ' '.join(cmd))
+
+    sp.check_call(cmd)
+#    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+#
+#    while True:
+#        time.sleep(1)
+#        id = str(os.popen("sudo docker ps --filter ancestor=qemu:fedora -q").readlines())
+#        if len(id) > 4:
+#            id = id[2:]
+#            id = id[:-4]
+#            log(f'Started docker with id: {id}')
+#            break
+
+    os.chdir('isystem')
+    return id
+
+
+def stop_docker():
+    os.chdir('..')
+    log(os.getcwd())
+
+    cmd = ["sudo docker stop " + id]
+    log('Stop docker: ' + ' '.join(cmd))
+    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+
+    p.wait()
+
+    # remove docker
+    cmd = ['sudo rm -rf docker-src*']
+    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+
+    os.chdir('isystem')
 
 
 def check_dlls(arch: str, targets):
@@ -57,42 +99,6 @@ def zip_files():
         shutil.make_archive("qemu-x64", 'zip', f'{BIN_DIR}64')
 
 
-def start_docker():
-
-    os.chdir('..')
-    # Optione: V=1 for verbose build
-    cmd = ['sudo make docker-test-mingw@fedora V=1 DEBUG=1 J=4 /bin/bash']
-    log('Start docker: ' + ' '.join(cmd))
-    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
-
-    while True:
-        time.sleep(1)
-        id = str(os.popen("sudo docker ps --filter ancestor=qemu:fedora -q").readlines())
-        if len(id) > 4:
-            id = id[2:]
-            id = id[:-4]
-            log(f'Started docker with id: {id}')
-            break
-
-    os.chdir('isystem')
-    return id
-
-
-def stop_docker():
-    os.chdir('..')
-    log(os.getcwd())
-
-    cmd = ["sudo docker stop " + id]
-    log('Stop docker: ' + ' '.join(cmd))
-    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
-
-    p.wait()
-
-    # remove docker
-    cmd = ['sudo rm -rf docker-src*']
-    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
-
-    os.chdir('isystem')
 
 
 def _copyFromDockerToSharedDir(id, arch, targets):
@@ -183,8 +189,9 @@ Examples:
     parser.add_argument("-v", '--verbose', dest="isVerbose", action='store_true', default=False,
                         help="Writes more info during execution.")
 
-    parser.add_argument('-t', '--targets', nargs='+', default=['arm', 'ppc', 'tricore', 'rh850'],
-                        choices=['arm', 'ppc', 'tricore', 'rh850'])
+    targets = ['arm', 'aarch64', 'ppc', 'ppc64', 'tricore', 'rh850']
+    parser.add_argument('-t', '--targets', nargs='+', default=targets,
+                        choices=targets)
 
     parser.add_argument("-a", "--arch", nargs='+', default=['64'], choices=['32', '64'])
     return parser.parse_args()

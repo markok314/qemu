@@ -3037,16 +3037,16 @@ int print_insn_rh850(bfd_vma memaddr, struct disassemble_info *info)
 
 	switch(len){
 	case 2:
-		(*info->fprintf_func)(info->stream, "        %04lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "        %04llx  %s",   instVal, buf);
 		break;
 	case 4:
-		(*info->fprintf_func)(info->stream, "    %08lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "    %08llx  %s",   instVal, buf);
 		break;
 	case 6:
-		(*info->fprintf_func)(info->stream, "%012lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "%012llx  %s",   instVal, buf);
 		break;
 	case 8:
-		(*info->fprintf_func)(info->stream, "%016lx  %s",   instVal, buf);
+		(*info->fprintf_func)(info->stream, "%016llx  %s",   instVal, buf);
 	}
 
 
