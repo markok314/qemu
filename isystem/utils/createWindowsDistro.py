@@ -15,7 +15,7 @@ BIN_DIR = 'build'
 
 def log(msg: str):
     if g_isVerbose:
-        print(msg)
+        print('\033[1;32;40m ' + msg + '\033[0;37;40m')
 
 
 def check_dlls(arch: str, targets):
@@ -32,20 +32,20 @@ def check_dlls(arch: str, targets):
 
     os.chdir(f'dlls{arch}')
 
-    for file in glob.glob("*.dll"):
-        os.rename(file, file + '_tst')
-        print(file, end='')
+    for dllFName in glob.glob("*.dll"):
+        os.rename(dllFName, dllFName + '_tst')
+        print(dllFName, end='')
         try:
 
             cmd = ["su -c 'wine qemu-system-" + check + ".exe -M help > /dev/null 2>&1 '"]
             log('check_dlls: ' + ' '.join(cmd))
             subprocess.check_call(cmd, shell=True, executable='/bin/bash')
             print()
-            os.rename(file + '_tst', file)
+            os.rename(dllFName + '_tst', dllFName)
         except:
             print(" NEEDED")
-            os.rename(file + '_tst', file)
-            shutil.copy2(file, '../filtered_dlls')
+            os.rename(dllFName + '_tst', dllFName)
+            shutil.copy2(dllFName, '../filtered_dlls')
 
     os.chdir("..")
 
@@ -60,29 +60,27 @@ def zip_files():
 def start_docker():
 
     os.chdir('..')
+    # Optione: V=1 for verbose build
     cmd = ['sudo make docker-test-mingw@fedora V=1 DEBUG=1 J=4 /bin/bash']
     log('Start docker: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
 
-    isStarted = False
-
-    while not isStarted:
+    while True:
         time.sleep(1)
         id = str(os.popen("sudo docker ps --filter ancestor=qemu:fedora -q").readlines())
         if len(id) > 4:
-            isStarted = True
             id = id[2:]
             id = id[:-4]
-            print(f'Started docker with id: {id}')
+            log(f'Started docker with id: {id}')
+            break
 
     os.chdir('isystem')
-    log('Started docker with id: ' + id)
     return id
 
 
 def stop_docker():
     os.chdir('..')
-    print(os.getcwd())
+    log(os.getcwd())
 
     cmd = ["sudo docker stop " + id]
     log('Stop docker: ' + ' '.join(cmd))
@@ -120,9 +118,9 @@ def _dockerBuild(dockerId, arch: str, targets):
     if arch == '32':
         xarch = 'i686'
 
-    cmd = [f"sudo docker exec -i {dockerId} sh -c 'cd /tmp/qemu-test/src/ ;pwd"
-                                f" cd QEMU_SRC ; ./configure --cross-prefix={xarch}-w64-mingw32- "
-                                         "--target-list="+ ','.join(targets) + " ;make'"]
+    cmd = [f"sudo docker exec -i {dockerId} sh -c "
+                                f"'cd $QEMU_SRC;echo $QEMU_SRC; pwd; ./configure --cross-prefix={xarch}-w64-mingw32- "
+                                         "--target-list=" + ','.join(targets) + "; make'"]
 
     log('docker build: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
@@ -130,12 +128,12 @@ def _dockerBuild(dockerId, arch: str, targets):
 
     cmd = [f"sudo docker exec -i {dockerId} sh -c 'mkdir ~/dlls{arch};  cd /usr/{xarch}-w64-mingw32/sys-root/mingw/bin/ ;"
                                          f" cp *.dll ~/dlls{arch}'"]
-    log('docker build: ' + ' '.join(cmd))
+    log('docker cp dlls: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
     cmd = [f"sudo docker cp {dockerId}:/root/dlls{arch}/ {BIN_DIR}{arch}"]
-    log('docker build: ' + ' '.join(cmd))
+    log('docker cp root dlls: ' + ' '.join(cmd))
     p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
     p.wait()
 
@@ -145,7 +143,7 @@ def _buildWinExecutables(arch, targets):
     :param arch: architecture, should be '32' or '64'
     :param targets: list of strings for targets, eg. ['arm', 'ppc']
     """
-    print("---------Building: " + ','.join(targets) + f" for {arch}-bit Windows---------")
+    log("---------Building: " + ','.join(targets) + f" for {arch}-bit Windows---------")
     if os.path.exists(f"{BIN_DIR}{arch}"):
         shutil.rmtree(f"{BIN_DIR}{arch}")
     os.makedirs(f"{BIN_DIR}{arch}")
@@ -193,13 +191,14 @@ Examples:
 
 
 def main():
+    global g_isVerbose
 
     args = parseArgs() 
    
     g_isVerbose = args.isVerbose
 
     if not os.getcwd().endswith('/isystem'):
-        print("ERROR: This script should be run in directory 'qemu/isystem'!")
+        print("\033[1;31;40m ERROR: This script should be run in directory 'qemu/isystem'!")
         sys.exit(-1)
 
     for arch in args.arch:
@@ -208,5 +207,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-    print("------------FINISHED------------")
+    log("------------FINISHED------------")
 

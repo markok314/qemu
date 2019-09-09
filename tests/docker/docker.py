@@ -560,4 +560,5 @@ def main():
     return args.cmdobj.run(args, argv)
 
 if __name__ == "__main__":
+    print("\033[1;32;40m Docker cmd: " + " ".join(sys.argv) + " \033[0;37;40m ")
     sys.exit(main())
