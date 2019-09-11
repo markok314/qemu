@@ -53,7 +53,7 @@ def start_docker(docker_host_dir, targets):
     isVerbose = 0
     if g_isVerbose:  # Option: V=1 for verbose build
         isVerbose = 1
-    targetsStr = ','.join(targets).replace(',', '-softmmu') + '-softmmu'
+    targetsStr = ','.join(targets).replace(',', '-softmmu,') + '-softmmu'
     cmd = 'sudo -n docker run --label com.qemu.instance.uuid=isystemBuild -u 1000 --security-opt seccomp=unconfined --rm --net=none ' + \
          f'-e TARGET_LIST={targetsStr} -e EXTRA_CONFIGURE_OPTS= -e V={isVerbose} -e J=4 -e DEBUG= -e SHOW_ENV= -e CCACHE_DIR=/var/tmp/ccache ' + \
          f'-v /home/isystem/.cache/qemu-docker-ccache:/var/tmp/ccache:z -v /home/isystem/proj/qemu/{docker_host_dir}:/var/tmp/qemu ' + \
@@ -226,10 +226,16 @@ Examples:
                         help=f"Removes dirs starting with '{DOCKER_DIR_GLOB}' from previous docker runs.")
 
     targets = ['arm', 'aarch64', 'ppc', 'ppc64', 'tricore', 'rh850']
-    parser.add_argument('-t', '--targets', nargs='+', default=targets,
-                        choices=targets)
 
-    parser.add_argument("-a", "--arch", nargs='+', default=['64'], choices=['32', '64'])
+    parser.add_argument("-a", "--arch", nargs='+', default=['64'], choices=['32', '64'],
+                        help="Not used, currently only 64 bit is always built.")
+
+    parser.add_argument('-t', '--targets', type=str, nargs='+',
+                        choices=targets,
+                        default=targets,
+                        help='list of targets to build')
+                        
+
     return parser.parse_args()
 
 
