@@ -3,7 +3,7 @@
 import sys
 import os
 import glob
-import subprocess as sp
+import subprocess
 import time
 import shutil
 import argparse
@@ -11,35 +11,67 @@ import shutil
 
 g_isVerbose = False
 BIN_DIR = 'build'
-
+DOCKER_DIR_GLOB = 'docker-src*'
 
 def log(msg: str):
     if g_isVerbose:
         print('\033[1;32;40m ' + msg + '\033[0;37;40m')
 
 
-def start_docker_and_build(architectures, targets):
+def remove_docker_dirs():
+    host_dirs = glob.glob(DOCKER_DIR_GLOB)
+    for host_dir in host_dirs:
+        shutil.rmtree(host_dir)
 
-    os.chdir('..')
-    # Optione: V=1 for verbose build
-    targetsStr = ','.join(targets).replace(',', '-softmmu'] + '.softmmu'
-    # in case of problems run this command with additional option 'V=1'
-    cmd = ['make', 'docker-test-mingw@fedora', 'J=4', 'TARGET_LIST=' + targetsStr]
-    log('Start docker: ' + ' '.join(cmd))
 
-    sp.check_call(cmd)
-#    p = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
-#
-#    while True:
-#        time.sleep(1)
-#        id = str(os.popen("sudo docker ps --filter ancestor=qemu:fedora -q").readlines())
-#        if len(id) > 4:
-#            id = id[2:]
-#            id = id[:-4]
-#            log(f'Started docker with id: {id}')
-#            break
+def create_host_dir():
+    """
+    Runs script for docker build with invalid target. This way the script creates
+    qemu/docker.src-<timestamp>/qemu.tar
+    """
 
-    os.chdir('isystem')
+    dockerDirs = glob.glob(DOCKER_DIR_GLOB)
+
+    cmd = ['make', 'docker-test-mingw@fedora', 'J=4', 'TARGET_LIST=intentionallyInvalid']
+    if g_isVerbose:  # Option: V=1 for verbose build
+        cmd += ['V=1']
+    log('Start docker to create mounted dir: ' + ' '.join(cmd))
+
+    p = subprocess.call(cmd)  # do not check for error, should fail anyway
+
+    dockerDirsAfterCall = glob.glob(DOCKER_DIR_GLOB)
+    newDockerDir = set(dockerDirsAfterCall) - set(dockerDirs)
+    if len(newDockerDir) != 1:
+        raise Exception("Internal error - only one directory exepcted, "
+                        "use debugger to find cause!" + str(newDockerDir))
+
+    return list(newDockerDir)[0]
+
+
+def start_docker(docker_host_dir, targets):
+
+    isVerbose = 0
+    if g_isVerbose:  # Option: V=1 for verbose build
+        isVerbose = 1
+    targetsStr = ','.join(targets).replace(',', '-softmmu') + '-softmmu'
+    cmd = 'sudo -n docker run --label com.qemu.instance.uuid=isystemBuild -u 1000 --security-opt seccomp=unconfined --rm --net=none ' + \
+         f'-e TARGET_LIST={targetsStr} -e EXTRA_CONFIGURE_OPTS= -e V={isVerbose} -e J=4 -e DEBUG= -e SHOW_ENV= -e CCACHE_DIR=/var/tmp/ccache ' + \
+         f'-v /home/isystem/.cache/qemu-docker-ccache:/var/tmp/ccache:z -v /home/isystem/proj/qemu/{docker_host_dir}:/var/tmp/qemu ' + \
+          ' qemu:fedora /var/tmp/qemu/run ../../isystem/dockerBuild.sh'
+
+    log('Start docker for build and copy: ' + cmd)
+
+    p = subprocess.Popen(cmd, shell=True)
+
+    while True:
+        time.sleep(1)
+        id = str(os.popen("sudo docker ps --filter ancestor=qemu:fedora -q").readlines())
+        if len(id) > 4:
+            id = id[2:]
+            id = id[:-4]
+            log(f'Started docker with id: {id}')
+            break
+
     return id
 
 
@@ -155,7 +187,8 @@ def _buildWinExecutables(arch, targets):
     os.makedirs(f"{BIN_DIR}{arch}")
 
     # start docker
-    dockerId = start_docker()
+    start_docker_and_build(arch, targets)
+    dockerId = get_docker_id()
 
     _dockerBuild(dockerId, arch, targets)
     _copyFromDockerToSharedDir(dockerId, arch, targets)
@@ -189,6 +222,9 @@ Examples:
     parser.add_argument("-v", '--verbose', dest="isVerbose", action='store_true', default=False,
                         help="Writes more info during execution.")
 
+    parser.add_argument("-r", '--rmhostdirs', dest="isRmHostDirs", action='store_true', default=False,
+                        help=f"Removes dirs starting with '{DOCKER_DIR_GLOB}' from previous docker runs.")
+
     targets = ['arm', 'aarch64', 'ppc', 'ppc64', 'tricore', 'rh850']
     parser.add_argument('-t', '--targets', nargs='+', default=targets,
                         choices=targets)
@@ -204,12 +240,17 @@ def main():
    
     g_isVerbose = args.isVerbose
 
-    if not os.getcwd().endswith('/isystem'):
-        print("\033[1;31;40m ERROR: This script should be run in directory 'qemu/isystem'!")
-        sys.exit(-1)
+    if not os.path.exists('isystem'):
+        raise Exception("\033[1;31;40m ERROR: This script should be run in top directory of 'qemu'!")
+
+    if args.isRmHostDirs:
+        remove_docker_dirs()
 
     for arch in args.arch:
-        _buildWinExecutables(arch, args.targets)
+        hostDir = create_host_dir()
+        log('Host dir successfully created: ' + hostDir)
+        start_docker(hostDir, args.targets)
+        # _buildWinExecutables(arch, args.targets)
 
 
 if __name__ == '__main__':

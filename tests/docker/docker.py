@@ -173,11 +173,13 @@ class Docker(object):
     def _do(self, cmd, quiet=True, **kwargs):
         if quiet:
             kwargs["stdout"] = DEVNULL
+        print("\033[1;32;40m Docker call: " + " ".join(self._command + cmd) + " \033[0;37;40m ")
         return subprocess.call(self._command + cmd, **kwargs)
 
     def _do_check(self, cmd, quiet=True, **kwargs):
         if quiet:
             kwargs["stdout"] = DEVNULL
+        print("\033[1;32;40m Docker check_call: " + " ".join(self._command + cmd) + " \033[0;37;40m ")
         return subprocess.check_call(self._command + cmd, **kwargs)
 
     def _do_kill_instances(self, only_known, only_active=True):
@@ -208,6 +210,7 @@ class Docker(object):
         return self._do_kill_instances(True)
 
     def _output(self, cmd, **kwargs):
+        print("\033[1;32;40m Docker check_output: " + " ".join(self._command + cmd) + " \033[0;37;40m ")
         return subprocess.check_output(self._command + cmd,
                                        stderr=subprocess.STDOUT,
                                        **kwargs)
@@ -347,6 +350,7 @@ class BuildCommand(SubCommand):
             docker_pre = os.path.splitext(args.dockerfile)[0]+".pre"
             if os.path.exists(docker_pre):
                 stdout = DEVNULL if args.quiet else None
+                print("\033[1;32;40m Docker call: " + docker_pre + " \033[0;37;40m ")
                 rc = subprocess.call(os.path.realpath(docker_pre),
                                      cwd=docker_dir, stdout=stdout)
                 if rc == 3:
