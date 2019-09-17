@@ -61,36 +61,55 @@ static void rh850_reset(void *opaque)
 }
 
 
+static void get_memory_range(QemuOpts *subopts, uint32_t *start_addr, uint32_t *size) {
+
+    if (subopts) {
+        QemuOpt *start_opt = qemu_opt_find(subopts, "start_addr");
+        if (start_opt) {
+            *start_addr = start_opt->value.uint;
+        }
+        QemuOpt *size_opt = qemu_opt_find(subopts, "size");
+        if (size_opt) {
+            *size = size_opt->value.uint;
+        }
+    }
+}
+
+
+// Returns memory ranges as defined in opts. On input all vars should
+// contain default values, because they are changed only if user specified
+// cmd. line option.
+static void get_memory_ranges(uint32_t *flash_start, uint32_t *flash_size,
+                              uint32_t *ram_start, uint32_t *ram_size) {
+
+    QemuOptsList *optsList = qemu_find_opts("flash");
+    // printf("---->> %s = %s\n", optsList->name, optsList->implied_opt_name);
+    QemuOpts *flash_opts = qemu_opts_find(optsList, NULL);
+    get_memory_range(flash_opts, flash_start, flash_size);
+
+    QemuOpts *ram_opts = qemu_opts_find(optsList, NULL);
+    get_memory_range(ram_opts, ram_start, ram_size);
+}
+
+
 static void add_memory(void)
 {
-    QemuOptsList *optsList = qemu_find_opts("ram");
-    //QemuOpt *opt;
-    printf("---->> %s = %s\n", optsList->name, optsList->implied_opt_name);
-    QemuOpts *ramOpt = qemu_opts_find(optsList, NULL);
-    QemuOpt *sizeOpt = qemu_opt_find(ramOpt, "size");
-    QemuOpt *startOpt = qemu_opt_find(ramOpt, "start");
-    if (sizeOpt) {
-        printf("---->> size = %ld\n", sizeOpt->value.uint);
-    }
-    if (startOpt) {
-        printf("---->> start = %ld\n", startOpt->value.uint);
-    }
-    //for (int i = 0; optsList[i] != NULL; i++) {
-        //opt = optsList[0];
-        //printf("---->> %s = $s", opt->name, opt->str);
-    //}
+    uint32_t flash_start = FLASH_START, flash_size = FLASH_SIZE;
+    uint32_t ram_start = SRAM_START, ram_size = SRAM_SIZE;
+
+    get_memory_ranges(&flash_start, &flash_size, &ram_start, &ram_size);
 
     MemoryRegion *sram = g_new(MemoryRegion, 1);
     MemoryRegion *flash = g_new(MemoryRegion, 1);
     MemoryRegion *system_memory = get_system_memory();
 
     /* Flash programming is done via the SCU, so pretend it is ROM.  */
-    memory_region_init_ram(flash, NULL, "rh850.flash", FLASH_SIZE, &error_fatal);
+    memory_region_init_ram(flash, NULL, "rh850.flash", flash_size, &error_fatal);
     memory_region_set_readonly(flash, true);
-    memory_region_add_subregion(system_memory, FLASH_START, flash);
+    memory_region_add_subregion(system_memory, flash_start, flash);
 
-    memory_region_init_ram(sram, NULL, "rh850.sram", SRAM_SIZE, &error_fatal);
-    memory_region_add_subregion(system_memory, SRAM_START, sram);
+    memory_region_init_ram(sram, NULL, "rh850.sram", ram_size, &error_fatal);
+    memory_region_add_subregion(system_memory, ram_start, sram);
 }
 
 

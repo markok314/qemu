@@ -378,17 +378,18 @@ ETEXI
 
 
 DEF("flash", HAS_ARG, QEMU_OPTION_flash,
-    "-flash [size=]megs[,start=n]\n"
+    "-flash [size=]bytes[,start=n]\n"
     "                configure FLASH in SoC.\n"
-    "                size: amount of guest memory (size of FLASH in SoC, default: 1M).\n"
-    "                start: start address of FLASH (default: 0)\n",
+    "                size: amount of guest memory (size of FLASH in SoC, default: 2M).\n"
+    "                start: start address of FLASH (default: 0)\n"
+    "                Use 'k', 'M', or 'G' for kilo, Mega and Giga, size or start.",
     QEMU_ARCH_ALL)
 STEXI
 @item -flash [size=]@var{megs}[,start=n]
 @findex -flash
 Sets guest FLASH size to @var{megs} megabytes. Default is 1 MiB.
-Optionally, a suffix of ``M'' or ``G'' can be used to signify a value in
-megabytes or gigabytes respectively. Optional @var{start}
+Optionally, a suffix of ``k``, ``M'' or ``G'' can be used to signify a value in
+kilobytes, megabytes or gigabytes respectively. Optional @var{start}
 could be used to set start address of FLASH memory in SoC.
 
 For example, the following command-line sets the guest FLASH size to
@@ -400,17 +401,18 @@ qemu-system-rh850 -flash 2M,start=0x8000000
 ETEXI
 
 DEF("ram", HAS_ARG, QEMU_OPTION_ram,
-    "-ram [size=]megs[,start=n]\n"
+    "-ram [size=]bytes[,start=n]\n"
     "                configure guest RAM in SoC.\n"
-    "                size: amount of guest memory (size of RAM in SoC, default: 1M).\n"
-    "                start: start address of RAM (default: 0)\n",
+    "                size: amount of guest RAM, size of RAM in SoC, default: depends on machine).\n"
+    "                start: start address of RAM (default depends on machine)\n"
+    "                Use 'k', 'M', or 'G' for kilo, Mega and Giga, size or start.",
     QEMU_ARCH_ALL)
 STEXI
 @item -ram [size=]@var{megs}[,start=n]
 @findex -ram
 Sets guest RAM size to @var{kilos} kilobytes. Default is 64 KiB.
-Optionally, a suffix of ``M'' or ``G'' can be used to signify a value in
-megabytes or gigabytes respectively. Optional @var{start}
+Optionally, a suffix of ``k``, ``M'' or ``G'' can be used to signify a value in
+kilobytes, megabytes or gigabytes respectively. Optional @var{start}
 could be used to set start address of RAM memory in SoC.
 
 For example, the following command-line sets the guest RAM size to
