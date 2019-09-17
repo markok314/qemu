@@ -41,10 +41,7 @@
 //#include "hw/char/pl011.h"
 //#include "hw/misc/unimp.h"
 #include "cpu.h"
-#include "qemu/option.h"
-#include "qemu/option_int.h"
-#include "qemu/config-file.h"
-#include "qemu-options.h"
+#include "qemu/soc-options.h"
 
 // see RH850/F1L, https://www.renesas.com/en-us/products/microcontrollers-microprocessors/rh850/rh850f1x/rh850f1l.html
 const uint32_t FLASH_SIZE = 2* (1 << 20); //2M
@@ -58,37 +55,6 @@ static void rh850_reset(void *opaque)
 	RH850CPU *cpu = opaque;
 
     cpu_reset(CPU(cpu));
-}
-
-
-static void get_memory_range(QemuOpts *subopts, uint32_t *start_addr, uint32_t *size) {
-
-    if (subopts) {
-        QemuOpt *start_opt = qemu_opt_find(subopts, "start_addr");
-        if (start_opt) {
-            *start_addr = start_opt->value.uint;
-        }
-        QemuOpt *size_opt = qemu_opt_find(subopts, "size");
-        if (size_opt) {
-            *size = size_opt->value.uint;
-        }
-    }
-}
-
-
-// Returns memory ranges as defined in opts. On input all vars should
-// contain default values, because they are changed only if user specified
-// cmd. line option.
-static void get_memory_ranges(uint32_t *flash_start, uint32_t *flash_size,
-                              uint32_t *ram_start, uint32_t *ram_size) {
-
-    QemuOptsList *optsList = qemu_find_opts("flash");
-    // printf("---->> %s = %s\n", optsList->name, optsList->implied_opt_name);
-    QemuOpts *flash_opts = qemu_opts_find(optsList, NULL);
-    get_memory_range(flash_opts, flash_start, flash_size);
-
-    QemuOpts *ram_opts = qemu_opts_find(optsList, NULL);
-    get_memory_range(ram_opts, ram_start, ram_size);
 }
 
 

@@ -85,26 +85,30 @@ static void stm32f205_soc_realize(DeviceState *dev_soc, Error **errp)
     SysBusDevice *busdev;
     Error *err = NULL;
     int i;
+    uint32_t flash_base_addr = FLASH_BASE_ADDRESS, flash_size = FLASH_SIZE;
+    uint32_t sram_base_addr = SRAM_START, sram_size = SRAM_SIZE;
+
+    get_memory_ranges(&flash_base_addr, &flash_size, &sram_start, &sram_size);
 
     MemoryRegion *system_memory = get_system_memory();
     MemoryRegion *sram = g_new(MemoryRegion, 1);
     MemoryRegion *flash = g_new(MemoryRegion, 1);
     MemoryRegion *flash_alias = g_new(MemoryRegion, 1);
 
-    memory_region_init_ram(flash, NULL, "STM32F205.flash", FLASH_SIZE,
+    memory_region_init_ram(flash, NULL, "STM32F205.flash", flash_size,
                            &error_fatal);
     memory_region_init_alias(flash_alias, NULL, "STM32F205.flash.alias",
-                             flash, 0, FLASH_SIZE);
+                             flash, 0, flash_size);
 
     memory_region_set_readonly(flash, true);
     memory_region_set_readonly(flash_alias, true);
 
-    memory_region_add_subregion(system_memory, FLASH_BASE_ADDRESS, flash);
+    memory_region_add_subregion(system_memory, flash_base_addr, flash);
     memory_region_add_subregion(system_memory, 0, flash_alias);
 
-    memory_region_init_ram(sram, NULL, "STM32F205.sram", SRAM_SIZE,
+    memory_region_init_ram(sram, NULL, "STM32F205.sram", sram_size,
                            &error_fatal);
-    memory_region_add_subregion(system_memory, SRAM_BASE_ADDRESS, sram);
+    memory_region_add_subregion(system_memory, sram_base_addr, sram);
 
     armv7m = DEVICE(&s->armv7m);
     qdev_prop_set_uint32(armv7m, "num-irq", 96);

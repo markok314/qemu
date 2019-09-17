@@ -38,8 +38,12 @@ static void netduino2_init(MachineState *machine)
     qdev_prop_set_string(dev, "cpu-type", ARM_CPU_TYPE_NAME("cortex-m3"));
     object_property_set_bool(OBJECT(dev), true, "realized", &error_fatal);
 
+    // see also stm32f3015_soc.c for start address and RAM
+    uint32_t flash_size = FLASH_SIZE;
+    get_memory_ranges(NULL, &flash_size, NULL, NULL);
+
     armv7m_load_kernel(ARM_CPU(first_cpu), machine->kernel_filename,
-                       FLASH_SIZE);
+                       flash_size);
 
     /* The folowing two calls are a workaround for problem with rom in aliased
      * addresses on STM32. It is also possible to call qemu_system_reset()
