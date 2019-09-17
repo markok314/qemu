@@ -478,6 +478,45 @@ static QemuOptsList qemu_mem_opts = {
     },
 };
 
+// Used in microcontrollers with FLASH in SoC. Option 'memory' defined
+// above is ignored in these cases.
+static QemuOptsList qemu_flash_opts = {
+    .name = "flash",
+    .implied_opt_name = "size",
+    .head = QTAILQ_HEAD_INITIALIZER(qemu_flash_opts.head),
+    .merge_lists = true,
+    .desc = {
+        {
+            .name = "size",
+            .type = QEMU_OPT_SIZE,
+        },
+        {
+            .name = "start",
+            .type = QEMU_OPT_SIZE,
+        },
+        { /* end of list */ }
+    },
+};
+
+// used in microcontrollers with RAM in SoC
+static QemuOptsList qemu_ram_opts = {
+    .name = "ram",
+    .implied_opt_name = "size",
+    .head = QTAILQ_HEAD_INITIALIZER(qemu_ram_opts.head),
+    .merge_lists = true,
+    .desc = {
+        {
+            .name = "size",
+            .type = QEMU_OPT_SIZE,
+        },
+        {
+            .name = "start",
+            .type = QEMU_OPT_SIZE,
+        },
+        { /* end of list */ }
+    },
+};
+
 static QemuOptsList qemu_icount_opts = {
     .name = "icount",
     .implied_opt_name = "shift",
@@ -3046,6 +3085,8 @@ int main(int argc, char **argv, char **envp)
     qemu_add_opts(&qemu_machine_opts);
     qemu_add_opts(&qemu_accel_opts);
     qemu_add_opts(&qemu_mem_opts);
+    qemu_add_opts(&qemu_flash_opts);
+    qemu_add_opts(&qemu_ram_opts);
     qemu_add_opts(&qemu_smp_opts);
     qemu_add_opts(&qemu_boot_opts);
     qemu_add_opts(&qemu_add_fd_opts);
@@ -3296,6 +3337,20 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_m:
                 opts = qemu_opts_parse_noisily(qemu_find_opts("memory"),
+                                               optarg, true);
+                if (!opts) {
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            case QEMU_OPTION_ram:
+                opts = qemu_opts_parse_noisily(qemu_find_opts("ram"),
+                                               optarg, true);
+                if (!opts) {
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            case QEMU_OPTION_flash:
+                opts = qemu_opts_parse_noisily(qemu_find_opts("flash"),
                                                optarg, true);
                 if (!opts) {
                     exit(EXIT_FAILURE);

@@ -376,6 +376,51 @@ If @var{slots} and @var{maxmem} are not specified, memory hotplug won't
 be enabled and the guest startup RAM will never increase.
 ETEXI
 
+
+DEF("flash", HAS_ARG, QEMU_OPTION_flash,
+    "-flash [size=]megs[,start=n]\n"
+    "                configure FLASH in SoC.\n"
+    "                size: amount of guest memory (size of FLASH in SoC, default: 1M).\n"
+    "                start: start address of FLASH (default: 0)\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -flash [size=]@var{megs}[,start=n]
+@findex -flash
+Sets guest FLASH size to @var{megs} megabytes. Default is 1 MiB.
+Optionally, a suffix of ``M'' or ``G'' can be used to signify a value in
+megabytes or gigabytes respectively. Optional @var{start}
+could be used to set start address of FLASH memory in SoC.
+
+For example, the following command-line sets the guest FLASH size to
+2MB, and sets the start address to 0x0800'0000:
+
+@example
+qemu-system-rh850 -flash 2M,start=0x8000000
+@end example
+ETEXI
+
+DEF("ram", HAS_ARG, QEMU_OPTION_ram,
+    "-ram [size=]megs[,start=n]\n"
+    "                configure guest RAM in SoC.\n"
+    "                size: amount of guest memory (size of RAM in SoC, default: 1M).\n"
+    "                start: start address of RAM (default: 0)\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -ram [size=]@var{megs}[,start=n]
+@findex -ram
+Sets guest RAM size to @var{kilos} kilobytes. Default is 64 KiB.
+Optionally, a suffix of ``M'' or ``G'' can be used to signify a value in
+megabytes or gigabytes respectively. Optional @var{start}
+could be used to set start address of RAM memory in SoC.
+
+For example, the following command-line sets the guest RAM size to
+128MB, and sets the start address to 0x2000'0000:
+
+@example
+qemu-system-rh850 -ram 128k,start=0x20000000
+@end example
+ETEXI
+
 DEF("mem-path", HAS_ARG, QEMU_OPTION_mempath,
     "-mem-path FILE  provide backing storage for guest RAM\n", QEMU_ARCH_ALL)
 STEXI

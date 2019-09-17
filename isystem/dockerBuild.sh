@@ -41,7 +41,7 @@ cp /usr/x86_64-w64-mingw32/sys-root/mingw/bin/*.dll $DIST_DIR
 executables=(arm aarch64 ppc ppc64 tricore rh850)
 for exeprefix in "${executables[@]}"; do
     if [[ $TARGET_LIST == *"$exeprefix"* ]]; then
-#        cp $EXE_DIR/$exeprefix-softmmu/qemu-system-$exeprefix.exe $DIST_DIR
+        cp $EXE_DIR/$exeprefix-softmmu/qemu-system-$exeprefix.exe $DIST_DIR
         cp $EXE_DIR/$exeprefix-softmmu/qemu-system-${exeprefix}w.exe $DIST_DIR
     fi
 done

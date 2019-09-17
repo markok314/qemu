@@ -41,6 +41,10 @@
 //#include "hw/char/pl011.h"
 //#include "hw/misc/unimp.h"
 #include "cpu.h"
+#include "qemu/option.h"
+#include "qemu/option_int.h"
+#include "qemu/config-file.h"
+#include "qemu-options.h"
 
 // see RH850/F1L, https://www.renesas.com/en-us/products/microcontrollers-microprocessors/rh850/rh850f1x/rh850f1l.html
 const uint32_t FLASH_SIZE = 2* (1 << 20); //2M
@@ -59,6 +63,23 @@ static void rh850_reset(void *opaque)
 
 static void add_memory(void)
 {
+    QemuOptsList *optsList = qemu_find_opts("ram");
+    //QemuOpt *opt;
+    printf("---->> %s = %s\n", optsList->name, optsList->implied_opt_name);
+    QemuOpts *ramOpt = qemu_opts_find(optsList, NULL);
+    QemuOpt *sizeOpt = qemu_opt_find(ramOpt, "size");
+    QemuOpt *startOpt = qemu_opt_find(ramOpt, "start");
+    if (sizeOpt) {
+        printf("---->> size = %ld\n", sizeOpt->value.uint);
+    }
+    if (startOpt) {
+        printf("---->> start = %ld\n", startOpt->value.uint);
+    }
+    //for (int i = 0; optsList[i] != NULL; i++) {
+        //opt = optsList[0];
+        //printf("---->> %s = $s", opt->name, opt->str);
+    //}
+
     MemoryRegion *sram = g_new(MemoryRegion, 1);
     MemoryRegion *flash = g_new(MemoryRegion, 1);
     MemoryRegion *system_memory = get_system_memory();
