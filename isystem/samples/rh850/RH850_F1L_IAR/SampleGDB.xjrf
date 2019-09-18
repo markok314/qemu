@@ -1202,7 +1202,7 @@
         <ViewType>Memory</ViewType>
        </__.1>
        <__.2>
-        <ViewId>23</ViewId>
+        <ViewId>-1</ViewId>
         <ViewType>SFR</ViewType>
        </__.2>
        <__.3>
@@ -1246,7 +1246,7 @@
          </__.0>
          <__.1>
           <Pos>0</Pos>
-          <Width>157</Width>
+          <Width>162</Width>
          </__.1>
         </ColumnData>
        </__.0>
@@ -1266,7 +1266,7 @@
          </__.1>
          <__.2>
           <Pos>0</Pos>
-          <Width>219</Width>
+          <Width>236</Width>
          </__.2>
         </ColumnData>
        </__.0>
@@ -1356,7 +1356,7 @@
        <__.0>
         <CustomSfrName></CustomSfrName>
         <IsCustomSfr>false</IsCustomSfr>
-        <ViewId>23</ViewId>
+        <ViewId>-1</ViewId>
         <ViewType>SFR</ViewType>
         <ColumnData.Address>
          <Pos>0</Pos>
@@ -1384,12 +1384,6 @@
          <RootItem>
           <Name></Name>
           <Options>0</Options>
-          <ChildItems>
-           <__.0>
-            <Name></Name>
-            <Options>4</Options>
-           </__.0>
-          </ChildItems>
          </RootItem>
         </TreeState>
        </__.0>
@@ -1485,10 +1479,10 @@
       </WatchViews>
      </ViewData>
      <ViewLayout>
-      <PrimaryDocumentPaneId>10</PrimaryDocumentPaneId>
+      <PrimaryDocumentPaneId>24</PrimaryDocumentPaneId>
       <Frames>
        <__.0>
-        <FocusedViewId>23</FocusedViewId>
+        <FocusedViewId>17</FocusedViewId>
         <FrameState>9</FrameState>
         <IsPrimary>true</IsPrimary>
         <Bounds>
@@ -1584,34 +1578,12 @@
               <__.1>
                <DockType>None</DockType>
                <Extent>0.687688</Extent>
-               <IsDocumentPane>false</IsDocumentPane>
+               <IsDocumentPane>true</IsDocumentPane>
                <IsPinned>false</IsPinned>
-               <IsTabbed>false</IsTabbed>
-               <Orientation>Vertical</Orientation>
+               <IsTabbed>true</IsTabbed>
+               <Orientation>None</Orientation>
                <TopTabViewId>-1</TopTabViewId>
                <ViewId>-1</ViewId>
-               <Children>
-                <__.0>
-                 <DockType>View</DockType>
-                 <Extent>1</Extent>
-                 <IsDocumentPane>false</IsDocumentPane>
-                 <IsPinned>false</IsPinned>
-                 <IsTabbed>false</IsTabbed>
-                 <Orientation>None</Orientation>
-                 <TopTabViewId>-1</TopTabViewId>
-                 <ViewId>23</ViewId>
-                </__.0>
-                <__.1>
-                 <DockType>None</DockType>
-                 <Extent>0</Extent>
-                 <IsDocumentPane>true</IsDocumentPane>
-                 <IsPinned>false</IsPinned>
-                 <IsTabbed>true</IsTabbed>
-                 <Orientation>None</Orientation>
-                 <TopTabViewId>-1</TopTabViewId>
-                 <ViewId>-1</ViewId>
-                </__.1>
-               </Children>
               </__.1>
              </Children>
             </__.0>
@@ -1658,58 +1630,6 @@
       <Fetch>
        <Beep>True</Beep>
        <DisplayMessage>True</DisplayMessage>
-       <BP.0>
-        <__>
-         <ActionEnabled>False</ActionEnabled>
-         <ActionScript></ActionScript>
-         <ActionScriptParams></ActionScriptParams>
-         <ActionShow>False</ActionShow>
-         <Active>True</Active>
-         <Condition></Condition>
-         <Condition_Count>0</Condition_Count>
-         <ConditionEnabled>False</ConditionEnabled>
-         <Name>0x40</Name>
-        </__>
-       </BP.0>
-       <BP.1>
-        <__>
-         <ActionEnabled>False</ActionEnabled>
-         <ActionScript></ActionScript>
-         <ActionScriptParams></ActionScriptParams>
-         <ActionShow>False</ActionShow>
-         <Active>True</Active>
-         <Condition></Condition>
-         <Condition_Count>0</Condition_Count>
-         <ConditionEnabled>False</ConditionEnabled>
-         <Name>0x3E</Name>
-        </__>
-       </BP.1>
-       <BP.2>
-        <__>
-         <ActionEnabled>False</ActionEnabled>
-         <ActionScript></ActionScript>
-         <ActionScriptParams></ActionScriptParams>
-         <ActionShow>False</ActionShow>
-         <Active>True</Active>
-         <Condition></Condition>
-         <Condition_Count>0</Condition_Count>
-         <ConditionEnabled>False</ConditionEnabled>
-         <Name>0x70</Name>
-        </__>
-       </BP.2>
-       <BP.3>
-        <__>
-         <ActionEnabled>False</ActionEnabled>
-         <ActionScript></ActionScript>
-         <ActionScriptParams></ActionScriptParams>
-         <ActionShow>False</ActionShow>
-         <Active>True</Active>
-         <Condition></Condition>
-         <Condition_Count>0</Condition_Count>
-         <ConditionEnabled>False</ConditionEnabled>
-         <Name>0x78</Name>
-        </__>
-       </BP.3>
       </Fetch>
      </Breakpoints>
      <Debug>
@@ -1731,7 +1651,7 @@
        <FromTo></FromTo>
       </Directories>
       <Download>
-       <DefaultFile>-1</DefaultFile>
+       <DefaultFile>0</DefaultFile>
        <UseRealTimeWrite>0</UseRealTimeWrite>
        <File.0>
         <AnalyzeCodeOutsideFunctions>1</AnalyzeCodeOutsideFunctions>
@@ -1745,11 +1665,11 @@
         <OffsetA type="B">AAAAAAAAAAAAAAAA</OffsetA>
         <OptimizeTypeByName>0</OptimizeTypeByName>
         <OverrideMemoryArea>0</OverrideMemoryArea>
-        <Path>/home/isystem/proj/qemu/isystem/samples/rh850/test/bin/test_ldsr_stsr.elf</Path>
+        <Path>Debug\Sample.out</Path>
         <ProjectOutputFile>0</ProjectOutputFile>
         <SOffset>0</SOffset>
         <SOffsetA type="B">AAAAAAAAAAAAAAAA</SOffsetA>
-        <TargetRelative>False</TargetRelative>
+        <TargetRelative>True</TargetRelative>
         <TrustLineSymbolsToStartOnInstruction>1</TrustLineSymbolsToStartOnInstruction>
         <Type>28</Type>
         <UseDefaultCore>1</UseDefaultCore>
@@ -1769,7 +1689,7 @@
          <IgnoreChecksum>0</IgnoreChecksum>
          <IgnoreNonStatementLines>1</IgnoreNonStatementLines>
          <InsertInlinedFunctions>0</InsertInlinedFunctions>
-         <LoadCode>1</LoadCode>
+         <LoadCode>0</LoadCode>
          <LoadDwarfSection>1</LoadDwarfSection>
          <LoadSymbols>0</LoadSymbols>
          <LoadWeakFunctions>1</LoadWeakFunctions>

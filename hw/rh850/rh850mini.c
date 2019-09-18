@@ -177,6 +177,7 @@ static void load_rh_kernel(RH850CPU *cpu, const char *kernel_filename, int mem_s
 // main() -> machne.c:machine_run_board_init() -> rh850mini.c:rh850mini_init()
 static void rh850mini_init(MachineState *ms)
 {
+    // modern multicore RH850 devices have many memory areas.
     add_memory("0", FLASH_START_0, FLASH_SIZE_0, SRAM_START_0, SRAM_SIZE_0);
     add_memory("1", FLASH_START_1, FLASH_SIZE_1, SRAM_START_1, SRAM_SIZE_1);
     add_memory("2", FLASH_START_2, FLASH_SIZE_2, SRAM_START_2, SRAM_SIZE_2);
