@@ -21,6 +21,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/cutils.h"
 #include "qemu/error-report.h"
 #include "qapi/error.h"
 #include "hw/loader.h"
@@ -44,10 +45,33 @@
 #include "qemu/soc-options.h"
 
 // see RH850/F1L, https://www.renesas.com/en-us/products/microcontrollers-microprocessors/rh850/rh850f1x/rh850f1l.html
-const uint32_t FLASH_SIZE = 2* (1 << 20); //2M
-const uint32_t SRAM_SIZE = 192 * (1 << 10); // 192 kB
-const uint32_t FLASH_START = 0;
-const uint32_t SRAM_START = 0xfedd8000;  // start of RAM for F1L devices, is not the same for other RH850 devices
+const uint32_t FLASH_SIZE_0 = 2* (1 << 20); //2M
+const uint32_t SRAM_SIZE_0 = 192 * (1 << 10); // 192 kB
+const uint32_t FLASH_START_0 = 0;
+const uint32_t SRAM_START_0 = 0xfedd8000;  // start of RAM for F1L devices, is not the same for other RH850 devices
+
+const uint32_t FLASH_SIZE_1 = 0;
+const uint32_t SRAM_SIZE_1 = 0;
+const uint32_t FLASH_START_1 = 0;
+const uint32_t SRAM_START_1 = 0;
+
+
+const uint32_t FLASH_SIZE_2 = 0;
+const uint32_t SRAM_SIZE_2 = 0;
+const uint32_t FLASH_START_2 = 0;
+const uint32_t SRAM_START_2 = 0;
+
+
+const uint32_t FLASH_SIZE_3 = 0;
+const uint32_t SRAM_SIZE_3 = 0;
+const uint32_t FLASH_START_3 = 0;
+const uint32_t SRAM_START_3 = 0;
+
+
+const uint32_t FLASH_SIZE_4 = 0;
+const uint32_t SRAM_SIZE_4 = 0;
+const uint32_t FLASH_START_4 = 0;
+const uint32_t SRAM_START_4 = 0;
 
 
 static void rh850_reset(void *opaque)
@@ -58,24 +82,31 @@ static void rh850_reset(void *opaque)
 }
 
 
-static void add_memory(void)
+static void add_memory(const char *mem_prefix,
+                       uint32_t flash_start, uint32_t flash_size,
+                       uint32_t ram_start, uint32_t ram_size)
 {
-    uint32_t flash_start = FLASH_START, flash_size = FLASH_SIZE;
-    uint32_t ram_start = SRAM_START, ram_size = SRAM_SIZE;
+    get_memory_ranges(mem_prefix, &flash_start, &flash_size, &ram_start, &ram_size);
 
-    get_memory_ranges(&flash_start, &flash_size, &ram_start, &ram_size);
-
-    MemoryRegion *sram = g_new(MemoryRegion, 1);
-    MemoryRegion *flash = g_new(MemoryRegion, 1);
     MemoryRegion *system_memory = get_system_memory();
 
-    /* Flash programming is done via the SCU, so pretend it is ROM.  */
-    memory_region_init_ram(flash, NULL, "rh850.flash", flash_size, &error_fatal);
-    memory_region_set_readonly(flash, true);
-    memory_region_add_subregion(system_memory, flash_start, flash);
+    if (flash_size > 0) {
+        MemoryRegion *flash = g_new(MemoryRegion, 1);
+        /* Flash programming is done via the SCU, so pretend it is ROM.  */
+        char mem_name[20] = {"rh850.flash_"};
+        pstrcat(mem_name, sizeof(mem_name), mem_prefix);
+        memory_region_init_ram(flash, NULL, mem_name, flash_size, &error_fatal);
+        memory_region_set_readonly(flash, true);
+        memory_region_add_subregion(system_memory, flash_start, flash);
+    }
 
-    memory_region_init_ram(sram, NULL, "rh850.sram", ram_size, &error_fatal);
-    memory_region_add_subregion(system_memory, ram_start, sram);
+    if (ram_size > 0) {
+        MemoryRegion *sram = g_new(MemoryRegion, 1);
+        char mem_name[20] = {"rh850.sram_"};
+        pstrcat(mem_name, sizeof(mem_name), mem_prefix);
+        memory_region_init_ram(sram, NULL, mem_name, ram_size, &error_fatal);
+        memory_region_add_subregion(system_memory, ram_start, sram);
+    }
 }
 
 
@@ -146,9 +177,14 @@ static void load_rh_kernel(RH850CPU *cpu, const char *kernel_filename, int mem_s
 // main() -> machne.c:machine_run_board_init() -> rh850mini.c:rh850mini_init()
 static void rh850mini_init(MachineState *ms)
 {
-    add_memory();
+    add_memory("0", FLASH_START_0, FLASH_SIZE_0, SRAM_START_0, SRAM_SIZE_0);
+    add_memory("1", FLASH_START_1, FLASH_SIZE_1, SRAM_START_1, SRAM_SIZE_1);
+    add_memory("2", FLASH_START_2, FLASH_SIZE_2, SRAM_START_2, SRAM_SIZE_2);
+    add_memory("3", FLASH_START_3, FLASH_SIZE_3, SRAM_START_3, SRAM_SIZE_3);
+    add_memory("4", FLASH_START_4, FLASH_SIZE_4, SRAM_START_4, SRAM_SIZE_4);
+
     add_cpu(ms->cpu_type);
-    load_rh_kernel(RH850_CPU(first_cpu), ms->kernel_filename, FLASH_SIZE);
+    load_rh_kernel(RH850_CPU(first_cpu), ms->kernel_filename, FLASH_SIZE_0);
 
 //    nvic = armv7m_init(system_memory, flash_size, NUM_IRQ_LINES,
 //                       ms->kernel_filename, ms->cpu_type);

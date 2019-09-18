@@ -88,7 +88,7 @@ static void stm32f205_soc_realize(DeviceState *dev_soc, Error **errp)
     uint32_t flash_base_addr = FLASH_BASE_ADDRESS, flash_size = FLASH_SIZE;
     uint32_t sram_base_addr = SRAM_START, sram_size = SRAM_SIZE;
 
-    get_memory_ranges(&flash_base_addr, &flash_size, &sram_start, &sram_size);
+    get_memory_ranges("0", &flash_base_addr, &flash_size, &sram_start, &sram_size);
 
     MemoryRegion *system_memory = get_system_memory();
     MemoryRegion *sram = g_new(MemoryRegion, 1);

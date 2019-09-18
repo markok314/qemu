@@ -482,18 +482,50 @@ static QemuOptsList qemu_mem_opts = {
 // above is ignored in these cases.
 static QemuOptsList qemu_flash_opts = {
     .name = "flash",
-    .implied_opt_name = "size",
+    .implied_opt_name = "size0",
     .head = QTAILQ_HEAD_INITIALIZER(qemu_flash_opts.head),
     .merge_lists = true,
     .desc = {
-        {
-            .name = "size",
-            .type = QEMU_OPT_SIZE,
-        },
-        {
-            .name = "start",
-            .type = QEMU_OPT_SIZE,
-        },
+            {
+                .name = "size0",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start0",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size1",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start1",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size2",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start2",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size3",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start3",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size4",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start4",
+                .type = QEMU_OPT_SIZE,
+            },
         { /* end of list */ }
     },
 };
@@ -501,18 +533,50 @@ static QemuOptsList qemu_flash_opts = {
 // used in microcontrollers with RAM in SoC
 static QemuOptsList qemu_ram_opts = {
     .name = "ram",
-    .implied_opt_name = "size",
+    .implied_opt_name = "size0",
     .head = QTAILQ_HEAD_INITIALIZER(qemu_ram_opts.head),
     .merge_lists = true,
     .desc = {
-        {
-            .name = "size",
-            .type = QEMU_OPT_SIZE,
-        },
-        {
-            .name = "start",
-            .type = QEMU_OPT_SIZE,
-        },
+            {
+                .name = "size0",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start0",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size1",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start1",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size2",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start2",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size3",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start3",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "size4",
+                .type = QEMU_OPT_SIZE,
+            },
+            {
+                .name = "start4",
+                .type = QEMU_OPT_SIZE,
+            },
         { /* end of list */ }
     },
 };

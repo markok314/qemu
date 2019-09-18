@@ -378,10 +378,12 @@ ETEXI
 
 
 DEF("flash", HAS_ARG, QEMU_OPTION_flash,
-    "-flash [size=]bytes[,start=n]\n"
+    "-flash [size0=]bytes[,start0=n[ .. ,size4=bytes[,start4=bytes]]]\n"
     "                configure FLASH in SoC.\n"
     "                size: amount of guest memory (size of FLASH in SoC, default: 2M).\n"
     "                start: start address of FLASH (default: 0)\n"
+    "                sizeN and startN can be specified to allocate another block of flash.\n"
+    "                If size is set to 0, then memory block is not allocated.\n"
     "                Use 'k', 'M', or 'G' for kilo, Mega and Giga, size or start.",
     QEMU_ARCH_ALL)
 STEXI
@@ -401,10 +403,12 @@ qemu-system-rh850 -flash 2M,start=0x8000000
 ETEXI
 
 DEF("ram", HAS_ARG, QEMU_OPTION_ram,
-    "-ram [size=]bytes[,start=n]\n"
+    "-ram [size0=]bytes[,start0=n[..,size4=bytes[,start4=bytes]]]\n"
     "                configure guest RAM in SoC.\n"
     "                size: amount of guest RAM, size of RAM in SoC, default: depends on machine).\n"
     "                start: start address of RAM (default depends on machine)\n"
+    "                sizeN and startN can be specified to allocate another block of RAM.\n"
+    "                If size is set to 0, then memory block is not allocated.\n"
     "                Use 'k', 'M', or 'G' for kilo, Mega and Giga, size or start.",
     QEMU_ARCH_ALL)
 STEXI

@@ -40,7 +40,7 @@ static void netduino2_init(MachineState *machine)
 
     // see also stm32f3015_soc.c for start address and RAM
     uint32_t flash_size = FLASH_SIZE;
-    get_memory_ranges(NULL, &flash_size, NULL, NULL);
+    get_memory_ranges("0", NULL, &flash_size, NULL, NULL);
 
     armv7m_load_kernel(ARM_CPU(first_cpu), machine->kernel_filename,
                        flash_size);
