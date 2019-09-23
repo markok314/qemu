@@ -6,6 +6,8 @@ import time
 import sys
 import os
 
+REG_PREFIX = '@' 
+
 TRAP_MASK = 0xffffffe0
 TRAP_OPCODE = 0x010007e0
                
@@ -52,7 +54,7 @@ class TargetController:
         self.loaderCtrl = ic.CLoaderController(cmgr)
 
 
-    def initWinIDEA(self, ):
+    def initWinIDEA(self):
         self._connectToWinIDEA()
 
 
@@ -80,8 +82,12 @@ class TargetController:
                 break
 
 
+    def resetRegisters(self, registerNames):
+        for reg in registerNames:
+            self.debugCtrl.modify(ic.IConnectDebug.fMonitor, REG_PREFIX + reg.upper(), '0')
+
+
     def readRegisters(self, registerNames, pcName):
-        REG_PREFIX = '@' 
         regValues = []
         for reg in registerNames:
             value = self.debugCtrl.evaluate(ic.IConnectDebug.fMonitor, REG_PREFIX + reg.upper())

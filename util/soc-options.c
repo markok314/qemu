@@ -44,6 +44,7 @@ void get_memory_ranges(const char *mem_postfix,
     QemuOpts *flash_opts = qemu_opts_find(optsList, NULL);
     get_memory_range(flash_opts, mem_postfix, flash_start, flash_size);
 
+    optsList = qemu_find_opts("ram");
     QemuOpts *ram_opts = qemu_opts_find(optsList, NULL);
     get_memory_range(ram_opts, mem_postfix, ram_start, ram_size);
 }

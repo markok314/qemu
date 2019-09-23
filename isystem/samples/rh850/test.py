@@ -27,8 +27,11 @@ DO_NOT_TEST_FILES = ['gpr_init.s', 'RH850G3M_insts.s', 'br.s']  # br.s does not 
                             # properly - for manual testing during development only
 QEMU_LOG_FILE = "../../../../rh850.log"
 # path to workspace must be relative, it seems winIDEA can not open abs path on Linux.
-QEMU_WORKSPACE = "RH850_F1L_IAR/SampleGDB.xjrf"
-HW_WORKSPACE = "RH850_F1L_IAR/SampleiC5k-testStand.xjrf"
+QEMU_WORKSPACE_F1L = "RH850_F1L_IAR/SampleGDB.xjrf"
+HW_WORKSPACE_F1L = "RH850_F1L_IAR/SampleiC5k-testStand.xjrf"
+QEMU_WORKSPACE_F1KM = '/home/isystem/proj/qemu/isystem/samples/rh850/RH850_F1KM_GHS/SampleiC5k-GDB.xjrf'
+HW_WORKSPACE_F1KM = '/home/isystem/proj/qemu/isystem/samples/rh850/RH850_F1KM_GHS/SampleiC5k.xjrf'
+
 RESULT_PASSED = "PASSED"
 RESULT_FAILED = "FAILED"
 
@@ -43,10 +46,21 @@ RH850_REGS = [
     'R24', 'R25', 'R26', 'R27', 'R28', 'R29', 'R30', 'R31',
     "psw", "eipc", "eipsw", "fepc", "fepsw", 
     "eiic",  "feic", "ctpc", "ctpsw",  "ctbp",
-    "eiwr", "fewr",  "mcfg0", "rbase","ebase","intbp", "mctl",
-    "pid", "sccfg", "scbp", "htcfg0","mea",  "asid", "mei"
+    "eiwr", "fewr",  "rbase","ebase","intbp", # "mctl",  # "mcfg0",
+    "sccfg", "scbp", "htcfg0","mea",  "asid", "mei"  # "pid", 
 ]
 
+# regs initilized on target to be equal to QEMU ones on reset
+# See also test/gpr_init.s.
+RH850_INIT_REGS = [
+    'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7',
+    'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15',
+    'R16', 'R17', 'R18', 'R19', 'R20', 'R21', 'R22', 'R23',
+    'R24', 'R25', 'R26', 'R27', 'R28', 'R29', 'R30', 'R31',
+    "asid", "ctpc", "ctbp",  "eipc", "eiwr", "ebase", 
+    "fepc", "fewr", "intbp",
+    "sccfg", "scbp", "mea",  "mei"
+]
 PSW_IDX = RH850_REGS.index('psw')
 EIPSW_IDX = RH850_REGS.index('eipsw')
 FEPSW_IDX = RH850_REGS.index('fepsw')
@@ -114,46 +128,33 @@ def getBlueBoxLogFName(asmFileStem):
     return 'bin/' + asmFileStem + '_bluebox.log'
 
 
-def runTest(asmFileStem, qemuTarget, hwTarget):
-    
-    _startQemu(asmFileStem)
-
-    qemuTarget.initTarget(asmFileStem)
-    hwTarget.initTarget(asmFileStem)
-
+def compareLoop(qemuTarget, hwTarget, count=0):   # count == 0 means until stop condition is encountered (br .)
     prevPC = -1
 
-    # init registers before comparison to get the same starting point on both ends
-
-    log("Stepping ...")
     while (True):
         qemuRegisters, qemuPC = qemuTarget.readRegisters(RH850_REGS, RH850_PC)
         hwRegisters, hwPC = hwTarget.readRegisters(RH850_REGS, RH850_PC)
 
         if len(qemuRegisters) != len(hwRegisters):
-            return ("ERROR: Internal error - register lists size does not match!\n" + 
+            raise Exception("ERROR: Internal error - register lists size does not match!\n" + 
                             str(qemuRegisters) + '\n' + str(hwRegisters))
 
         for i in range(len(RH850_REGS)):
 
             if i == EIPSW_IDX:
                 if ((qemuRegisters[i] & EIPSW_MASK) != (hwRegisters[i] & EIPSW_MASK)):
-                    _killQemu()
-                    return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
+                    raise Exception(f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}")
                 continue
             if i == PSW_IDX  or  i == FEPSW_IDX  or  i == CTPSW_IDX:
                 if ((qemuRegisters[i] & PSW_MASK) != (hwRegisters[i] & PSW_MASK)):
-                    _killQemu()
-                    return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
+                    raise Exception(f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}")
                 continue
 
             if qemuRegisters[i] != hwRegisters[i]:
-                _killQemu()
-                return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}"
+                raise Exception(f"ERROR: Register values do not match! addr: {hex(qemuPC)}: {RH850_REGS[i]}    qemu: {hex(qemuRegisters[i])}    hw: {hex(hwRegisters[i])}")
 
         if qemuPC != hwPC:
-            _killQemu()
-            return f"ERROR: Register values do not match! addr: {hex(qemuPC)}: PC    qemu: {hex(qemuPC)}    hw: {hex(hwPC)}"
+            raise Exception(f"ERROR: Register values do not match! addr: {hex(qemuPC)}: PC    qemu: {hex(qemuPC)}    hw: {hex(hwPC)}")
 
         log('PC = ' + hex(qemuPC))
         if prevPC == qemuPC:  # instruction BR 0 means end of test program
@@ -167,10 +168,67 @@ def runTest(asmFileStem, qemuTarget, hwTarget):
         if qemuTarget.isDoubleStepInst(qemuPC):
             log('double step instruction detected')
             qemuTarget.step()
-          
-    _killQemu()
+              
+        if count > 0:
+            count -= 1
+            if count == 0:
+                break
+
+
+def runTest(asmFileStem, qemuTarget, hwTarget):
+    
+    _startQemu(asmFileStem)
+
+    qemuTarget.initTarget(asmFileStem)
+    hwTarget.initTarget(asmFileStem)
+
+    log("Stepping ...")
+    try:
+        compareLoop(qemuTarget, hwTarget)
+    except Exception as ex:
+        return str(ex)
+    finally:
+        _killQemu()
 
     return 'OK'
+
+
+
+def updateRegs():
+    pass
+
+
+def testPresetSystem(qemuTarget, hwTarget):
+    """
+    This function steps and compares registers on winIDEA, which are manually 
+    set up.
+    """
+
+    NUM_STEPS = 20
+    while True:
+        try:
+            compareLoop(qemuTarget, hwTarget, NUM_STEPS)
+            print(f"Block of {NUM_STEPS} steps executed.")
+        except Exception as ex:
+            print(str(ex))
+
+        ans = input('Continue? [y]/n ')
+        if ans == ''  or ans.upper() == 'Y':
+            updateRegs()
+        else:
+            break
+
+
+def initTargets(qemuWorkspace, hwWorkspace):
+    log("Starting QEMU winIDEA ...")
+    qemuTarget = targetcontrol.TargetController(qemuWorkspace)
+    qemuTarget.initWinIDEA()
+
+    log("Starting target winIDEA ...")
+    hwTarget = targetcontrol.TargetController(hwWorkspace)
+    hwTarget.initWinIDEA()
+
+    return qemuTarget, hwTarget
 
 
 def _parseArgs():
@@ -193,6 +251,19 @@ $ %prog test/mov*.s
     parser.add_argument('files', metavar='files', type=str, nargs='*',
                         help='list of asm files to test')
 
+    parser.add_argument("-t", dest="isManualTest", action='store_true', default=False,
+                        help="If specified, this script does not open or initialize "
+                             "winIDEA or target, but starts stepping and comparing "
+                             "register values. Workspace names must be manually "
+                             "updated in the script.")
+
+    parser.add_argument("-r", dest="isResetRegisters", action='store_true', default=False,
+                        help="If specified, registers on HW target are reset before any "
+                             "other action is taken. Useful to make regs equal to qemu ones before run.")
+
+    parser.add_argument("--f1km", dest="isF1KM", action='store_true', default=False,
+                        help="If specified, workspace for RH850_F1KM is used.") 
+
     args = parser.parse_args()
 
     _g_isVerboseLog = args.isVerboseLog
@@ -204,20 +275,27 @@ def main():
 
     args = _parseArgs()
     asmFiles = args.files
+
+    qemuWorkspace = QEMU_WORKSPACE_F1KM if args.isF1KM else QEMU_WORKSPACE_F1L
+    hwWorkspace = HW_WORKSPACE_F1KM if args.isF1KM else HW_WORKSPACE_F1L
+
+    qemuTarget, hwTarget = initTargets(qemuWorkspace, hwWorkspace)
+
+    if args.isResetRegisters:
+        hwTarget.resetRegisters(RH850_INIT_REGS)
+
+    if args.isManualTest:
+        testPresetSystem(qemuTarget, hwTarget)
+
+    if args.isResetRegisters or args.isManualTest:
+        sys.exit(0)
+        
     if not asmFiles:   # no files specified in cmd line, test all of them
         asmFiles = glob.glob("*.s")
         asmFiles.sort()
 
     print(f"Testing {len(asmFiles)} files:")
     print(asmFiles)
-
-    log("Starting QEMU winIDEA ...")
-    qemuTarget = targetcontrol.TargetController(QEMU_WORKSPACE)
-    qemuTarget.initWinIDEA()
-
-    log("Starting target winIDEA ...")
-    hwTarget = targetcontrol.TargetController(HW_WORKSPACE)
-    hwTarget.initWinIDEA()
 
     tested_files = []
     results = []
