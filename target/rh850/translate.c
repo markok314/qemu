@@ -255,7 +255,7 @@ static inline void gen_get_psw(TCGv t)
 	tcg_gen_mov_tl(t, cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
 }
 
-static inline void gen_restore_flags(DisasContext *ctx)
+static inline void psw_to_flags(DisasContext *ctx)
 {
 	TCGv temp = tcg_temp_new_i32();
 	tcg_gen_mov_i32(temp, cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
@@ -295,6 +295,73 @@ static inline void gen_restore_flags(DisasContext *ctx)
 
     tcg_temp_free(temp);
 }
+
+
+static void flags_to_psw(void)
+{
+    // Set flags in PSW to 0 so we can write new state
+    tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0);
+    // tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xffffffe0);
+
+    TCGv temp = tcg_temp_new_i32();
+
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_ZF);
+
+    tcg_gen_shli_i32(temp, cpu_SF, 0x1);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_SATF, 0x4);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_ID, 0x5);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_EP, 0x6);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_NP, 0x7);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_EBV, 0xF);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CU0, 0x10);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CU1, 0x11);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_CU2, 0x12);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_gen_shli_i32(temp, cpu_UM, 0x1E);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+
+    tcg_temp_free(temp);
+}
+
+
+static void flags_to_psw_z_cy_ov_s(void)
+{
+    // update psw register, first reset flags before ORing new values
+    tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xfffffff0);
+    TCGv temp = tcg_temp_new_i32();
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_ZF);
+    tcg_gen_shli_i32(temp, cpu_SF, 0x1);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+    tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+    tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
+    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
+    tcg_temp_free(temp);
+}
+
 
 static TCGv condition_satisfied(int cond)
 {
@@ -380,6 +447,10 @@ static void gen_add_CC(TCGv_i32 t0, TCGv_i32 t1)
 
     TCGv_i32 tmp = tcg_temp_new_i32();
     tcg_gen_movi_i32(tmp, 0);
+    // 'add2(rl, rh, al, ah, bl, bh) creates 64-bit values and adds them:
+    // [CYF : SF] = [tmp : t0] + [tmp : t1]
+    // While CYF is 0 or 1, SF bit 15 contains sign, so it
+    // must be shifted 31 bits to the right later.
     tcg_gen_add2_i32(cpu_SF, cpu_CYF, t0, tmp, t1, tmp);
     tcg_gen_mov_i32(cpu_ZF, cpu_SF);
 
@@ -3150,16 +3221,7 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
 	tcg_gen_add_i32(r1_local, r1_local, minusone_local);
 	gen_set_gpr(rs1, r1_local);
 
-	// update psw register
-    TCGv temp = tcg_temp_new_i32();
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_ZF);
-    tcg_gen_shli_i32(temp, cpu_SF, 0x1);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-    tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-    tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-    tcg_temp_free(temp);
+	flags_to_psw_z_cy_ov_s();
 
 	tcg_gen_brcond_tl(TCG_COND_NE, r1_local, zero_local, l);
 
@@ -3467,7 +3529,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		//setting lower 5 bits of PSW
 		tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], temp);
 
-        gen_restore_flags(ctx);
+        psw_to_flags(ctx);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 
 	    tcg_temp_free(temp);
@@ -3584,13 +3646,13 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	case OPC_RH850_EIRET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][EIPC_IDX]);
 		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][EIPSW_IDX]);
-        gen_restore_flags(ctx);
+        psw_to_flags(ctx);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 	case OPC_RH850_FERET:
 		tcg_gen_mov_i32(cpu_pc, cpu_sysRegs[BANK_ID_BASIC_0][FEPC_IDX]);
 		tcg_gen_mov_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][FEPSW_IDX]);
-        gen_restore_flags(ctx);
+        psw_to_flags(ctx);
 	    ctx->base.is_jmp = DISAS_EXIT_TB;
 		break;
 
@@ -3640,7 +3702,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		tcg_gen_or_i32(cpu_sysRegs[selID][regID], cpu_sysRegs[selID][regID], tmp);
 		tcg_temp_free(tmp);
 		if(selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX){
-			gen_restore_flags(ctx);
+			psw_to_flags(ctx);
 		}
 		break;
 
@@ -4792,56 +4854,6 @@ static void decode_RH850_16(CPURH850State *env, DisasContext *ctx)
 }
 
 
-static void copyFlagsToPSW(void)
-{
-    // Set flags in PSW to 0 so we can write new state
-    tcg_gen_movi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0);
-    // tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xffffffe0);
-
-    TCGv temp = tcg_temp_new_i32();
-
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_ZF);
-
-    tcg_gen_shli_i32(temp, cpu_SF, 0x1);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_OVF, 0x2);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_CYF, 0x3);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_SATF, 0x4);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-	tcg_gen_shli_i32(temp, cpu_ID, 0x5);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_EP, 0x6);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_NP, 0x7);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_EBV, 0xF);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_CU0, 0x10);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_CU1, 0x11);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_CU2, 0x12);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_gen_shli_i32(temp, cpu_UM, 0x1E);
-    tcg_gen_or_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX],temp);
-
-    tcg_temp_free(temp);
-}
-
-
 // ###################################################################################
 // ###################################################################################
 // ###################################################################################
@@ -4920,7 +4932,8 @@ static void rh850_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 
     dc->pc = dc->base.pc_next;
 
-    copyFlagsToPSW();
+    //printf("addr: %x\n", dc->pc);
+    //copyFlagsToPSW();
 
 #ifdef RH850_HAS_MMU
     if (dc->base.is_jmp == DISAS_NEXT) {

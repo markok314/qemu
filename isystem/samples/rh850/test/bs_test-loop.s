@@ -29,6 +29,19 @@ lbl_B:
 		LOOP R2, lo(. - lbl_B - 2)
 
 		add 10, R10
-		add 10, R10
+# now test that loop resets PSW.S
+
+        mov 3, r7
+        addi 0xfff0, r7, r6
+
+        mov 3, r7
+        addi 0xffff, r7, r6
+
+        mov 2, r22
+lbl_S:
+        mov 5, r9
+        add 0x10, r9   # sets PSW.S, because result is negative (imm5 < 0)
+        LOOP R22, lo(. - lbl_S - 2)
+
 Lbl:	br Lbl
 
