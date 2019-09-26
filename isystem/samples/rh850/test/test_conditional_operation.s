@@ -319,8 +319,18 @@
 	adf le,r1,r2,r8
 	adf gt,r1,r2,r9
 
+    mov 5, r1
+    mov 0xffffffff, r2
+    mov 6, r4
+    mov 8, r5
+    sub r5,r4   # sets S bit bu not OV bit, which makes conditon lt true
+    adf lt,r1,r2,r9
 
-
+    # test for OV bit
+    mov 0x7ffffffe, r1
+    mov 0x1, r2
+    adf nz,r1,r2,r9
+    adf z,r1,r2,r9
 
 
 	#simple tests for sbf
