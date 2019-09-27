@@ -473,7 +473,7 @@ static TCGv condition_satisfied(int cond)
 	return condResult;
 }
 
-static void gen_set_flags_on_add(TCGv_i32 t0, TCGv_i32 t1)
+static void gen_flags_on_add(TCGv_i32 t0, TCGv_i32 t1)
 {
 	TCGLabel *cont;
 	TCGLabel *end;
@@ -1035,7 +1035,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_add_tl(tcg_result, r2, r1);
 			gen_set_gpr(rs2, tcg_result);
 
-			gen_set_flags_on_add(r1, r2);
+			gen_flags_on_add(r1, r2);
 
 		}	break;
 
@@ -1048,7 +1048,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_add_tl(tcg_result, r2, tcg_imm);
 			gen_set_gpr(rs2, tcg_result);
 
-			gen_set_flags_on_add(r2, tcg_imm);
+			gen_flags_on_add(r2, tcg_imm);
 
 			break;
 
@@ -1059,7 +1059,7 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_add_tl(r2,r1, tcg_imm);
 			gen_set_gpr(rs2, r2);
 
-			gen_set_flags_on_add(r1, tcg_imm);
+			gen_flags_on_add(r1, tcg_imm);
 
 			break;
 
@@ -1185,7 +1185,7 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
 			  // calc and store CY and OV flags to be used to obtain final values
-              gen_set_flags_on_add(r2_local, addIfCond);
+              gen_flags_on_add(r2_local, addIfCond);
               tcg_gen_mov_tl(carry, cpu_CYF);
               tcg_gen_mov_tl(overflow, cpu_OVF);
               // on cond true, add 1
@@ -1195,7 +1195,7 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
             tcg_gen_add_tl(r3_local, r1_local, r2_local);
 			gen_set_gpr(int_rs3, r3_local);
 
-			gen_set_flags_on_add(r1_local, r2_local);
+			gen_flags_on_add(r1_local, r2_local);
 			tcg_gen_or_tl(cpu_CYF, cpu_CYF, carry);
             tcg_gen_or_tl(cpu_OVF, cpu_OVF, overflow);
             flags_to_psw_z_cy_ov_s_sat();
@@ -1209,6 +1209,7 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 			break;
 
 		case OPC_RH850_SBF_cccc_reg1_reg2_reg3:{
+		    TCGLabel *skip_cy_ov;
 
 			TCGv r1_local = tcg_temp_local_new_i32();
 			TCGv r2_local = tcg_temp_local_new_i32();
@@ -1234,13 +1235,17 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 
 			TCGv condResult = condition_satisfied(int_cond);
 			cont = gen_new_label();
+			skip_cy_ov = gen_new_label();
 
 			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
-              // calc and store CY and OV flags to be used to obtain final values
-              gen_set_flags_on_sub(r1_local, subIfCond);
-              tcg_gen_mov_tl(carry, cpu_CYF);
-              tcg_gen_mov_tl(overflow, cpu_OVF);
-              // on cond true, add 1
+              // in this case CY and OV should not be set
+			  tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x7fffffff, skip_cy_ov);
+			    // calc and store CY and OV flags to be used to obtain final values
+			    gen_flags_on_add(r1_local, subIfCond);
+                tcg_gen_mov_tl(carry, cpu_CYF);
+                tcg_gen_mov_tl(overflow, cpu_OVF);
+              // on cond true, add 1, to be later subtracted
+              gen_set_label(skip_cy_ov);
 			  tcg_gen_add_tl(r1_local, r1_local, subIfCond);
 
             gen_set_label(cont);
@@ -1248,7 +1253,7 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 			tcg_gen_sub_tl(r3_local, r2_local, r1_local);
 			gen_set_gpr(int_rs3, r3_local);
 
-            gen_set_flags_on_sub(r2_local, r1_local);
+            gen_flags_on_sub(r2_local, r1_local);
             tcg_gen_or_tl(cpu_CYF, cpu_CYF, carry);
             tcg_gen_or_tl(cpu_OVF, cpu_OVF, overflow);
             flags_to_psw_z_cy_ov_s_sat();
@@ -3282,7 +3287,7 @@ static void gen_loop(DisasContext *ctx, int rs1, int32_t disp16)
     tcg_gen_movi_i32(zero_local, 0);
     tcg_gen_movi_i32(minusone_local, 0xffffffff);
     gen_get_gpr(r1_local, rs1);
-	gen_set_flags_on_add(r1_local, minusone_local);    //set flags
+	gen_flags_on_add(r1_local, minusone_local);    //set flags
 	tcg_gen_add_i32(r1_local, r1_local, minusone_local);
 	gen_set_gpr(rs1, r1_local);
 
