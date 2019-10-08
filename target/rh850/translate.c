@@ -42,8 +42,10 @@ static TCGv load_val;
 
 // PSW register flags. These are for temporary use only during
 // calculations. Before usage they should be set from PSW and
-// stored back to PSW after changes. Consider crating local
-// regs instead of these global ones.
+// stored back to PSW after changes.
+// TODO: since PSW as a register is rarely used - only when ld/str sys reg and
+// on some branches (TRAP, ...) it makes sense to compose/decompose PSW
+// on these occcasions and not have PSW stored in registers below.
 TCGv_i32 cpu_ZF, cpu_SF, cpu_OVF, cpu_CYF, cpu_SATF, cpu_ID, cpu_EP, cpu_NP,
 		cpu_EBV, cpu_CU0, cpu_CU1, cpu_CU2, cpu_UM;
 
@@ -313,6 +315,7 @@ static void psw_to_flags_z_cy_ov_s_sat(void)
     tcg_gen_andi_i32(cpu_CYF, temp, 0x1);
     tcg_gen_shri_i32(temp, temp, 0x1);
     tcg_gen_andi_i32(cpu_SATF, temp, 0x1);
+    tcg_temp_free(temp);
 }
 
 
@@ -329,15 +332,16 @@ static void psw_to_flags_ebv(void)
 {
     TCGv temp = tcg_temp_new_i32();
     tcg_gen_mov_i32(temp, cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX]);
-    tcg_gen_shri_i32(temp, temp, 0x15);
-    tcg_gen_andi_i32(cpu_EBV, temp, 0x1);
+    tcg_gen_shri_i32(temp, temp, 15);
+    tcg_gen_andi_i32(cpu_EBV, temp, 1);
+    tcg_temp_free(temp);
 }
 
 
 static void flags_to_psw_id_ep_np_ebv_cu_um(void)
 {
     // Set flags in PSW to 0 so we can write new state
-    tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0x1f);
+    tcg_gen_andi_i32(cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], cpu_sysRegs[BANK_ID_BASIC_0][PSW_IDX], 0xbff87f1f);
 
     TCGv temp = tcg_temp_new_i32();
 
@@ -589,10 +593,10 @@ static void gen_satadd_CC(TCGv_i32 t0, TCGv_i32 t1, TCGv_i32 result)
 
 static void gen_flags_on_sub(TCGv_i32 t0, TCGv_i32 t1)
 {
-	TCGLabel *cont;
-	TCGLabel *end;
+    TCGLabel *cont;
+    TCGLabel *end;
 
-    TCGv_i32 tmp;
+	TCGv_i32 tmp;
     tcg_gen_sub_tl(cpu_SF, t0, t1);
     tcg_gen_mov_i32(cpu_ZF, cpu_SF);
     tcg_gen_setcond_i32(TCG_COND_GTU, cpu_CYF, t1, t0);
@@ -606,16 +610,17 @@ static void gen_flags_on_sub(TCGv_i32 t0, TCGv_i32 t1)
     tcg_temp_free_i32(tmp);
 
     cont = gen_new_label();
-	end = gen_new_label();
+    end = gen_new_label();
 
-	tcg_gen_brcondi_i32(TCG_COND_NE, cpu_ZF, 0x0, cont);
-	tcg_gen_movi_i32(cpu_ZF, 0x1);
-	tcg_gen_br(end);
+    tcg_gen_brcondi_i32(TCG_COND_NE, cpu_ZF, 0x0, cont);
+    tcg_gen_movi_i32(cpu_ZF, 0x1);
+    tcg_gen_br(end);
 
-	gen_set_label(cont);
-	tcg_gen_movi_i32(cpu_ZF, 0x0);
+    gen_set_label(cont);
+    tcg_gen_movi_i32(cpu_ZF, 0x0);
 
-	gen_set_label(end);
+    gen_set_label(end);
+
     flags_to_psw_z_cy_ov_s_sat();
 }
 
@@ -1143,8 +1148,8 @@ static void gen_arithmetic(DisasContext *ctx, int rs1, int rs2, int operation)
 
 static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 {
-	TCGv r1 = tcg_temp_new();
-	TCGv r2 = tcg_temp_new();
+	TCGv r1 = tcg_temp_local_new();
+	TCGv r2 = tcg_temp_local_new();
 
 	TCGLabel *cont;
 
@@ -1209,60 +1214,63 @@ static void gen_cond_arith(DisasContext *ctx, int rs1, int rs2, int operation)
 			break;
 
 		case OPC_RH850_SBF_cccc_reg1_reg2_reg3:{
-		    TCGLabel *skip_cy_ov;
 
-			TCGv r1_local = tcg_temp_local_new_i32();
-			TCGv r2_local = tcg_temp_local_new_i32();
-			TCGv r3_local = tcg_temp_local_new_i32();
-			TCGv subIfCond = tcg_temp_local_new_i32();
-            TCGv carry = tcg_temp_local_new_i32();
-            TCGv overflow = tcg_temp_local_new_i32();
+		    int_rs3 = extract32(ctx->opcode, 27, 5);
+            int_cond = extract32(ctx->opcode, 17, 4);
+            if(int_cond == 0xd){
+                //throw exception/warning for inappropriate condition (SA)
+                break;
+            }
+		    //TCGLabel *skip_cy_ov;
+
+            //            tcg_gen_mov_i32(cpu_gpr[25], cpu_CYF);
+            //            tcg_gen_mov_i32(cpu_gpr[24], cpu_OVF);
+
+			//TCGv r1_local = tcg_temp_new();
+			//TCGv r2_local = tcg_temp_new();
+			TCGv r3_local = tcg_temp_local_new();
+			TCGv tmpReg = tcg_temp_local_new();
+            TCGv carry = tcg_temp_local_new();
+            TCGv overflow = tcg_temp_local_new();
+            cont = gen_new_label();
 
             tcg_gen_movi_tl(carry, 0);
             tcg_gen_movi_tl(overflow, 0);
 
-			int_rs3 = extract32(ctx->opcode, 27, 5);
-			int_cond = extract32(ctx->opcode, 17, 4);
-			if(int_cond == 0xd){
-				//throw exception/warning for inappropriate condition (SA)
-				break;
-			}
+			//tcg_gen_mov_i32(r1_local, r1);
+			//tcg_gen_mov_i32(r2_local, r2);
+			tcg_gen_mov_i32(r3_local, r2);
 
-			tcg_gen_mov_i32(r1_local, r1);
-			tcg_gen_mov_i32(r2_local, r2);
-			gen_get_gpr(r3_local, int_rs3);
-			tcg_gen_movi_i32(subIfCond, 0x1);
+            TCGv condResult = condition_satisfied(int_cond);
+            // store to local temp, because condResult is valid only until branch in gen_flags_on_sub
+            tcg_gen_mov_tl(tmpReg, condResult);
 
-			TCGv condResult = condition_satisfied(int_cond);
-			cont = gen_new_label();
-			skip_cy_ov = gen_new_label();
+            gen_flags_on_sub(r3_local, r1);
+            tcg_gen_mov_tl(carry, cpu_CYF);
+            tcg_gen_mov_tl(overflow, cpu_OVF);
+            tcg_gen_sub_tl(r3_local, r3_local, r1);
 
-			tcg_gen_brcondi_i32(TCG_COND_NE, condResult, 0x1, cont);
-              // in this case CY and OV should not be set
-			  tcg_gen_brcondi_i32(TCG_COND_EQ, r1_local, 0x7fffffff, skip_cy_ov);
-			    // calc and store CY and OV flags to be used to obtain final values
-			    gen_flags_on_add(r1_local, subIfCond);
-                tcg_gen_mov_tl(carry, cpu_CYF);
-                tcg_gen_mov_tl(overflow, cpu_OVF);
-              // on cond true, add 1, to be later subtracted
-              gen_set_label(skip_cy_ov);
-			  tcg_gen_add_tl(r1_local, r1_local, subIfCond);
+			tcg_gen_brcondi_i32(TCG_COND_NE, tmpReg, 0x1, cont);
+              tcg_gen_movi_i32(tmpReg, 0x1);
+              gen_flags_on_sub(r3_local, tmpReg);
+              tcg_gen_subi_tl(r3_local, r3_local, 1);
+              tcg_gen_or_tl(cpu_CYF, cpu_CYF, carry);
+              // overflow twice means no overflow
+              tcg_gen_xor_tl(cpu_OVF, cpu_OVF, overflow);
 
             gen_set_label(cont);
 
-			tcg_gen_sub_tl(r3_local, r2_local, r1_local);
 			gen_set_gpr(int_rs3, r3_local);
 
-            gen_flags_on_sub(r2_local, r1_local);
-            tcg_gen_or_tl(cpu_CYF, cpu_CYF, carry);
-            tcg_gen_or_tl(cpu_OVF, cpu_OVF, overflow);
-            flags_to_psw_z_cy_ov_s_sat();
+			flags_to_psw_z_cy_ov_s_sat();
 
             tcg_temp_free(condResult);
-			tcg_temp_free_i32(r1_local);
-			tcg_temp_free_i32(r2_local);
+			// tcg_temp_free_i32(r1_local);
+			// tcg_temp_free_i32(r2_local);
 			tcg_temp_free_i32(r3_local);
-            tcg_temp_free(subIfCond);
+            tcg_temp_free_i32(tmpReg);
+            tcg_temp_free_i32(overflow);
+            tcg_temp_free_i32(carry);
 		}
 			break;
 	}
@@ -5256,9 +5264,12 @@ void rh850_translate_init(void)
 
     for (int bankIdx = 0; bankIdx < NUM_SYS_REG_BANKS; bankIdx++) {
         for (int regIdx = 0; regIdx < MAX_SYS_REGS_IN_BANK; regIdx++) {
-            cpu_sysRegs[bankIdx][regIdx] = tcg_global_mem_new(cpu_env,
-                                                              offsetof(CPURH850State, systemRegs[bankIdx][regIdx]),
-                                                              rh850_sys_regnames[bankIdx][regIdx]);
+            const char *regName = rh850_sys_regnames[bankIdx][regIdx];
+            if (regName != NULL) {
+                cpu_sysRegs[bankIdx][regIdx] = tcg_global_mem_new(cpu_env,
+                                                                  offsetof(CPURH850State, systemRegs[bankIdx][regIdx]),
+                                                                  regName);
+            }
         }
     }
 

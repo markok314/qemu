@@ -100,6 +100,7 @@ class TargetController:
 
     def step(self):
         self.debugCtrl.stepInst()
+        # self.debugCtrl.stepOverInst()
 
 
     def isDoubleStepInst(self, pc):
