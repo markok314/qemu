@@ -593,33 +593,17 @@ static void gen_satadd_CC(TCGv_i32 t0, TCGv_i32 t1, TCGv_i32 result)
 
 static void gen_flags_on_sub(TCGv_i32 t0, TCGv_i32 t1)
 {
-    TCGLabel *cont;
-    TCGLabel *end;
-
-	TCGv_i32 tmp;
     tcg_gen_sub_tl(cpu_SF, t0, t1);
-    tcg_gen_mov_i32(cpu_ZF, cpu_SF);
     tcg_gen_setcond_i32(TCG_COND_GTU, cpu_CYF, t1, t0);
+    tcg_gen_setcond_i32(TCG_COND_EQ, cpu_ZF, t0, t1);
     tcg_gen_xor_i32(cpu_OVF, cpu_SF, t0);
-    tmp = tcg_temp_new_i32();
+    TCGv_i32 tmp = tcg_temp_new_i32();
     tcg_gen_xor_i32(tmp, t0, t1);
     tcg_gen_and_i32(cpu_OVF, cpu_OVF, tmp);
 
     tcg_gen_shri_i32(cpu_SF, cpu_SF, 0x1f);
 	tcg_gen_shri_i32(cpu_OVF, cpu_OVF, 0x1f);
     tcg_temp_free_i32(tmp);
-
-    cont = gen_new_label();
-    end = gen_new_label();
-
-    tcg_gen_brcondi_i32(TCG_COND_NE, cpu_ZF, 0x0, cont);
-    tcg_gen_movi_i32(cpu_ZF, 0x1);
-    tcg_gen_br(end);
-
-    gen_set_label(cont);
-    tcg_gen_movi_i32(cpu_ZF, 0x0);
-
-    gen_set_label(end);
 
     flags_to_psw_z_cy_ov_s_sat();
 }
