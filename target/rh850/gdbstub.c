@@ -1,7 +1,7 @@
 /*
  * RH850 GDB Server Stub
  *
- * Copyright (c) 2016-2017 Sagar Karandikar, sagark@eecs.berkeley.edu
+ * Copyright (c) 2019-2020 Marko Klopcic, iSYSTEM Labs
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -112,7 +112,15 @@ int rh850_cpu_gdb_read_register(CPUState *cs, uint8_t *mem_buf, int n)
     	if (sysRegIdx >= 0) {
             int selID = sysRegIdx >> BANK_SHIFT;
             int regID = sysRegIdx & ~BANK_MASK;
-            return gdb_get_regl(mem_buf, env->systemRegs[selID][regID]); // eipc, eipsw, fepc, fepsw, psw, ...
+            if (selID ==  BANK_ID_BASIC_0  &&  regID == PSW_IDX) {
+                int psw = env->Z_flag | (env->S_flag  << 1) | (env->OV_flag << 2) | (env->CY_flag << 3);
+                psw |= (env->SAT_flag << 4) | (env->ID_flag << 5) | (env->EP_flag << 6);
+                psw |= (env->NP_flag << 7) | (env->EBV_flag << 15) | (env->CU0_flag << 16);
+                psw |= (env->CU1_flag << 17) | (env->CU2_flag << 18) | (env->UM_flag << 30);
+                return gdb_get_regl(mem_buf, psw);
+            } else {
+                return gdb_get_regl(mem_buf, env->systemRegs[selID][regID]); // eipc, eipsw, fepc, fepsw, psw, ...
+            }
     	}
     }
 
@@ -136,7 +144,24 @@ int rh850_cpu_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     	if (sysRegIdx >= 0) {
     	    int selID = sysRegIdx >> BANK_SHIFT;
     	    int regID = sysRegIdx & ~BANK_MASK;
-    	    env->systemRegs[selID][regID] = ldtul_p(mem_buf); // eipc, eipsw, fepc, fepsw, psw, ...
+            if (selID ==  BANK_ID_BASIC_0  &&  regID == PSW_IDX) {
+                int psw = ldtul_p(mem_buf);
+                env->Z_flag = psw & 1;
+                env->S_flag = (psw >> 1) & 1;
+                env->OV_flag = (psw >> 2) & 1;
+                env->CY_flag = (psw >> 3) & 1;
+                env->SAT_flag = (psw >> 4) & 1;
+                env->ID_flag = (psw >> 5) & 1;
+                env->EP_flag = (psw >> 6) & 1;
+                env->NP_flag = (psw >> 7) & 1;
+                env->EBV_flag = (psw >> 15) & 1;
+                env->CU0_flag = (psw >> 16) & 1;
+                env->CU1_flag = (psw >> 17) & 1;
+                env->CU2_flag = (psw >> 18) & 1;
+                env->UM_flag = (psw >> 30) & 1;
+            } else {
+                env->systemRegs[selID][regID] = ldtul_p(mem_buf); // eipc, eipsw, fepc, fepsw, psw, ...
+            }
     	}
     }
 
