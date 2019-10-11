@@ -356,7 +356,7 @@ static void tcgv_to_flags_z_cy_ov_s_sat(TCGv reg)
 
 static void flags_to_tcgv_id_ep_np_ebv_cu_um(TCGv reg)
 {
-    // Set flags in PSW to 0 so we can write new state
+    // Set flags in PSW to 0 so we can OR with new state
     tcg_gen_andi_i32(reg, reg, 0xbff87f1f);
 
     TCGv temp = tcg_temp_new_i32();
@@ -750,8 +750,9 @@ static void gen_store(DisasContext *ctx, int memop, int rs1, int rs2,
         tcg_gen_concat_i32_i64(dat64, dat, dat_high);
     	tcg_gen_qemu_st_i64(dat64, t0, MEM_IDX, memop);
     }
-    else
+    else {
     	tcg_gen_qemu_st_tl(dat, t0, MEM_IDX, memop);
+    }
 
     // clear possible mutex
 	TCGLabel *l = gen_new_label();
@@ -3684,6 +3685,8 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 	}	break;
 
 	case OPC_RH850_HALT:
+	    // nop, interupts are not implemented, so HALT would never continue
+	    // tcg_abort();
 		break;
 
     case OPC_RH850_LDSR_reg2_regID_selID:
@@ -3930,6 +3933,7 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
 		selID = extract32(ctx->opcode, 27, 5);
         if(selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX){
             TCGv tmp = tcg_temp_new_i32();
+            tcg_gen_movi_tl(tmp, 0);
             flags_to_tcgv(tmp);
             gen_set_gpr(rs2, tmp);
             tcg_temp_free(tmp);

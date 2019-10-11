@@ -434,6 +434,10 @@ static int glue(load_elf, SZ)(const char *name, int fd,
                                     translate_opaque, data, ph, elf_machine);
             } else {
                 addr = ph->p_paddr;
+                // hack for GHS compiler for RH850, which sets only p_vaddr, while p_paddr is always 0
+                if (elf_machine == EM_RH850  && ph->p_paddr == 0  &&  ph->p_vaddr != 0) {
+                    addr = ph->p_vaddr;
+                }
             }
 
             if (data_swab) {
