@@ -28,6 +28,7 @@
 #include "hw/arm/arm.h"
 #include "exec/address-spaces.h"
 #include "hw/arm/stm32f205_soc.h"
+#include "qemu/soc-options.h"
 
 /* At the moment only Timer 2 to 5 are modelled */
 static const uint32_t timer_addr[STM_NUM_TIMERS] = { 0x40000000, 0x40000400,
@@ -86,9 +87,9 @@ static void stm32f205_soc_realize(DeviceState *dev_soc, Error **errp)
     Error *err = NULL;
     int i;
     uint32_t flash_base_addr = FLASH_BASE_ADDRESS, flash_size = FLASH_SIZE;
-    uint32_t sram_base_addr = SRAM_START, sram_size = SRAM_SIZE;
+    uint32_t sram_base_addr = SRAM_BASE_ADDRESS, sram_size = SRAM_SIZE;
 
-    get_memory_ranges("0", &flash_base_addr, &flash_size, &sram_start, &sram_size);
+    get_memory_ranges("0", &flash_base_addr, &flash_size, &sram_base_addr, &sram_size);
 
     MemoryRegion *system_memory = get_system_memory();
     MemoryRegion *sram = g_new(MemoryRegion, 1);

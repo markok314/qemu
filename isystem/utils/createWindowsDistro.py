@@ -35,7 +35,7 @@ def create_host_dir():
 
     dockerDirs = glob.glob(DOCKER_DIR_GLOB)
 
-    cmd = ['make', 'docker-test-mingw@fedora', 'J=4', 'TARGET_LIST=intentionallyInvalid']
+    cmd = ['make', 'docker-test-mingw@fedora', 'J=4', 'TARGET_LIST=intentionallyInvalidToCreateDirOnly']
     if g_isVerbose:  # Option: V=1 for verbose build
         cmd += ['V=1']
     log('Start docker to create mounted dir: ' + ' '.join(cmd))

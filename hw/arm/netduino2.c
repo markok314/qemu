@@ -29,6 +29,8 @@
 #include "qemu/error-report.h"
 #include "hw/arm/stm32f205_soc.h"
 #include "hw/arm/arm.h"
+#include "qemu/soc-options.h"
+
 
 static void netduino2_init(MachineState *machine)
 {

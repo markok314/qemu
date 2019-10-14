@@ -38,6 +38,7 @@ DIST_DIR=/var/tmp/qemu/dist
 mkdir $DIST_DIR
 cp /usr/x86_64-w64-mingw32/sys-root/mingw/bin/*.dll $DIST_DIR
 
+# copy executables to dir shared with host
 executables=(arm aarch64 ppc ppc64 tricore rh850)
 for exeprefix in "${executables[@]}"; do
     if [[ $TARGET_LIST == *"$exeprefix"* ]]; then
