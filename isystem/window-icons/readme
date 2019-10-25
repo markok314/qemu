@@ -1,0 +1,5 @@
+This folder contains min/max/restore icons for qemu window, copied from 
+official QEMU distribution. Directory 'share' should be added to zip
+file at the same level as executables and dlls.
+
+

@@ -256,6 +256,7 @@ def main():
         _docker_build(hostDir, args.targets)
         # hostDir = 'docker-src.2019-09-11-15.06.09.6052'
         _check_dlls(hostDir, '', [])
+        shutil.copytree('isystem/window-icons/share', os.path.join(hostDir, DIST_DIR, 'share'))
         _zip_files(hostDir)
         shutil.copy2(f'{ZIP_FILE_NAME}.{ZIP_FILE_EXT}', '/media/sf_kubuntu1704/')
 
