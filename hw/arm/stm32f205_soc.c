@@ -87,9 +87,11 @@ static void stm32f205_soc_realize(DeviceState *dev_soc, Error **errp)
     Error *err = NULL;
     int i;
     uint32_t flash_base_addr = FLASH_BASE_ADDRESS, flash_size = FLASH_SIZE;
+    uint32_t flash_alias_base_addr = FLASH_ALIAS_BASE_ADDRESS;
     uint32_t sram_base_addr = SRAM_BASE_ADDRESS, sram_size = SRAM_SIZE;
 
     get_memory_ranges("0", &flash_base_addr, &flash_size, &sram_base_addr, &sram_size);
+    get_memory_ranges("1", &flash_alias_base_addr, NULL, NULL, NULL);
 
     MemoryRegion *system_memory = get_system_memory();
     MemoryRegion *sram = g_new(MemoryRegion, 1);
@@ -105,7 +107,7 @@ static void stm32f205_soc_realize(DeviceState *dev_soc, Error **errp)
     memory_region_set_readonly(flash_alias, true);
 
     memory_region_add_subregion(system_memory, flash_base_addr, flash);
-    memory_region_add_subregion(system_memory, 0, flash_alias);
+    memory_region_add_subregion(system_memory, flash_alias_base_addr, flash_alias);
 
     memory_region_init_ram(sram, NULL, "STM32F205.sram", sram_size,
                            &error_fatal);
