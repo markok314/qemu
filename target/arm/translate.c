@@ -12917,6 +12917,9 @@ static void disas_thumb_insn(DisasContext *s, uint32_t insn)
             /* base reg in list: if load, complete it now */
             if (insn & (1 << 11)) {
                 store_reg(s, rn, loaded_var);
+            } else {
+                store_reg(s, rn, addr); // doc does not exclude base reg from updating if in list on store
+                // it is also incremented on HW (tried on STM32F407, stm r0!, {r0-r7})
             }
             tcg_temp_free_i32(addr);
         }
