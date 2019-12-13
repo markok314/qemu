@@ -3693,19 +3693,25 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
         selID = extract32(ctx->opcode, 27, 5);
         regID = rs2;
 
-        TCGv tmp = tcg_temp_new();
-		gen_get_gpr(tmp, rs1);
+        // Modify only sytem regs, which exist. Real device executes instruction, but
+        // value is not stored for system regs, which do not exist. No exception is
+        // thrown.
+        if(cpu_sysRegs[selID][regID] != NULL  ||  (selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX)) {
 
-		if(selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX){
-			tcgv_to_flags(tmp);
-		} else {
-	        // clear read-only bits in value, all other bits in sys reg. This way
-	        // read-only bits preserve their value given at reset
-	        tcg_gen_andi_i32(tmp, tmp, rh850_sys_reg_read_only_masks[selID][regID]);
-	        tcg_gen_andi_i32(cpu_sysRegs[selID][regID], cpu_sysRegs[selID][regID], ~rh850_sys_reg_read_only_masks[selID][regID]);
-	        tcg_gen_or_i32(cpu_sysRegs[selID][regID], cpu_sysRegs[selID][regID], tmp);
-		}
-        tcg_temp_free(tmp);
+            TCGv tmp = tcg_temp_new();
+            gen_get_gpr(tmp, rs1);
+
+            if(selID == BANK_ID_BASIC_0  &&  regID == PSW_IDX){
+                tcgv_to_flags(tmp);
+            } else {
+                // clear read-only bits in value, all other bits in sys reg. This way
+                // read-only bits preserve their value given at reset
+                tcg_gen_andi_i32(tmp, tmp, rh850_sys_reg_read_only_masks[selID][regID]);
+                tcg_gen_andi_i32(cpu_sysRegs[selID][regID], cpu_sysRegs[selID][regID], ~rh850_sys_reg_read_only_masks[selID][regID]);
+                tcg_gen_or_i32(cpu_sysRegs[selID][regID], cpu_sysRegs[selID][regID], tmp);
+            }
+            tcg_temp_free(tmp);
+        }
 		break;
 
 	//case OPC_RH850_LDLW:
@@ -3938,7 +3944,14 @@ static void gen_special(DisasContext *ctx, CPURH850State *env, int rs1, int rs2,
             gen_set_gpr(rs2, tmp);
             tcg_temp_free(tmp);
         } else {
-            gen_set_gpr(rs2, cpu_sysRegs[selID][regID]);
+            if (cpu_sysRegs[selID][regID] != NULL) {
+                gen_set_gpr(rs2, cpu_sysRegs[selID][regID]);
+            } else {
+                TCGv dat = tcg_temp_local_new();
+                tcg_gen_movi_i32(dat, 0);
+                gen_set_gpr(rs2, 0); // if sys reg does not exist, write 0
+                tcg_temp_free(dat);
+            }
         }
 		break;
 
@@ -5182,6 +5195,8 @@ void rh850_translate_init(void)
                 cpu_sysRegs[bankIdx][regIdx] = tcg_global_mem_new(cpu_env,
                                                                   offsetof(CPURH850State, systemRegs[bankIdx][regIdx]),
                                                                   regName);
+            } else {
+                cpu_sysRegs[bankIdx][regIdx] = NULL;  // mark register as not present
             }
         }
     }
