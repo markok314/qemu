@@ -10783,7 +10783,7 @@ static void disas_thumb2_insn(DisasContext *s, uint32_t insn)
             }
         } else {
 /* <<<<<<< HEAD
-            /* base reg in list: if load, complete it now */
+            // base reg in list: if load, complete it now 
             if (insn & (1 << 11)) {
                 store_reg(s, rn, loaded_var);
             } else {
