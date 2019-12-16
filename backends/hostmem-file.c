@@ -9,10 +9,11 @@
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
  */
+
 #include "qemu/osdep.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "qemu/error-report.h"
+#include "qemu/module.h"
 #include "sysemu/hostmem.h"
 #include "sysemu/sysemu.h"
 #include "qom/object_interfaces.h"
@@ -41,10 +42,12 @@ struct HostMemoryBackendFile {
 static void
 file_backend_memory_alloc(HostMemoryBackend *backend, Error **errp)
 {
+#ifndef CONFIG_POSIX
+    error_setg(errp, "backend '%s' not supported on this host",
+               object_get_typename(OBJECT(backend)));
+#else
     HostMemoryBackendFile *fb = MEMORY_BACKEND_FILE(backend);
-#ifdef CONFIG_POSIX
-    gchar *path;
-#endif
+    gchar *name;
 
     if (!backend->size) {
         error_setg(errp, "can't create backend with size 0");
@@ -54,18 +57,16 @@ file_backend_memory_alloc(HostMemoryBackend *backend, Error **errp)
         error_setg(errp, "mem-path property not set");
         return;
     }
-#ifndef CONFIG_POSIX
-    error_setg(errp, "-mem-path not supported on this host");
-#else
+
     backend->force_prealloc = mem_prealloc;
-    path = object_get_canonical_path(OBJECT(backend));
+    name = host_memory_backend_get_name(backend);
     memory_region_init_ram_from_file(&backend->mr, OBJECT(backend),
-                                     path,
+                                     name,
                                      backend->size, fb->align,
                                      (backend->share ? RAM_SHARED : 0) |
                                      (fb->is_pmem ? RAM_PMEM : 0),
                                      fb->mem_path, errp);
-    g_free(path);
+    g_free(name);
 #endif
 }
 
@@ -82,7 +83,8 @@ static void set_mem_path(Object *o, const char *str, Error **errp)
     HostMemoryBackendFile *fb = MEMORY_BACKEND_FILE(o);
 
     if (host_memory_backend_mr_inited(backend)) {
-        error_setg(errp, "cannot change property value");
+        error_setg(errp, "cannot change property 'mem-path' of %s",
+                   object_get_typename(o));
         return;
     }
     g_free(fb->mem_path);
@@ -120,7 +122,8 @@ static void file_memory_backend_set_align(Object *o, Visitor *v,
     uint64_t val;
 
     if (host_memory_backend_mr_inited(backend)) {
-        error_setg(&local_err, "cannot change property value");
+        error_setg(&local_err, "cannot change property '%s' of %s",
+                   name, object_get_typename(o));
         goto out;
     }
 
@@ -145,26 +148,20 @@ static void file_memory_backend_set_pmem(Object *o, bool value, Error **errp)
     HostMemoryBackendFile *fb = MEMORY_BACKEND_FILE(o);
 
     if (host_memory_backend_mr_inited(backend)) {
-        char *path = object_get_canonical_path_component(o);
 
-        error_setg(errp, "cannot change property 'pmem' of %s '%s'",
-                   object_get_typename(o),
-                   path);
-        g_free(path);
+        error_setg(errp, "cannot change property 'pmem' of %s.",
+                   object_get_typename(o));
         return;
     }
 
 #ifndef CONFIG_LIBPMEM
     if (value) {
         Error *local_err = NULL;
-        char *path = object_get_canonical_path_component(o);
 
         error_setg(&local_err,
                    "Lack of libpmem support while setting the 'pmem=on'"
-                   " of %s '%s'. We can't ensure data persistence.",
-                   object_get_typename(o),
-                   path);
-        g_free(path);
+                   " of %s. We can't ensure data persistence.",
+                   object_get_typename(o));
         error_propagate(errp, local_err);
         return;
     }

@@ -21,13 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 #include "qemu/osdep.h"
 #include "qemu/log.h"
-#include "hw/hw.h"
 #include "hw/input/ps2.h"
+#include "migration/vmstate.h"
 #include "ui/console.h"
 #include "ui/input.h"
-#include "sysemu/sysemu.h"
+#include "sysemu/reset.h"
+#include "sysemu/runstate.h"
 
 #include "trace.h"
 
@@ -255,7 +257,7 @@ static void ps2_put_keycode(void *opaque, int keycode)
     PS2KbdState *s = opaque;
 
     trace_ps2_put_keycode(opaque, keycode);
-    qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER);
+    qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
 
     if (s->translate) {
         if (keycode == 0xf0) {
@@ -285,7 +287,7 @@ static void ps2_keyboard_event(DeviceState *dev, QemuConsole *src,
         return;
     }
 
-    qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER);
+    qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
     assert(evt->type == INPUT_EVENT_KIND_KEY);
     qcode = qemu_input_key_value_to_qcode(key->key);
 
@@ -748,7 +750,7 @@ static void ps2_mouse_sync(DeviceState *dev)
     }
 
     if (s->mouse_buttons) {
-        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER);
+        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
     }
     if (!(s->mouse_status & MOUSE_STATUS_REMOTE)) {
         /* if not remote, send event. Multiple events are sent if

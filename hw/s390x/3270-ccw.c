@@ -9,12 +9,14 @@
  * your option) any later version. See the COPYING file in the top-level
  * directory.
  */
+
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu/module.h"
 #include "cpu.h"
 #include "hw/s390x/css.h"
 #include "hw/s390x/css-bridge.h"
+#include "hw/qdev-properties.h"
 #include "hw/s390x/3270-ccw.h"
 
 /* Handle READ ccw commands from guest */
@@ -78,13 +80,13 @@ static int emulated_ccw_3270_cb(SubchDev *sch, CCW1 ccw)
 
     if (rc == -EIO) {
         /* I/O error, specific devices generate specific conditions */
-        SCSW *s = &sch->curr_status.scsw;
+        SCHIB *schib = &sch->curr_status;
 
         sch->curr_status.scsw.dstat = SCSW_DSTAT_UNIT_CHECK;
         sch->sense_data[0] = 0x40;    /* intervention-req */
-        s->ctrl &= ~SCSW_ACTL_START_PEND;
-        s->ctrl &= ~SCSW_CTRL_MASK_STCTL;
-        s->ctrl |= SCSW_STCTL_PRIMARY | SCSW_STCTL_SECONDARY |
+        schib->scsw.ctrl &= ~SCSW_ACTL_START_PEND;
+        schib->scsw.ctrl &= ~SCSW_CTRL_MASK_STCTL;
+        schib->scsw.ctrl |= SCSW_STCTL_PRIMARY | SCSW_STCTL_SECONDARY |
                    SCSW_STCTL_ALERT | SCSW_STCTL_STATUS_PEND;
     }
 

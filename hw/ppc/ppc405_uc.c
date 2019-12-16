@@ -21,18 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 #include "qemu/osdep.h"
 #include "qemu/units.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "cpu.h"
-#include "hw/hw.h"
 #include "hw/ppc/ppc.h"
-#include "hw/boards.h"
 #include "hw/i2c/ppc4xx_i2c.h"
+#include "hw/irq.h"
 #include "ppc405.h"
 #include "hw/char/serial.h"
 #include "qemu/timer.h"
+#include "sysemu/reset.h"
 #include "sysemu/sysemu.h"
 #include "qemu/log.h"
 #include "exec/address-spaces.h"
@@ -49,7 +49,7 @@
 ram_addr_t ppc405_set_bootinfo (CPUPPCState *env, ppc4xx_bd_info_t *bd,
                                 uint32_t flags)
 {
-    CPUState *cs = CPU(ppc_env_get_cpu(env));
+    CPUState *cs = env_cpu(env);
     ram_addr_t bdloc;
     int i, n;
 
@@ -1156,64 +1156,6 @@ static void ppc4xx_gpt_init(hwaddr base, qemu_irq irqs[5])
 }
 
 /*****************************************************************************/
-/* SPR */
-void ppc40x_core_reset(PowerPCCPU *cpu)
-{
-    CPUPPCState *env = &cpu->env;
-    target_ulong dbsr;
-
-    printf("Reset PowerPC core\n");
-    cpu_interrupt(CPU(cpu), CPU_INTERRUPT_RESET);
-    dbsr = env->spr[SPR_40x_DBSR];
-    dbsr &= ~0x00000300;
-    dbsr |= 0x00000100;
-    env->spr[SPR_40x_DBSR] = dbsr;
-}
-
-void ppc40x_chip_reset(PowerPCCPU *cpu)
-{
-    CPUPPCState *env = &cpu->env;
-    target_ulong dbsr;
-
-    printf("Reset PowerPC chip\n");
-    cpu_interrupt(CPU(cpu), CPU_INTERRUPT_RESET);
-    /* XXX: TODO reset all internal peripherals */
-    dbsr = env->spr[SPR_40x_DBSR];
-    dbsr &= ~0x00000300;
-    dbsr |= 0x00000200;
-    env->spr[SPR_40x_DBSR] = dbsr;
-}
-
-void ppc40x_system_reset(PowerPCCPU *cpu)
-{
-    printf("Reset PowerPC system\n");
-    qemu_system_reset_request(SHUTDOWN_CAUSE_GUEST_RESET);
-}
-
-void store_40x_dbcr0 (CPUPPCState *env, uint32_t val)
-{
-    PowerPCCPU *cpu = ppc_env_get_cpu(env);
-
-    switch ((val >> 28) & 0x3) {
-    case 0x0:
-        /* No action */
-        break;
-    case 0x1:
-        /* Core reset */
-        ppc40x_core_reset(cpu);
-        break;
-    case 0x2:
-        /* Chip reset */
-        ppc40x_chip_reset(cpu);
-        break;
-    case 0x3:
-        /* System reset */
-        ppc40x_system_reset(cpu);
-        break;
-    }
-}
-
-/*****************************************************************************/
 /* PowerPC 405CR */
 enum {
     PPC405CR_CPC0_PLLMR  = 0x0B0,
@@ -1519,7 +1461,7 @@ CPUPPCState *ppc405cr_init(MemoryRegion *address_space_mem,
     /* OBP arbitrer */
     ppc4xx_opba_init(0xef600600);
     /* Universal interrupt controller */
-    irqs = g_malloc0(sizeof(qemu_irq) * PPCUIC_OUTPUT_NB);
+    irqs = g_new0(qemu_irq, PPCUIC_OUTPUT_NB);
     irqs[PPCUIC_OUTPUT_INT] =
         ((qemu_irq *)env->irq_inputs)[PPC40x_INPUT_INT];
     irqs[PPCUIC_OUTPUT_CINT] =
@@ -1877,7 +1819,7 @@ CPUPPCState *ppc405ep_init(MemoryRegion *address_space_mem,
     /* Initialize timers */
     ppc_booke_timers_init(cpu, sysclk, 0);
     /* Universal interrupt controller */
-    irqs = g_malloc0(sizeof(qemu_irq) * PPCUIC_OUTPUT_NB);
+    irqs = g_new0(qemu_irq, PPCUIC_OUTPUT_NB);
     irqs[PPCUIC_OUTPUT_INT] =
         ((qemu_irq *)env->irq_inputs)[PPC40x_INPUT_INT];
     irqs[PPCUIC_OUTPUT_CINT] =
@@ -1885,7 +1827,7 @@ CPUPPCState *ppc405ep_init(MemoryRegion *address_space_mem,
     pic = ppcuic_init(env, irqs, 0x0C0, 0, 1);
     *picp = pic;
     /* SDRAM controller */
-	/* XXX 405EP has no ECC interrupt */
+        /* XXX 405EP has no ECC interrupt */
     ppc4xx_sdram_init(env, pic[17], 2, ram_memories,
                       ram_bases, ram_sizes, do_init);
     /* External bus controller */

@@ -108,7 +108,7 @@ static void test_qmp_protocol(void)
     QList *capabilities;
     QTestState *qts;
 
-    qts = qtest_init_without_qmp_handshake(false, common_args);
+    qts = qtest_init_without_qmp_handshake(common_args);
 
     /* Test greeting */
     resp = qtest_qmp_receive(qts);
@@ -116,7 +116,7 @@ static void test_qmp_protocol(void)
     g_assert(q);
     test_version(qdict_get(q, "version"));
     capabilities = qdict_get_qlist(q, "capabilities");
-    g_assert(capabilities && qlist_empty(capabilities));
+    g_assert(capabilities);
     qobject_unref(resp);
 
     /* Test valid command before handshake */
@@ -187,7 +187,7 @@ static void send_cmd_that_blocks(QTestState *s, const char *id)
                    " 'arguments': {"
                    " 'driver': 'blkdebug', 'node-name': %s,"
                    " 'config': %s,"
-                   " 'image': { 'driver': 'null-co' } } }",
+                   " 'image': { 'driver': 'null-co', 'read-zeroes': true } } }",
                    id, id, fifo_name);
 }
 
@@ -219,7 +219,7 @@ static void test_qmp_oob(void)
     QList *capabilities;
     QString *qstr;
 
-    qts = qtest_init_without_qmp_handshake(true, common_args);
+    qts = qtest_init_without_qmp_handshake(common_args);
 
     /* Check the greeting message. */
     resp = qtest_qmp_receive(qts);

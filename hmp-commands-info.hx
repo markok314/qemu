@@ -205,6 +205,20 @@ Show PIC state.
 ETEXI
 
     {
+        .name       = "rdma",
+        .args_type  = "",
+        .params     = "",
+        .help       = "show RDMA state",
+        .cmd        = hmp_info_rdma,
+    },
+
+STEXI
+@item info rdma
+@findex info rdma
+Show RDMA state.
+ETEXI
+
+    {
         .name       = "pci",
         .args_type  = "",
         .params     = "",
@@ -235,7 +249,7 @@ STEXI
 Show virtual to physical memory mappings.
 ETEXI
 
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) || defined(TARGET_RISCV)
     {
         .name       = "mem",
         .args_type  = "",

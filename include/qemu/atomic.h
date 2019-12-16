@@ -88,6 +88,13 @@
 #define smp_read_barrier_depends()   barrier()
 #endif
 
+/*
+ * A signal barrier forces all pending local memory ops to be observed before
+ * a SIGSEGV is delivered to the *same* thread.  In practice this is exactly
+ * the same as barrier(), but since we have the correct builtin, use it.
+ */
+#define signal_barrier()    __atomic_signal_fence(__ATOMIC_SEQ_CST)
+
 /* Sanity check that the size of an atomic operation isn't "overly large".
  * Despite the fact that e.g. i686 has 64-bit atomic operations, we do not
  * want to use them because we ought not need them, and this lets us do a
@@ -99,9 +106,10 @@
  * those few cases by hand.
  *
  * Note that x32 is fully detected with __x86_64__ + _ILP32, and that for
- * Sparc we always force the use of sparcv9 in configure.
+ * Sparc we always force the use of sparcv9 in configure. MIPS n32 (ILP32) &
+ * n64 (LP64) ABIs are both detected using __mips64.
  */
-#if defined(__x86_64__) || defined(__sparc__)
+#if defined(__x86_64__) || defined(__sparc__) || defined(__mips64)
 # define ATOMIC_REG_SIZE  8
 #else
 # define ATOMIC_REG_SIZE  sizeof(void *)
@@ -305,6 +313,10 @@
 
 #ifndef smp_read_barrier_depends
 #define smp_read_barrier_depends()   barrier()
+#endif
+
+#ifndef signal_barrier
+#define signal_barrier()    barrier()
 #endif
 
 /* These will only be atomic if the processor does the fetch or store

@@ -25,9 +25,13 @@
 
 #include "qemu/osdep.h"
 #include "hw/char/serial.h"
+#include "hw/irq.h"
+#include "migration/vmstate.h"
 #include "chardev/char-serial.h"
 #include "qapi/error.h"
 #include "qemu/timer.h"
+#include "sysemu/reset.h"
+#include "sysemu/runstate.h"
 #include "qemu/error-report.h"
 #include "trace.h"
 
@@ -611,7 +615,7 @@ static void serial_receive1(void *opaque, const uint8_t *buf, int size)
     SerialState *s = opaque;
 
     if (s->wakeup) {
-        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER);
+        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
     }
     if(s->fcr & UART_FCR_FE) {
         int i;

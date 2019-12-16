@@ -32,6 +32,7 @@
 #include "qemu/osdep.h"
 #include "hw/pci/pci_bridge.h"
 #include "hw/pci/pci_bus.h"
+#include "qemu/module.h"
 #include "qemu/range.h"
 #include "qapi/error.h"
 
@@ -241,9 +242,9 @@ void pci_bridge_update_mappings(PCIBridge *br)
      * while another accesses an unaffected region. */
     memory_region_transaction_begin();
     pci_bridge_region_del(br, br->windows);
+    pci_bridge_region_cleanup(br, w);
     br->windows = pci_bridge_region_init(br);
     memory_region_transaction_commit();
-    pci_bridge_region_cleanup(br, w);
 }
 
 /* default write_config function for PCI-to-PCI bridge */
@@ -273,7 +274,7 @@ void pci_bridge_write_config(PCIDevice *d,
     newctl = pci_get_word(d->config + PCI_BRIDGE_CONTROL);
     if (~oldctl & newctl & PCI_BRIDGE_CTL_BUS_RESET) {
         /* Trigger hot reset on 0->1 transition. */
-        qbus_reset_all(&s->sec_bus.qbus);
+        qbus_reset_all(BUS(&s->sec_bus));
     }
 }
 
@@ -310,7 +311,7 @@ void pci_bridge_reset(DeviceState *qdev)
 
     /*
      * the default values for base/limit registers aren't specified
-     * in the PCI-to-PCI-bridge spec. So we don't thouch them here.
+     * in the PCI-to-PCI-bridge spec. So we don't touch them here.
      * Each implementation can override it.
      * typical implementation does
      * zero base/limit registers or
@@ -369,7 +370,7 @@ void pci_bridge_initfn(PCIDevice *dev, const char *typename)
      * let users address the bus using the device name.
      */
     if (!br->bus_name && dev->qdev.id && *dev->qdev.id) {
-	    br->bus_name = dev->qdev.id;
+            br->bus_name = dev->qdev.id;
     }
 
     qbus_create_inplace(sec_bus, sizeof(br->sec_bus), typename, DEVICE(dev),

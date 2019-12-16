@@ -2,7 +2,7 @@
  * QEMU emulation of an AMD IOMMU (AMD-Vi)
  *
  * Copyright (C) 2011 Eduard - Gabriel Munteanu
- * Copyright (C) 2015 David Kiarie, <davidkiarie4@gmail.com>
+ * Copyright (C) 2015, 2016 David Kiarie Kahurani
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,9 @@
  * with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AMD_IOMMU_H_
-#define AMD_IOMMU_H_
+#ifndef AMD_IOMMU_H
+#define AMD_IOMMU_H
 
-#include "hw/hw.h"
 #include "hw/pci/pci.h"
 #include "hw/i386/x86-iommu.h"
 

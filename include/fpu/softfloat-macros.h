@@ -79,6 +79,11 @@ this code that are retained.
  * version 2 or later. See the COPYING file in the top-level directory.
  */
 
+#ifndef FPU_SOFTFLOAT_MACROS_H
+#define FPU_SOFTFLOAT_MACROS_H
+
+#include "fpu/softfloat-types.h"
+
 /*----------------------------------------------------------------------------
 | Shifts `a' right by the number of bits given in `count'.  If any nonzero
 | bits are shifted off, they are ``jammed'' into the least significant bit of
@@ -613,13 +618,13 @@ static inline uint64_t estimateDiv128To64(uint64_t a0, uint64_t a1, uint64_t b)
     uint64_t rem0, rem1, term0, term1;
     uint64_t z;
 
-    if ( b <= a0 ) return LIT64( 0xFFFFFFFFFFFFFFFF );
+    if ( b <= a0 ) return UINT64_C(0xFFFFFFFFFFFFFFFF);
     b0 = b>>32;
-    z = ( b0<<32 <= a0 ) ? LIT64( 0xFFFFFFFF00000000 ) : ( a0 / b0 )<<32;
+    z = ( b0<<32 <= a0 ) ? UINT64_C(0xFFFFFFFF00000000) : ( a0 / b0 )<<32;
     mul64To128( b, z, &term0, &term1 );
     sub128( a0, a1, term0, term1, &rem0, &rem1 );
     while ( ( (int64_t) rem0 ) < 0 ) {
-        z -= LIT64( 0x100000000 );
+        z -= UINT64_C(0x100000000);
         b1 = b<<32;
         add128( rem0, rem1, b0, b1, &rem0, &rem1 );
     }
@@ -641,7 +646,7 @@ static inline uint64_t udiv_qrnnd(uint64_t *r, uint64_t n1,
     uint64_t q;
     asm("divq %4" : "=a"(q), "=d"(*r) : "0"(n0), "1"(n1), "rm"(d));
     return q;
-#elif defined(__s390x__)
+#elif defined(__s390x__) && !defined(__clang__)
     /* Need to use a TImode type to get an even register pair for DLGR.  */
     unsigned __int128 n = (unsigned __int128)n1 << 64 | n0;
     asm("dlgr %0, %1" : "+r"(n) : "r"(d));
@@ -796,3 +801,5 @@ static inline flag ne128( uint64_t a0, uint64_t a1, uint64_t b0, uint64_t b1 )
     return ( a0 != b0 ) || ( a1 != b1 );
 
 }
+
+#endif

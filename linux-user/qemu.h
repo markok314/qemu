@@ -16,7 +16,6 @@
 #include "syscall_defs.h"
 #include "target_syscall.h"
 #include "exec/gdbstub.h"
-#include "qemu/queue.h"
 
 /* This is the size of the host kernel's sigset_t, needed where we make
  * direct system calls that take a sigset_t pointer and a size.
@@ -50,7 +49,7 @@ struct image_info {
         abi_ulong       env_strings;
         abi_ulong       file_string;
         uint32_t        elf_flags;
-	int		personality;
+        int		personality;
         abi_ulong       alignment;
 
         /* The fields below are used in FDPIC mode.  */
@@ -116,7 +115,6 @@ typedef struct TaskState {
 #endif
     abi_ulong child_tidptr;
 #ifdef TARGET_M68K
-    int sim_syscalls;
     abi_ulong tp_value;
 #endif
 #if defined(TARGET_ARM) || defined(TARGET_M68K)
@@ -152,6 +150,8 @@ typedef struct TaskState {
      */
     int signal_pending;
 
+    /* This thread's sigaltstack, if it has one */
+    struct target_sigaltstack sigaltstack_used;
 } __attribute__((aligned(16))) TaskState;
 
 extern char *exec_path;
@@ -174,7 +174,7 @@ extern unsigned long mmap_min_addr;
 struct linux_binprm {
         char buf[BPRM_BUF_SIZE] __attribute__((aligned));
         abi_ulong p;
-	int fd;
+        int fd;
         int e_uid, e_gid;
         int argc, envc;
         char **argv;
@@ -443,7 +443,7 @@ abi_long target_mremap(abi_ulong old_addr, abi_ulong old_size,
                        abi_ulong new_addr);
 extern unsigned long last_brk;
 extern abi_ulong mmap_next_start;
-abi_ulong mmap_find_vma(abi_ulong, abi_ulong);
+abi_ulong mmap_find_vma(abi_ulong, abi_ulong, abi_ulong);
 void mmap_fork_start(void);
 void mmap_fork_end(int child);
 
@@ -457,7 +457,9 @@ extern unsigned long guest_stack_size;
 
 static inline int access_ok(int type, abi_ulong addr, abi_ulong size)
 {
-    return page_check_range((target_ulong)addr, size,
+    return guest_addr_valid(addr) &&
+           (size == 0 || guest_addr_valid(addr + size - 1)) &&
+           page_check_range((target_ulong)addr, size,
                             (type == VERIFY_READ) ? PAGE_READ : (PAGE_READ | PAGE_WRITE)) == 0;
 }
 
@@ -474,17 +476,13 @@ static inline int access_ok(int type, abi_ulong addr, abi_ulong size)
  *   functions than host-endian unaligned load/store plus tswapN.
  * - The pragmas are necessary only to silence a clang false-positive
  *   warning: see https://bugs.llvm.org/show_bug.cgi?id=39113 .
- * - We have to disable -Wpragmas warnings to avoid a complaint about
- *   an unknown warning type from older compilers that don't know about
- *   -Waddress-of-packed-member.
  * - gcc has bugs in its _Pragma() support in some versions, eg
  *   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=83256 -- so we only
  *   include the warning-suppression pragmas for clang
  */
-#ifdef __clang__
+#if defined(__clang__) && __has_warning("-Waddress-of-packed-member")
 #define PRAGMA_DISABLE_PACKED_WARNING                                   \
     _Pragma("GCC diagnostic push");                                     \
-    _Pragma("GCC diagnostic ignored \"-Wpragmas\"");                    \
     _Pragma("GCC diagnostic ignored \"-Waddress-of-packed-member\"")
 
 #define PRAGMA_REENABLE_PACKED_WARNING          \

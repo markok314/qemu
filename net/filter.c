@@ -8,7 +8,6 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "qapi/qmp/qerror.h"
 #include "qemu/error-report.h"
 
@@ -17,6 +16,7 @@
 #include "net/vhost_net.h"
 #include "qom/object_interfaces.h"
 #include "qemu/iov.h"
+#include "qemu/module.h"
 #include "net/colo.h"
 #include "migration/colo.h"
 
@@ -55,7 +55,7 @@ static NetFilterState *netfilter_next(NetFilterState *nf,
         next = QTAILQ_NEXT(nf, next);
     } else {
         /* reverse order */
-        next = QTAILQ_PREV(nf, NetFilterHead, next);
+        next = QTAILQ_PREV(nf, next);
     }
 
     return next;

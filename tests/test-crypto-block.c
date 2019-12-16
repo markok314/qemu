@@ -23,6 +23,7 @@
 #include "crypto/init.h"
 #include "crypto/block.h"
 #include "qemu/buffer.h"
+#include "qemu/module.h"
 #include "crypto/secret.h"
 #ifndef _WIN32
 #include <sys/resource.h>
@@ -305,6 +306,7 @@ static void test_block(gconstpointer opaque)
                              test_block_read_func,
                              &header,
                              0,
+                             1,
                              NULL);
     g_assert(blk == NULL);
 
@@ -313,6 +315,7 @@ static void test_block(gconstpointer opaque)
                              test_block_read_func,
                              &header,
                              QCRYPTO_BLOCK_OPEN_NO_IO,
+                             1,
                              &error_abort);
 
     g_assert(qcrypto_block_get_cipher(blk) == NULL);
@@ -327,6 +330,7 @@ static void test_block(gconstpointer opaque)
                              test_block_read_func,
                              &header,
                              0,
+                             1,
                              &error_abort);
     g_assert(blk);
 

@@ -11,19 +11,36 @@
 #include "qemu/log.h"
 #include "qemu/error-report.h"
 #include "qapi/error.h"
+#include "hw/irq.h"
 #include "hw/ppc/spapr.h"
+#include "hw/ppc/spapr_cpu_core.h"
+#include "hw/ppc/spapr_xive.h"
 #include "hw/ppc/xics.h"
+#include "hw/ppc/xics_spapr.h"
+#include "hw/qdev-properties.h"
+#include "cpu-models.h"
 #include "sysemu/kvm.h"
 
 #include "trace.h"
 
-void spapr_irq_msi_init(sPAPRMachineState *spapr, uint32_t nr_msis)
+static const TypeInfo spapr_intc_info = {
+    .name = TYPE_SPAPR_INTC,
+    .parent = TYPE_INTERFACE,
+    .class_size = sizeof(SpaprInterruptControllerClass),
+};
+
+static void spapr_irq_msi_init(SpaprMachineState *spapr)
 {
-    spapr->irq_map_nr = nr_msis;
+    if (SPAPR_MACHINE_GET_CLASS(spapr)->legacy_irq_allocation) {
+        /* Legacy mode doesn't use this allocator */
+        return;
+    }
+
+    spapr->irq_map_nr = spapr_irq_nr_msis(spapr);
     spapr->irq_map = bitmap_new(spapr->irq_map_nr);
 }
 
-int spapr_irq_msi_alloc(sPAPRMachineState *spapr, uint32_t num, bool align,
+int spapr_irq_msi_alloc(SpaprMachineState *spapr, uint32_t num, bool align,
                         Error **errp)
 {
     int irq;
@@ -48,191 +65,485 @@ int spapr_irq_msi_alloc(sPAPRMachineState *spapr, uint32_t num, bool align,
     return irq + SPAPR_IRQ_MSI;
 }
 
-void spapr_irq_msi_free(sPAPRMachineState *spapr, int irq, uint32_t num)
+void spapr_irq_msi_free(SpaprMachineState *spapr, int irq, uint32_t num)
 {
     bitmap_clear(spapr->irq_map, irq - SPAPR_IRQ_MSI, num);
 }
 
-void spapr_irq_msi_reset(sPAPRMachineState *spapr)
+int spapr_irq_init_kvm(int (*fn)(SpaprInterruptController *, Error **),
+                       SpaprInterruptController *intc,
+                       Error **errp)
 {
-    bitmap_clear(spapr->irq_map, 0, spapr->irq_map_nr);
-}
+    MachineState *machine = MACHINE(qdev_get_machine());
+    Error *local_err = NULL;
 
+    if (kvm_enabled() && machine_kernel_irqchip_allowed(machine)) {
+        if (fn(intc, &local_err) < 0) {
+            if (machine_kernel_irqchip_required(machine)) {
+                error_prepend(&local_err,
+                              "kernel_irqchip requested but unavailable: ");
+                error_propagate(errp, local_err);
+                return -1;
+            }
+
+            /*
+             * We failed to initialize the KVM device, fallback to
+             * emulated mode
+             */
+            error_prepend(&local_err,
+                          "kernel_irqchip allowed but unavailable: ");
+            error_append_hint(&local_err,
+                              "Falling back to kernel-irqchip=off\n");
+            warn_report_err(local_err);
+        }
+    }
+
+    return 0;
+}
 
 /*
  * XICS IRQ backend.
  */
 
-static ICSState *spapr_ics_create(sPAPRMachineState *spapr,
-                                  const char *type_ics,
-                                  int nr_irqs, Error **errp)
-{
-    Error *local_err = NULL;
-    Object *obj;
+SpaprIrq spapr_irq_xics = {
+    .xics        = true,
+    .xive        = false,
+};
 
-    obj = object_new(type_ics);
-    object_property_add_child(OBJECT(spapr), "ics", obj, &error_abort);
-    object_property_add_const_link(obj, ICS_PROP_XICS, OBJECT(spapr),
-                                   &error_abort);
-    object_property_set_int(obj, nr_irqs, "nr-irqs", &local_err);
-    if (local_err) {
-        goto error;
-    }
-    object_property_set_bool(obj, true, "realized", &local_err);
-    if (local_err) {
-        goto error;
-    }
+/*
+ * XIVE IRQ backend.
+ */
 
-    return ICS_BASE(obj);
+SpaprIrq spapr_irq_xive = {
+    .xics        = false,
+    .xive        = true,
+};
 
-error:
-    error_propagate(errp, local_err);
-    return NULL;
-}
+/*
+ * Dual XIVE and XICS IRQ backend.
+ *
+ * Both interrupt mode, XIVE and XICS, objects are created but the
+ * machine starts in legacy interrupt mode (XICS). It can be changed
+ * by the CAS negotiation process and, in that case, the new mode is
+ * activated after an extra machine reset.
+ */
 
-static void spapr_irq_init_xics(sPAPRMachineState *spapr, Error **errp)
+/*
+ * Define values in sync with the XIVE and XICS backend
+ */
+SpaprIrq spapr_irq_dual = {
+    .xics        = true,
+    .xive        = true,
+};
+
+
+static int spapr_irq_check(SpaprMachineState *spapr, Error **errp)
 {
     MachineState *machine = MACHINE(spapr);
-    sPAPRMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
-    int nr_irqs = smc->irq->nr_irqs;
-    Error *local_err = NULL;
 
-    /* Initialize the MSI IRQ allocator. */
-    if (!SPAPR_MACHINE_GET_CLASS(spapr)->legacy_irq_allocation) {
-        spapr_irq_msi_init(spapr, smc->irq->nr_msis);
-    }
-
-    if (kvm_enabled()) {
-        if (machine_kernel_irqchip_allowed(machine) &&
-            !xics_kvm_init(spapr, &local_err)) {
-            spapr->icp_type = TYPE_KVM_ICP;
-            spapr->ics = spapr_ics_create(spapr, TYPE_ICS_KVM, nr_irqs,
-                                          &local_err);
+    /*
+     * Sanity checks on non-P9 machines. On these, XIVE is not
+     * advertised, see spapr_dt_ov5_platform_support()
+     */
+    if (!ppc_type_check_compat(machine->cpu_type, CPU_POWERPC_LOGICAL_3_00,
+                               0, spapr->max_compat_pvr)) {
+        /*
+         * If the 'dual' interrupt mode is selected, force XICS as CAS
+         * negotiation is useless.
+         */
+        if (spapr->irq == &spapr_irq_dual) {
+            spapr->irq = &spapr_irq_xics;
+            return 0;
         }
-        if (machine_kernel_irqchip_required(machine) && !spapr->ics) {
-            error_prepend(&local_err,
-                          "kernel_irqchip requested but unavailable: ");
-            goto error;
+
+        /*
+         * Non-P9 machines using only XIVE is a bogus setup. We have two
+         * scenarios to take into account because of the compat mode:
+         *
+         * 1. POWER7/8 machines should fail to init later on when creating
+         *    the XIVE interrupt presenters because a POWER9 exception
+         *    model is required.
+
+         * 2. POWER9 machines using the POWER8 compat mode won't fail and
+         *    will let the OS boot with a partial XIVE setup : DT
+         *    properties but no hcalls.
+         *
+         * To cover both and not confuse the OS, add an early failure in
+         * QEMU.
+         */
+        if (spapr->irq == &spapr_irq_xive) {
+            error_setg(errp, "XIVE-only machines require a POWER9 CPU");
+            return -1;
         }
-        error_free(local_err);
-        local_err = NULL;
     }
 
-    if (!spapr->ics) {
-        xics_spapr_init(spapr);
-        spapr->icp_type = TYPE_ICP;
-        spapr->ics = spapr_ics_create(spapr, TYPE_ICS_SIMPLE, nr_irqs,
-                                      &local_err);
-    }
-
-error:
-    error_propagate(errp, local_err);
-}
-
-#define ICS_IRQ_FREE(ics, srcno)   \
-    (!((ics)->irqs[(srcno)].flags & (XICS_FLAGS_IRQ_MASK)))
-
-static int spapr_irq_claim_xics(sPAPRMachineState *spapr, int irq, bool lsi,
-                                Error **errp)
-{
-    ICSState *ics = spapr->ics;
-
-    assert(ics);
-
-    if (!ics_valid_irq(ics, irq)) {
-        error_setg(errp, "IRQ %d is invalid", irq);
+    /*
+     * On a POWER9 host, some older KVM XICS devices cannot be destroyed and
+     * re-created. Detect that early to avoid QEMU to exit later when the
+     * guest reboots.
+     */
+    if (kvm_enabled() &&
+        spapr->irq == &spapr_irq_dual &&
+        machine_kernel_irqchip_required(machine) &&
+        xics_kvm_has_broken_disconnect(spapr)) {
+        error_setg(errp, "KVM is too old to support ic-mode=dual,kernel-irqchip=on");
         return -1;
     }
 
-    if (!ICS_IRQ_FREE(ics, irq - ics->offset)) {
-        error_setg(errp, "IRQ %d is not free", irq);
-        return -1;
-    }
-
-    ics_set_irq_type(ics, irq - ics->offset, lsi);
     return 0;
 }
-
-static void spapr_irq_free_xics(sPAPRMachineState *spapr, int irq, int num)
-{
-    ICSState *ics = spapr->ics;
-    uint32_t srcno = irq - ics->offset;
-    int i;
-
-    if (ics_valid_irq(ics, irq)) {
-        trace_spapr_irq_free(0, irq, num);
-        for (i = srcno; i < srcno + num; ++i) {
-            if (ICS_IRQ_FREE(ics, i)) {
-                trace_spapr_irq_free_warn(0, i);
-            }
-            memset(&ics->irqs[i], 0, sizeof(ICSIRQState));
-        }
-    }
-}
-
-static qemu_irq spapr_qirq_xics(sPAPRMachineState *spapr, int irq)
-{
-    ICSState *ics = spapr->ics;
-    uint32_t srcno = irq - ics->offset;
-
-    if (ics_valid_irq(ics, irq)) {
-        return ics->qirqs[srcno];
-    }
-
-    return NULL;
-}
-
-static void spapr_irq_print_info_xics(sPAPRMachineState *spapr, Monitor *mon)
-{
-    CPUState *cs;
-
-    CPU_FOREACH(cs) {
-        PowerPCCPU *cpu = POWERPC_CPU(cs);
-
-        icp_pic_print_info(ICP(cpu->intc), mon);
-    }
-
-    ics_pic_print_info(spapr->ics, mon);
-}
-
-#define SPAPR_IRQ_XICS_NR_IRQS     0x1000
-#define SPAPR_IRQ_XICS_NR_MSIS     \
-    (XICS_IRQ_BASE + SPAPR_IRQ_XICS_NR_IRQS - SPAPR_IRQ_MSI)
-
-sPAPRIrq spapr_irq_xics = {
-    .nr_irqs     = SPAPR_IRQ_XICS_NR_IRQS,
-    .nr_msis     = SPAPR_IRQ_XICS_NR_MSIS,
-
-    .init        = spapr_irq_init_xics,
-    .claim       = spapr_irq_claim_xics,
-    .free        = spapr_irq_free_xics,
-    .qirq        = spapr_qirq_xics,
-    .print_info  = spapr_irq_print_info_xics,
-};
 
 /*
  * sPAPR IRQ frontend routines for devices
  */
+#define ALL_INTCS(spapr_) \
+    { SPAPR_INTC((spapr_)->ics), SPAPR_INTC((spapr_)->xive), }
 
-int spapr_irq_claim(sPAPRMachineState *spapr, int irq, bool lsi, Error **errp)
+int spapr_irq_cpu_intc_create(SpaprMachineState *spapr,
+                              PowerPCCPU *cpu, Error **errp)
 {
-    sPAPRMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+    SpaprInterruptController *intcs[] = ALL_INTCS(spapr);
+    int i;
+    int rc;
 
-    return smc->irq->claim(spapr, irq, lsi, errp);
+    for (i = 0; i < ARRAY_SIZE(intcs); i++) {
+        SpaprInterruptController *intc = intcs[i];
+        if (intc) {
+            SpaprInterruptControllerClass *sicc = SPAPR_INTC_GET_CLASS(intc);
+            rc = sicc->cpu_intc_create(intc, cpu, errp);
+            if (rc < 0) {
+                return rc;
+            }
+        }
+    }
+
+    return 0;
 }
 
-void spapr_irq_free(sPAPRMachineState *spapr, int irq, int num)
+void spapr_irq_cpu_intc_reset(SpaprMachineState *spapr, PowerPCCPU *cpu)
 {
-    sPAPRMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+    SpaprInterruptController *intcs[] = ALL_INTCS(spapr);
+    int i;
 
-    smc->irq->free(spapr, irq, num);
+    for (i = 0; i < ARRAY_SIZE(intcs); i++) {
+        SpaprInterruptController *intc = intcs[i];
+        if (intc) {
+            SpaprInterruptControllerClass *sicc = SPAPR_INTC_GET_CLASS(intc);
+            sicc->cpu_intc_reset(intc, cpu);
+        }
+    }
 }
 
-qemu_irq spapr_qirq(sPAPRMachineState *spapr, int irq)
+void spapr_irq_cpu_intc_destroy(SpaprMachineState *spapr, PowerPCCPU *cpu)
 {
-    sPAPRMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+    SpaprInterruptController *intcs[] = ALL_INTCS(spapr);
+    int i;
 
-    return smc->irq->qirq(spapr, irq);
+    for (i = 0; i < ARRAY_SIZE(intcs); i++) {
+        SpaprInterruptController *intc = intcs[i];
+        if (intc) {
+            SpaprInterruptControllerClass *sicc = SPAPR_INTC_GET_CLASS(intc);
+            sicc->cpu_intc_destroy(intc, cpu);
+        }
+    }
+}
+
+static void spapr_set_irq(void *opaque, int irq, int level)
+{
+    SpaprMachineState *spapr = SPAPR_MACHINE(opaque);
+    SpaprInterruptControllerClass *sicc
+        = SPAPR_INTC_GET_CLASS(spapr->active_intc);
+
+    sicc->set_irq(spapr->active_intc, irq, level);
+}
+
+void spapr_irq_print_info(SpaprMachineState *spapr, Monitor *mon)
+{
+    SpaprInterruptControllerClass *sicc
+        = SPAPR_INTC_GET_CLASS(spapr->active_intc);
+
+    sicc->print_info(spapr->active_intc, mon);
+}
+
+void spapr_irq_dt(SpaprMachineState *spapr, uint32_t nr_servers,
+                  void *fdt, uint32_t phandle)
+{
+    SpaprInterruptControllerClass *sicc
+        = SPAPR_INTC_GET_CLASS(spapr->active_intc);
+
+    sicc->dt(spapr->active_intc, nr_servers, fdt, phandle);
+}
+
+uint32_t spapr_irq_nr_msis(SpaprMachineState *spapr)
+{
+    SpaprMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+
+    if (smc->legacy_irq_allocation) {
+        return smc->nr_xirqs;
+    } else {
+        return SPAPR_XIRQ_BASE + smc->nr_xirqs - SPAPR_IRQ_MSI;
+    }
+}
+
+void spapr_irq_init(SpaprMachineState *spapr, Error **errp)
+{
+    MachineState *machine = MACHINE(spapr);
+    SpaprMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+
+    if (machine_kernel_irqchip_split(machine)) {
+        error_setg(errp, "kernel_irqchip split mode not supported on pseries");
+        return;
+    }
+
+    if (!kvm_enabled() && machine_kernel_irqchip_required(machine)) {
+        error_setg(errp,
+                   "kernel_irqchip requested but only available with KVM");
+        return;
+    }
+
+    if (spapr_irq_check(spapr, errp) < 0) {
+        return;
+    }
+
+    /* Initialize the MSI IRQ allocator. */
+    spapr_irq_msi_init(spapr);
+
+    if (spapr->irq->xics) {
+        Error *local_err = NULL;
+        Object *obj;
+
+        obj = object_new(TYPE_ICS_SPAPR);
+        object_property_add_child(OBJECT(spapr), "ics", obj, &local_err);
+        if (local_err) {
+            error_propagate(errp, local_err);
+            return;
+        }
+
+        object_property_add_const_link(obj, ICS_PROP_XICS, OBJECT(spapr),
+                                       &local_err);
+        if (local_err) {
+            error_propagate(errp, local_err);
+            return;
+        }
+
+        object_property_set_int(obj, smc->nr_xirqs, "nr-irqs", &local_err);
+        if (local_err) {
+            error_propagate(errp, local_err);
+            return;
+        }
+
+        object_property_set_bool(obj, true, "realized", &local_err);
+        if (local_err) {
+            error_propagate(errp, local_err);
+            return;
+        }
+
+        spapr->ics = ICS_SPAPR(obj);
+    }
+
+    if (spapr->irq->xive) {
+        uint32_t nr_servers = spapr_max_server_number(spapr);
+        DeviceState *dev;
+        int i;
+
+        dev = qdev_create(NULL, TYPE_SPAPR_XIVE);
+        qdev_prop_set_uint32(dev, "nr-irqs", smc->nr_xirqs + SPAPR_XIRQ_BASE);
+        /*
+         * 8 XIVE END structures per CPU. One for each available
+         * priority
+         */
+        qdev_prop_set_uint32(dev, "nr-ends", nr_servers << 3);
+        qdev_init_nofail(dev);
+
+        spapr->xive = SPAPR_XIVE(dev);
+
+        /* Enable the CPU IPIs */
+        for (i = 0; i < nr_servers; ++i) {
+            SpaprInterruptControllerClass *sicc
+                = SPAPR_INTC_GET_CLASS(spapr->xive);
+
+            if (sicc->claim_irq(SPAPR_INTC(spapr->xive), SPAPR_IRQ_IPI + i,
+                                false, errp) < 0) {
+                return;
+            }
+        }
+
+        spapr_xive_hcall_init(spapr);
+    }
+
+    spapr->qirqs = qemu_allocate_irqs(spapr_set_irq, spapr,
+                                      smc->nr_xirqs + SPAPR_XIRQ_BASE);
+
+    /*
+     * Mostly we don't actually need this until reset, except that not
+     * having this set up can cause VFIO devices to issue a
+     * false-positive warning during realize(), because they don't yet
+     * have an in-kernel irq chip.
+     */
+    spapr_irq_update_active_intc(spapr);
+}
+
+int spapr_irq_claim(SpaprMachineState *spapr, int irq, bool lsi, Error **errp)
+{
+    SpaprInterruptController *intcs[] = ALL_INTCS(spapr);
+    int i;
+    SpaprMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+    int rc;
+
+    assert(irq >= SPAPR_XIRQ_BASE);
+    assert(irq < (smc->nr_xirqs + SPAPR_XIRQ_BASE));
+
+    for (i = 0; i < ARRAY_SIZE(intcs); i++) {
+        SpaprInterruptController *intc = intcs[i];
+        if (intc) {
+            SpaprInterruptControllerClass *sicc = SPAPR_INTC_GET_CLASS(intc);
+            rc = sicc->claim_irq(intc, irq, lsi, errp);
+            if (rc < 0) {
+                return rc;
+            }
+        }
+    }
+
+    return 0;
+}
+
+void spapr_irq_free(SpaprMachineState *spapr, int irq, int num)
+{
+    SpaprInterruptController *intcs[] = ALL_INTCS(spapr);
+    int i, j;
+    SpaprMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+
+    assert(irq >= SPAPR_XIRQ_BASE);
+    assert((irq + num) <= (smc->nr_xirqs + SPAPR_XIRQ_BASE));
+
+    for (i = irq; i < (irq + num); i++) {
+        for (j = 0; j < ARRAY_SIZE(intcs); j++) {
+            SpaprInterruptController *intc = intcs[j];
+
+            if (intc) {
+                SpaprInterruptControllerClass *sicc
+                    = SPAPR_INTC_GET_CLASS(intc);
+                sicc->free_irq(intc, i);
+            }
+        }
+    }
+}
+
+qemu_irq spapr_qirq(SpaprMachineState *spapr, int irq)
+{
+    SpaprMachineClass *smc = SPAPR_MACHINE_GET_CLASS(spapr);
+
+    /*
+     * This interface is basically for VIO and PHB devices to find the
+     * right qemu_irq to manipulate, so we only allow access to the
+     * external irqs for now.  Currently anything which needs to
+     * access the IPIs most naturally gets there via the guest side
+     * interfaces, we can change this if we need to in future.
+     */
+    assert(irq >= SPAPR_XIRQ_BASE);
+    assert(irq < (smc->nr_xirqs + SPAPR_XIRQ_BASE));
+
+    if (spapr->ics) {
+        assert(ics_valid_irq(spapr->ics, irq));
+    }
+    if (spapr->xive) {
+        assert(irq < spapr->xive->nr_irqs);
+        assert(xive_eas_is_valid(&spapr->xive->eat[irq]));
+    }
+
+    return spapr->qirqs[irq];
+}
+
+int spapr_irq_post_load(SpaprMachineState *spapr, int version_id)
+{
+    SpaprInterruptControllerClass *sicc;
+
+    spapr_irq_update_active_intc(spapr);
+    sicc = SPAPR_INTC_GET_CLASS(spapr->active_intc);
+    return sicc->post_load(spapr->active_intc, version_id);
+}
+
+void spapr_irq_reset(SpaprMachineState *spapr, Error **errp)
+{
+    assert(!spapr->irq_map || bitmap_empty(spapr->irq_map, spapr->irq_map_nr));
+
+    spapr_irq_update_active_intc(spapr);
+}
+
+int spapr_irq_get_phandle(SpaprMachineState *spapr, void *fdt, Error **errp)
+{
+    const char *nodename = "interrupt-controller";
+    int offset, phandle;
+
+    offset = fdt_subnode_offset(fdt, 0, nodename);
+    if (offset < 0) {
+        error_setg(errp, "Can't find node \"%s\": %s",
+                   nodename, fdt_strerror(offset));
+        return -1;
+    }
+
+    phandle = fdt_get_phandle(fdt, offset);
+    if (!phandle) {
+        error_setg(errp, "Can't get phandle of node \"%s\"", nodename);
+        return -1;
+    }
+
+    return phandle;
+}
+
+static void set_active_intc(SpaprMachineState *spapr,
+                            SpaprInterruptController *new_intc)
+{
+    SpaprInterruptControllerClass *sicc;
+
+    assert(new_intc);
+
+    if (new_intc == spapr->active_intc) {
+        /* Nothing to do */
+        return;
+    }
+
+    if (spapr->active_intc) {
+        sicc = SPAPR_INTC_GET_CLASS(spapr->active_intc);
+        if (sicc->deactivate) {
+            sicc->deactivate(spapr->active_intc);
+        }
+    }
+
+    sicc = SPAPR_INTC_GET_CLASS(new_intc);
+    if (sicc->activate) {
+        sicc->activate(new_intc, &error_fatal);
+    }
+
+    spapr->active_intc = new_intc;
+
+    /*
+     * We've changed the kernel irqchip, let VFIO devices know they
+     * need to readjust.
+     */
+    kvm_irqchip_change_notify();
+}
+
+void spapr_irq_update_active_intc(SpaprMachineState *spapr)
+{
+    SpaprInterruptController *new_intc;
+
+    if (!spapr->ics) {
+        /*
+         * XXX before we run CAS, ov5_cas is initialized empty, which
+         * indicates XICS, even if we have ic-mode=xive.  TODO: clean
+         * up the CAS path so that we have a clearer way of handling
+         * this.
+         */
+        new_intc = SPAPR_INTC(spapr->xive);
+    } else if (spapr->ov5_cas
+               && spapr_ovec_test(spapr->ov5_cas, OV5_XIVE_EXPLOIT)) {
+        new_intc = SPAPR_INTC(spapr->xive);
+    } else {
+        new_intc = SPAPR_INTC(spapr->ics);
+    }
+
+    set_active_intc(spapr, new_intc);
 }
 
 /*
@@ -248,7 +559,7 @@ static int ics_find_free_block(ICSState *ics, int num, int alignnum)
             return -1;
         }
         for (i = first; i < first + num; ++i) {
-            if (!ICS_IRQ_FREE(ics, i)) {
+            if (!ics_irq_free(ics, i)) {
                 break;
             }
         }
@@ -260,7 +571,7 @@ static int ics_find_free_block(ICSState *ics, int num, int alignnum)
     return -1;
 }
 
-int spapr_irq_find(sPAPRMachineState *spapr, int num, bool align, Error **errp)
+int spapr_irq_find(SpaprMachineState *spapr, int num, bool align, Error **errp)
 {
     ICSState *ics = spapr->ics;
     int first = -1;
@@ -290,15 +601,14 @@ int spapr_irq_find(sPAPRMachineState *spapr, int num, bool align, Error **errp)
     return first + ics->offset;
 }
 
-#define SPAPR_IRQ_XICS_LEGACY_NR_IRQS     0x400
-
-sPAPRIrq spapr_irq_xics_legacy = {
-    .nr_irqs     = SPAPR_IRQ_XICS_LEGACY_NR_IRQS,
-    .nr_msis     = SPAPR_IRQ_XICS_LEGACY_NR_IRQS,
-
-    .init        = spapr_irq_init_xics,
-    .claim       = spapr_irq_claim_xics,
-    .free        = spapr_irq_free_xics,
-    .qirq        = spapr_qirq_xics,
-    .print_info  = spapr_irq_print_info_xics,
+SpaprIrq spapr_irq_xics_legacy = {
+    .xics        = true,
+    .xive        = false,
 };
+
+static void spapr_irq_register_types(void)
+{
+    type_register_static(&spapr_intc_info);
+}
+
+type_init(spapr_irq_register_types)

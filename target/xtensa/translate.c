@@ -35,9 +35,9 @@
 #include "disas/disas.h"
 #include "tcg-op.h"
 #include "qemu/log.h"
-#include "sysemu/sysemu.h"
+#include "qemu/qemu-print.h"
 #include "exec/cpu_ldst.h"
-#include "exec/semihost.h"
+#include "hw/semihosting/semihost.h"
 #include "exec/translator.h"
 
 #include "exec/helper-proto.h"
@@ -53,7 +53,7 @@ struct DisasContext {
     uint32_t pc;
     int cring;
     int ring;
-    uint32_t lbeg;
+    uint32_t lbeg_off;
     uint32_t lend;
 
     bool sar_5bit;
@@ -71,7 +71,7 @@ struct DisasContext {
 
     unsigned cpenable;
 
-    uint32_t *raw_arg;
+    uint32_t op_flags;
     xtensa_insnbuf insnbuf;
     xtensa_insnbuf slotbuf;
 };
@@ -79,132 +79,54 @@ struct DisasContext {
 static TCGv_i32 cpu_pc;
 static TCGv_i32 cpu_R[16];
 static TCGv_i32 cpu_FR[16];
+static TCGv_i32 cpu_MR[4];
+static TCGv_i32 cpu_BR[16];
+static TCGv_i32 cpu_BR4[4];
+static TCGv_i32 cpu_BR8[2];
 static TCGv_i32 cpu_SR[256];
 static TCGv_i32 cpu_UR[256];
+static TCGv_i32 cpu_windowbase_next;
+static TCGv_i32 cpu_exclusive_addr;
+static TCGv_i32 cpu_exclusive_val;
+
+static GHashTable *xtensa_regfile_table;
 
 #include "exec/gen-icount.h"
 
-typedef struct XtensaReg {
-    const char *name;
-    uint64_t opt_bits;
-    enum {
-        SR_R = 1,
-        SR_W = 2,
-        SR_X = 4,
-        SR_RW = 3,
-        SR_RWX = 7,
-    } access;
-} XtensaReg;
+static char *sr_name[256];
+static char *ur_name[256];
 
-#define XTENSA_REG_ACCESS(regname, opt, acc) { \
-        .name = (regname), \
-        .opt_bits = XTENSA_OPTION_BIT(opt), \
-        .access = (acc), \
+void xtensa_collect_sr_names(const XtensaConfig *config)
+{
+    xtensa_isa isa = config->isa;
+    int n = xtensa_isa_num_sysregs(isa);
+    int i;
+
+    for (i = 0; i < n; ++i) {
+        int sr = xtensa_sysreg_number(isa, i);
+
+        if (sr >= 0 && sr < 256) {
+            const char *name = xtensa_sysreg_name(isa, i);
+            char **pname =
+                (xtensa_sysreg_is_user(isa, i) ? ur_name : sr_name) + sr;
+
+            if (*pname) {
+                if (strstr(*pname, name) == NULL) {
+                    char *new_name =
+                        malloc(strlen(*pname) + strlen(name) + 2);
+
+                    strcpy(new_name, *pname);
+                    strcat(new_name, "/");
+                    strcat(new_name, name);
+                    free(*pname);
+                    *pname = new_name;
+                }
+            } else {
+                *pname = strdup(name);
+            }
+        }
     }
-
-#define XTENSA_REG(regname, opt) XTENSA_REG_ACCESS(regname, opt, SR_RWX)
-
-#define XTENSA_REG_BITS_ACCESS(regname, opt, acc) { \
-        .name = (regname), \
-        .opt_bits = (opt), \
-        .access = (acc), \
-    }
-
-#define XTENSA_REG_BITS(regname, opt) \
-    XTENSA_REG_BITS_ACCESS(regname, opt, SR_RWX)
-
-static const XtensaReg sregnames[256] = {
-    [LBEG] = XTENSA_REG("LBEG", XTENSA_OPTION_LOOP),
-    [LEND] = XTENSA_REG("LEND", XTENSA_OPTION_LOOP),
-    [LCOUNT] = XTENSA_REG("LCOUNT", XTENSA_OPTION_LOOP),
-    [SAR] = XTENSA_REG_BITS("SAR", XTENSA_OPTION_ALL),
-    [BR] = XTENSA_REG("BR", XTENSA_OPTION_BOOLEAN),
-    [LITBASE] = XTENSA_REG("LITBASE", XTENSA_OPTION_EXTENDED_L32R),
-    [SCOMPARE1] = XTENSA_REG("SCOMPARE1", XTENSA_OPTION_CONDITIONAL_STORE),
-    [ACCLO] = XTENSA_REG("ACCLO", XTENSA_OPTION_MAC16),
-    [ACCHI] = XTENSA_REG("ACCHI", XTENSA_OPTION_MAC16),
-    [MR] = XTENSA_REG("MR0", XTENSA_OPTION_MAC16),
-    [MR + 1] = XTENSA_REG("MR1", XTENSA_OPTION_MAC16),
-    [MR + 2] = XTENSA_REG("MR2", XTENSA_OPTION_MAC16),
-    [MR + 3] = XTENSA_REG("MR3", XTENSA_OPTION_MAC16),
-    [WINDOW_BASE] = XTENSA_REG("WINDOW_BASE", XTENSA_OPTION_WINDOWED_REGISTER),
-    [WINDOW_START] = XTENSA_REG("WINDOW_START",
-            XTENSA_OPTION_WINDOWED_REGISTER),
-    [PTEVADDR] = XTENSA_REG("PTEVADDR", XTENSA_OPTION_MMU),
-    [MMID] = XTENSA_REG_BITS("MMID", XTENSA_OPTION_ALL),
-    [RASID] = XTENSA_REG("RASID", XTENSA_OPTION_MMU),
-    [ITLBCFG] = XTENSA_REG("ITLBCFG", XTENSA_OPTION_MMU),
-    [DTLBCFG] = XTENSA_REG("DTLBCFG", XTENSA_OPTION_MMU),
-    [IBREAKENABLE] = XTENSA_REG("IBREAKENABLE", XTENSA_OPTION_DEBUG),
-    [MEMCTL] = XTENSA_REG_BITS("MEMCTL", XTENSA_OPTION_ALL),
-    [CACHEATTR] = XTENSA_REG("CACHEATTR", XTENSA_OPTION_CACHEATTR),
-    [ATOMCTL] = XTENSA_REG("ATOMCTL", XTENSA_OPTION_ATOMCTL),
-    [DDR] = XTENSA_REG("DDR", XTENSA_OPTION_DEBUG),
-    [IBREAKA] = XTENSA_REG("IBREAKA0", XTENSA_OPTION_DEBUG),
-    [IBREAKA + 1] = XTENSA_REG("IBREAKA1", XTENSA_OPTION_DEBUG),
-    [DBREAKA] = XTENSA_REG("DBREAKA0", XTENSA_OPTION_DEBUG),
-    [DBREAKA + 1] = XTENSA_REG("DBREAKA1", XTENSA_OPTION_DEBUG),
-    [DBREAKC] = XTENSA_REG("DBREAKC0", XTENSA_OPTION_DEBUG),
-    [DBREAKC + 1] = XTENSA_REG("DBREAKC1", XTENSA_OPTION_DEBUG),
-    [CONFIGID0] = XTENSA_REG_BITS_ACCESS("CONFIGID0", XTENSA_OPTION_ALL, SR_R),
-    [EPC1] = XTENSA_REG("EPC1", XTENSA_OPTION_EXCEPTION),
-    [EPC1 + 1] = XTENSA_REG("EPC2", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPC1 + 2] = XTENSA_REG("EPC3", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPC1 + 3] = XTENSA_REG("EPC4", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPC1 + 4] = XTENSA_REG("EPC5", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPC1 + 5] = XTENSA_REG("EPC6", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPC1 + 6] = XTENSA_REG("EPC7", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [DEPC] = XTENSA_REG("DEPC", XTENSA_OPTION_EXCEPTION),
-    [EPS2] = XTENSA_REG("EPS2", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPS2 + 1] = XTENSA_REG("EPS3", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPS2 + 2] = XTENSA_REG("EPS4", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPS2 + 3] = XTENSA_REG("EPS5", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPS2 + 4] = XTENSA_REG("EPS6", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EPS2 + 5] = XTENSA_REG("EPS7", XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [CONFIGID1] = XTENSA_REG_BITS_ACCESS("CONFIGID1", XTENSA_OPTION_ALL, SR_R),
-    [EXCSAVE1] = XTENSA_REG("EXCSAVE1", XTENSA_OPTION_EXCEPTION),
-    [EXCSAVE1 + 1] = XTENSA_REG("EXCSAVE2",
-            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EXCSAVE1 + 2] = XTENSA_REG("EXCSAVE3",
-            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EXCSAVE1 + 3] = XTENSA_REG("EXCSAVE4",
-            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EXCSAVE1 + 4] = XTENSA_REG("EXCSAVE5",
-            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EXCSAVE1 + 5] = XTENSA_REG("EXCSAVE6",
-            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [EXCSAVE1 + 6] = XTENSA_REG("EXCSAVE7",
-            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT),
-    [CPENABLE] = XTENSA_REG("CPENABLE", XTENSA_OPTION_COPROCESSOR),
-    [INTSET] = XTENSA_REG_ACCESS("INTSET", XTENSA_OPTION_INTERRUPT, SR_RW),
-    [INTCLEAR] = XTENSA_REG_ACCESS("INTCLEAR", XTENSA_OPTION_INTERRUPT, SR_W),
-    [INTENABLE] = XTENSA_REG("INTENABLE", XTENSA_OPTION_INTERRUPT),
-    [PS] = XTENSA_REG_BITS("PS", XTENSA_OPTION_ALL),
-    [VECBASE] = XTENSA_REG("VECBASE", XTENSA_OPTION_RELOCATABLE_VECTOR),
-    [EXCCAUSE] = XTENSA_REG("EXCCAUSE", XTENSA_OPTION_EXCEPTION),
-    [DEBUGCAUSE] = XTENSA_REG_ACCESS("DEBUGCAUSE", XTENSA_OPTION_DEBUG, SR_R),
-    [CCOUNT] = XTENSA_REG("CCOUNT", XTENSA_OPTION_TIMER_INTERRUPT),
-    [PRID] = XTENSA_REG_ACCESS("PRID", XTENSA_OPTION_PROCESSOR_ID, SR_R),
-    [ICOUNT] = XTENSA_REG("ICOUNT", XTENSA_OPTION_DEBUG),
-    [ICOUNTLEVEL] = XTENSA_REG("ICOUNTLEVEL", XTENSA_OPTION_DEBUG),
-    [EXCVADDR] = XTENSA_REG("EXCVADDR", XTENSA_OPTION_EXCEPTION),
-    [CCOMPARE] = XTENSA_REG("CCOMPARE0", XTENSA_OPTION_TIMER_INTERRUPT),
-    [CCOMPARE + 1] = XTENSA_REG("CCOMPARE1",
-            XTENSA_OPTION_TIMER_INTERRUPT),
-    [CCOMPARE + 2] = XTENSA_REG("CCOMPARE2",
-            XTENSA_OPTION_TIMER_INTERRUPT),
-    [MISC] = XTENSA_REG("MISC0", XTENSA_OPTION_MISC_SR),
-    [MISC + 1] = XTENSA_REG("MISC1", XTENSA_OPTION_MISC_SR),
-    [MISC + 2] = XTENSA_REG("MISC2", XTENSA_OPTION_MISC_SR),
-    [MISC + 3] = XTENSA_REG("MISC3", XTENSA_OPTION_MISC_SR),
-};
-
-static const XtensaReg uregnames[256] = {
-    [EXPSTATE] = XTENSA_REG_BITS("EXPSTATE", XTENSA_OPTION_ALL),
-    [THREADPTR] = XTENSA_REG("THREADPTR", XTENSA_OPTION_THREAD_POINTER),
-    [FCR] = XTENSA_REG("FCR", XTENSA_OPTION_FP_COPROCESSOR),
-    [FSR] = XTENSA_REG("FSR", XTENSA_OPTION_FP_COPROCESSOR),
-};
+}
 
 void xtensa_translate_init(void)
 {
@@ -220,6 +142,15 @@ void xtensa_translate_init(void)
         "f8", "f9", "f10", "f11",
         "f12", "f13", "f14", "f15",
     };
+    static const char * const mregnames[] = {
+        "m0", "m1", "m2", "m3",
+    };
+    static const char * const bregnames[] = {
+        "b0", "b1", "b2", "b3",
+        "b4", "b5", "b6", "b7",
+        "b8", "b9", "b10", "b11",
+        "b12", "b13", "b14", "b15",
+    };
     int i;
 
     cpu_pc = tcg_global_mem_new_i32(cpu_env,
@@ -227,31 +158,93 @@ void xtensa_translate_init(void)
 
     for (i = 0; i < 16; i++) {
         cpu_R[i] = tcg_global_mem_new_i32(cpu_env,
-                offsetof(CPUXtensaState, regs[i]),
-                regnames[i]);
+                                          offsetof(CPUXtensaState, regs[i]),
+                                          regnames[i]);
     }
 
     for (i = 0; i < 16; i++) {
         cpu_FR[i] = tcg_global_mem_new_i32(cpu_env,
-                offsetof(CPUXtensaState, fregs[i].f32[FP_F32_LOW]),
-                fregnames[i]);
+                                           offsetof(CPUXtensaState,
+                                                    fregs[i].f32[FP_F32_LOW]),
+                                           fregnames[i]);
+    }
+
+    for (i = 0; i < 4; i++) {
+        cpu_MR[i] = tcg_global_mem_new_i32(cpu_env,
+                                           offsetof(CPUXtensaState,
+                                                    sregs[MR + i]),
+                                           mregnames[i]);
+    }
+
+    for (i = 0; i < 16; i++) {
+        cpu_BR[i] = tcg_global_mem_new_i32(cpu_env,
+                                           offsetof(CPUXtensaState,
+                                                    sregs[BR]),
+                                           bregnames[i]);
+        if (i % 4 == 0) {
+            cpu_BR4[i / 4] = tcg_global_mem_new_i32(cpu_env,
+                                                    offsetof(CPUXtensaState,
+                                                             sregs[BR]),
+                                                    bregnames[i]);
+        }
+        if (i % 8 == 0) {
+            cpu_BR8[i / 8] = tcg_global_mem_new_i32(cpu_env,
+                                                    offsetof(CPUXtensaState,
+                                                             sregs[BR]),
+                                                    bregnames[i]);
+        }
     }
 
     for (i = 0; i < 256; ++i) {
-        if (sregnames[i].name) {
+        if (sr_name[i]) {
             cpu_SR[i] = tcg_global_mem_new_i32(cpu_env,
-                    offsetof(CPUXtensaState, sregs[i]),
-                    sregnames[i].name);
+                                               offsetof(CPUXtensaState,
+                                                        sregs[i]),
+                                               sr_name[i]);
         }
     }
 
     for (i = 0; i < 256; ++i) {
-        if (uregnames[i].name) {
+        if (ur_name[i]) {
             cpu_UR[i] = tcg_global_mem_new_i32(cpu_env,
-                    offsetof(CPUXtensaState, uregs[i]),
-                    uregnames[i].name);
+                                               offsetof(CPUXtensaState,
+                                                        uregs[i]),
+                                               ur_name[i]);
         }
     }
+
+    cpu_windowbase_next =
+        tcg_global_mem_new_i32(cpu_env,
+                               offsetof(CPUXtensaState, windowbase_next),
+                               "windowbase_next");
+    cpu_exclusive_addr =
+        tcg_global_mem_new_i32(cpu_env,
+                               offsetof(CPUXtensaState, exclusive_addr),
+                               "exclusive_addr");
+    cpu_exclusive_val =
+        tcg_global_mem_new_i32(cpu_env,
+                               offsetof(CPUXtensaState, exclusive_val),
+                               "exclusive_val");
+}
+
+void **xtensa_get_regfile_by_name(const char *name)
+{
+    if (xtensa_regfile_table == NULL) {
+        xtensa_regfile_table = g_hash_table_new(g_str_hash, g_str_equal);
+        g_hash_table_insert(xtensa_regfile_table,
+                            (void *)"AR", (void *)cpu_R);
+        g_hash_table_insert(xtensa_regfile_table,
+                            (void *)"MR", (void *)cpu_MR);
+        g_hash_table_insert(xtensa_regfile_table,
+                            (void *)"FR", (void *)cpu_FR);
+        g_hash_table_insert(xtensa_regfile_table,
+                            (void *)"BR", (void *)cpu_BR);
+        g_hash_table_insert(xtensa_regfile_table,
+                            (void *)"BR4", (void *)cpu_BR4);
+        g_hash_table_insert(xtensa_regfile_table,
+                            (void *)"BR8", (void *)cpu_BR8);
+    }
+    return (void **)g_hash_table_lookup(xtensa_regfile_table, (void *)name);
 }
 
 static inline bool option_enabled(DisasContext *dc, int opt)
@@ -363,6 +356,8 @@ static bool gen_check_cpenable(DisasContext *dc, uint32_t cp_mask)
     return true;
 }
 
+static int gen_postprocess(DisasContext *dc, int slot);
+
 static void gen_jump_slot(DisasContext *dc, TCGv dest, int slot)
 {
     tcg_gen_mov_i32(cpu_pc, dest);
@@ -372,6 +367,9 @@ static void gen_jump_slot(DisasContext *dc, TCGv dest, int slot)
     if (dc->base.singlestep_enabled) {
         gen_exception(dc, EXCP_DEBUG);
     } else {
+        if (dc->op_flags & XTENSA_OP_POSTPROCESS) {
+            slot = gen_postprocess(dc, slot);
+        }
         if (slot >= 0) {
             tcg_gen_goto_tb(slot);
             tcg_gen_exit_tb(dc->base.tb, slot);
@@ -387,15 +385,19 @@ static void gen_jump(DisasContext *dc, TCGv dest)
     gen_jump_slot(dc, dest, -1);
 }
 
+static int adjust_jump_slot(DisasContext *dc, uint32_t dest, int slot)
+{
+    if (((dc->base.pc_first ^ dest) & TARGET_PAGE_MASK) != 0) {
+        return -1;
+    } else {
+        return slot;
+    }
+}
+
 static void gen_jumpi(DisasContext *dc, uint32_t dest, int slot)
 {
     TCGv_i32 tmp = tcg_const_i32(dest);
-#ifndef CONFIG_USER_ONLY
-    if (((dc->base.pc_first ^ dest) & TARGET_PAGE_MASK) != 0) {
-        slot = -1;
-    }
-#endif
-    gen_jump_slot(dc, tmp, slot);
+    gen_jump_slot(dc, tmp, adjust_jump_slot(dc, dest, slot));
     tcg_temp_free(tmp);
 }
 
@@ -412,33 +414,18 @@ static void gen_callw_slot(DisasContext *dc, int callinc, TCGv_i32 dest,
     gen_jump_slot(dc, dest, slot);
 }
 
-static void gen_callw(DisasContext *dc, int callinc, TCGv_i32 dest)
-{
-    gen_callw_slot(dc, callinc, dest, -1);
-}
-
-static void gen_callwi(DisasContext *dc, int callinc, uint32_t dest, int slot)
-{
-    TCGv_i32 tmp = tcg_const_i32(dest);
-#ifndef CONFIG_USER_ONLY
-    if (((dc->base.pc_first ^ dest) & TARGET_PAGE_MASK) != 0) {
-        slot = -1;
-    }
-#endif
-    gen_callw_slot(dc, callinc, tmp, slot);
-    tcg_temp_free(tmp);
-}
-
 static bool gen_check_loop_end(DisasContext *dc, int slot)
 {
-    if (option_enabled(dc, XTENSA_OPTION_LOOP) &&
-            !(dc->base.tb->flags & XTENSA_TBFLAG_EXCM) &&
-            dc->base.pc_next == dc->lend) {
+    if (dc->base.pc_next == dc->lend) {
         TCGLabel *label = gen_new_label();
 
         tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_SR[LCOUNT], 0, label);
         tcg_gen_subi_i32(cpu_SR[LCOUNT], cpu_SR[LCOUNT], 1);
-        gen_jumpi(dc, dc->lbeg, slot);
+        if (dc->lbeg_off) {
+            gen_jumpi(dc, dc->base.pc_next - dc->lbeg_off, slot);
+        } else {
+            gen_jump(dc, cpu_SR[LBEG]);
+        }
         gen_set_label(label);
         gen_jumpi(dc, dc->base.pc_next, -1);
         return true;
@@ -472,335 +459,57 @@ static void gen_brcondi(DisasContext *dc, TCGCond cond,
     tcg_temp_free(tmp);
 }
 
-static bool check_sr(DisasContext *dc, uint32_t sr, unsigned access)
+static bool test_ill_sr(DisasContext *dc, const OpcodeArg arg[],
+                        const uint32_t par[])
 {
-    if (!xtensa_option_bits_enabled(dc->config, sregnames[sr].opt_bits)) {
-        if (sregnames[sr].name) {
-            qemu_log_mask(LOG_GUEST_ERROR, "SR %s is not configured\n", sregnames[sr].name);
-        } else {
-            qemu_log_mask(LOG_UNIMP, "SR %d is not implemented\n", sr);
-        }
-        return false;
-    } else if (!(sregnames[sr].access & access)) {
-        static const char * const access_text[] = {
-            [SR_R] = "rsr",
-            [SR_W] = "wsr",
-            [SR_X] = "xsr",
-        };
-        assert(access < ARRAY_SIZE(access_text) && access_text[access]);
-        qemu_log_mask(LOG_GUEST_ERROR, "SR %s is not available for %s\n", sregnames[sr].name,
-                      access_text[access]);
-        return false;
+    return !xtensa_option_enabled(dc->config, par[1]);
+}
+
+static bool test_ill_ccompare(DisasContext *dc, const OpcodeArg arg[],
+                              const uint32_t par[])
+{
+    unsigned n = par[0] - CCOMPARE;
+
+    return test_ill_sr(dc, arg, par) || n >= dc->config->nccompare;
+}
+
+static bool test_ill_dbreak(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
+{
+    unsigned n = MAX_NDBREAK;
+
+    if (par[0] >= DBREAKA && par[0] < DBREAKA + MAX_NDBREAK) {
+        n = par[0] - DBREAKA;
     }
-    return true;
-}
-
-#ifndef CONFIG_USER_ONLY
-static void gen_rsr_ccount(DisasContext *dc, TCGv_i32 d, uint32_t sr)
-{
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_start();
+    if (par[0] >= DBREAKC && par[0] < DBREAKC + MAX_NDBREAK) {
+        n = par[0] - DBREAKC;
     }
-    gen_helper_update_ccount(cpu_env);
-    tcg_gen_mov_i32(d, cpu_SR[sr]);
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_end();
+    return test_ill_sr(dc, arg, par) || n >= dc->config->ndbreak;
+}
+
+static bool test_ill_ibreak(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
+{
+    unsigned n = par[0] - IBREAKA;
+
+    return test_ill_sr(dc, arg, par) || n >= dc->config->nibreak;
+}
+
+static bool test_ill_hpi(DisasContext *dc, const OpcodeArg arg[],
+                         const uint32_t par[])
+{
+    unsigned n = MAX_NLEVEL + 1;
+
+    if (par[0] >= EXCSAVE1 && par[0] < EXCSAVE1 + MAX_NLEVEL) {
+        n = par[0] - EXCSAVE1 + 1;
     }
-}
-
-static void gen_rsr_ptevaddr(DisasContext *dc, TCGv_i32 d, uint32_t sr)
-{
-    tcg_gen_shri_i32(d, cpu_SR[EXCVADDR], 10);
-    tcg_gen_or_i32(d, d, cpu_SR[sr]);
-    tcg_gen_andi_i32(d, d, 0xfffffffc);
-}
-#endif
-
-static void gen_rsr(DisasContext *dc, TCGv_i32 d, uint32_t sr)
-{
-    static void (* const rsr_handler[256])(DisasContext *dc,
-                                           TCGv_i32 d, uint32_t sr) = {
-#ifndef CONFIG_USER_ONLY
-        [CCOUNT] = gen_rsr_ccount,
-        [INTSET] = gen_rsr_ccount,
-        [PTEVADDR] = gen_rsr_ptevaddr,
-#endif
-    };
-
-    if (rsr_handler[sr]) {
-        rsr_handler[sr](dc, d, sr);
-    } else {
-        tcg_gen_mov_i32(d, cpu_SR[sr]);
+    if (par[0] >= EPC1 && par[0] < EPC1 + MAX_NLEVEL) {
+        n = par[0] - EPC1 + 1;
     }
-}
-
-static void gen_wsr_lbeg(DisasContext *dc, uint32_t sr, TCGv_i32 s)
-{
-    gen_helper_wsr_lbeg(cpu_env, s);
-}
-
-static void gen_wsr_lend(DisasContext *dc, uint32_t sr, TCGv_i32 s)
-{
-    gen_helper_wsr_lend(cpu_env, s);
-}
-
-static void gen_wsr_sar(DisasContext *dc, uint32_t sr, TCGv_i32 s)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], s, 0x3f);
-    if (dc->sar_m32_5bit) {
-        tcg_gen_discard_i32(dc->sar_m32);
+    if (par[0] >= EPS2 && par[0] < EPS2 + MAX_NLEVEL - 1) {
+        n = par[0] - EPS2 + 2;
     }
-    dc->sar_5bit = false;
-    dc->sar_m32_5bit = false;
-}
-
-static void gen_wsr_br(DisasContext *dc, uint32_t sr, TCGv_i32 s)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], s, 0xffff);
-}
-
-static void gen_wsr_litbase(DisasContext *dc, uint32_t sr, TCGv_i32 s)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], s, 0xfffff001);
-}
-
-static void gen_wsr_acchi(DisasContext *dc, uint32_t sr, TCGv_i32 s)
-{
-    tcg_gen_ext8s_i32(cpu_SR[sr], s);
-}
-
-#ifndef CONFIG_USER_ONLY
-static void gen_wsr_windowbase(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    gen_helper_wsr_windowbase(cpu_env, v);
-}
-
-static void gen_wsr_windowstart(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], v, (1 << dc->config->nareg / 4) - 1);
-}
-
-static void gen_wsr_ptevaddr(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], v, 0xffc00000);
-}
-
-static void gen_wsr_rasid(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    gen_helper_wsr_rasid(cpu_env, v);
-}
-
-static void gen_wsr_tlbcfg(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], v, 0x01130000);
-}
-
-static void gen_wsr_ibreakenable(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    gen_helper_wsr_ibreakenable(cpu_env, v);
-}
-
-static void gen_wsr_memctl(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    gen_helper_wsr_memctl(cpu_env, v);
-}
-
-static void gen_wsr_atomctl(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], v, 0x3f);
-}
-
-static void gen_wsr_ibreaka(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    unsigned id = sr - IBREAKA;
-    TCGv_i32 tmp = tcg_const_i32(id);
-
-    assert(id < dc->config->nibreak);
-    gen_helper_wsr_ibreaka(cpu_env, tmp, v);
-    tcg_temp_free(tmp);
-}
-
-static void gen_wsr_dbreaka(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    unsigned id = sr - DBREAKA;
-    TCGv_i32 tmp = tcg_const_i32(id);
-
-    assert(id < dc->config->ndbreak);
-    gen_helper_wsr_dbreaka(cpu_env, tmp, v);
-    tcg_temp_free(tmp);
-}
-
-static void gen_wsr_dbreakc(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    unsigned id = sr - DBREAKC;
-    TCGv_i32 tmp = tcg_const_i32(id);
-
-    assert(id < dc->config->ndbreak);
-    gen_helper_wsr_dbreakc(cpu_env, tmp, v);
-    tcg_temp_free(tmp);
-}
-
-static void gen_wsr_cpenable(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], v, 0xff);
-}
-
-static void gen_check_interrupts(DisasContext *dc)
-{
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_start();
-    }
-    gen_helper_check_interrupts(cpu_env);
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_end();
-    }
-}
-
-static void gen_wsr_intset(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], v,
-            dc->config->inttype_mask[INTTYPE_SOFTWARE]);
-}
-
-static void gen_wsr_intclear(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    TCGv_i32 tmp = tcg_temp_new_i32();
-
-    tcg_gen_andi_i32(tmp, v,
-            dc->config->inttype_mask[INTTYPE_EDGE] |
-            dc->config->inttype_mask[INTTYPE_NMI] |
-            dc->config->inttype_mask[INTTYPE_SOFTWARE]);
-    tcg_gen_andc_i32(cpu_SR[INTSET], cpu_SR[INTSET], tmp);
-    tcg_temp_free(tmp);
-}
-
-static void gen_wsr_intenable(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_mov_i32(cpu_SR[sr], v);
-}
-
-static void gen_wsr_ps(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    uint32_t mask = PS_WOE | PS_CALLINC | PS_OWB |
-        PS_UM | PS_EXCM | PS_INTLEVEL;
-
-    if (option_enabled(dc, XTENSA_OPTION_MMU)) {
-        mask |= PS_RING;
-    }
-    tcg_gen_andi_i32(cpu_SR[sr], v, mask);
-}
-
-static void gen_wsr_ccount(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_start();
-    }
-    gen_helper_wsr_ccount(cpu_env, v);
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_end();
-    }
-}
-
-static void gen_wsr_icount(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    if (dc->icount) {
-        tcg_gen_mov_i32(dc->next_icount, v);
-    } else {
-        tcg_gen_mov_i32(cpu_SR[sr], v);
-    }
-}
-
-static void gen_wsr_icountlevel(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    tcg_gen_andi_i32(cpu_SR[sr], v, 0xf);
-}
-
-static void gen_wsr_ccompare(DisasContext *dc, uint32_t sr, TCGv_i32 v)
-{
-    uint32_t id = sr - CCOMPARE;
-    uint32_t int_bit = 1 << dc->config->timerint[id];
-    TCGv_i32 tmp = tcg_const_i32(id);
-
-    assert(id < dc->config->nccompare);
-    tcg_gen_mov_i32(cpu_SR[sr], v);
-    tcg_gen_andi_i32(cpu_SR[INTSET], cpu_SR[INTSET], ~int_bit);
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_start();
-    }
-    gen_helper_update_ccompare(cpu_env, tmp);
-    tcg_temp_free(tmp);
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_end();
-    }
-}
-#else
-static void gen_check_interrupts(DisasContext *dc)
-{
-}
-#endif
-
-static void gen_wsr(DisasContext *dc, uint32_t sr, TCGv_i32 s)
-{
-    static void (* const wsr_handler[256])(DisasContext *dc,
-                                           uint32_t sr, TCGv_i32 v) = {
-        [LBEG] = gen_wsr_lbeg,
-        [LEND] = gen_wsr_lend,
-        [SAR] = gen_wsr_sar,
-        [BR] = gen_wsr_br,
-        [LITBASE] = gen_wsr_litbase,
-        [ACCHI] = gen_wsr_acchi,
-#ifndef CONFIG_USER_ONLY
-        [WINDOW_BASE] = gen_wsr_windowbase,
-        [WINDOW_START] = gen_wsr_windowstart,
-        [PTEVADDR] = gen_wsr_ptevaddr,
-        [RASID] = gen_wsr_rasid,
-        [ITLBCFG] = gen_wsr_tlbcfg,
-        [DTLBCFG] = gen_wsr_tlbcfg,
-        [IBREAKENABLE] = gen_wsr_ibreakenable,
-        [MEMCTL] = gen_wsr_memctl,
-        [ATOMCTL] = gen_wsr_atomctl,
-        [IBREAKA] = gen_wsr_ibreaka,
-        [IBREAKA + 1] = gen_wsr_ibreaka,
-        [DBREAKA] = gen_wsr_dbreaka,
-        [DBREAKA + 1] = gen_wsr_dbreaka,
-        [DBREAKC] = gen_wsr_dbreakc,
-        [DBREAKC + 1] = gen_wsr_dbreakc,
-        [CPENABLE] = gen_wsr_cpenable,
-        [INTSET] = gen_wsr_intset,
-        [INTCLEAR] = gen_wsr_intclear,
-        [INTENABLE] = gen_wsr_intenable,
-        [PS] = gen_wsr_ps,
-        [CCOUNT] = gen_wsr_ccount,
-        [ICOUNT] = gen_wsr_icount,
-        [ICOUNTLEVEL] = gen_wsr_icountlevel,
-        [CCOMPARE] = gen_wsr_ccompare,
-        [CCOMPARE + 1] = gen_wsr_ccompare,
-        [CCOMPARE + 2] = gen_wsr_ccompare,
-#endif
-    };
-
-    if (wsr_handler[sr]) {
-        wsr_handler[sr](dc, sr, s);
-    } else {
-        tcg_gen_mov_i32(cpu_SR[sr], s);
-    }
-}
-
-static void gen_wur(uint32_t ur, TCGv_i32 s)
-{
-    switch (ur) {
-    case FCR:
-        gen_helper_wur_fcr(cpu_env, s);
-        break;
-
-    case FSR:
-        tcg_gen_andi_i32(cpu_UR[ur], s, 0xffffff80);
-        break;
-
-    default:
-        tcg_gen_mov_i32(cpu_UR[ur], s);
-        break;
-    }
+    return test_ill_sr(dc, arg, par) || n > dc->config->nlevel;
 }
 
 static void gen_load_store_alignment(DisasContext *dc, int shift,
@@ -830,9 +539,6 @@ static void gen_waiti(DisasContext *dc, uint32_t imm4)
         gen_io_start();
     }
     gen_helper_waiti(cpu_env, pc, intlevel);
-    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
-        gen_io_end();
-    }
     tcg_temp_free(pc);
     tcg_temp_free(intlevel);
 }
@@ -865,11 +571,11 @@ static TCGv_i32 gen_mac16_m(TCGv_i32 v, bool hi, bool is_unsigned)
     return m;
 }
 
-static void gen_zero_check(DisasContext *dc, const uint32_t arg[])
+static void gen_zero_check(DisasContext *dc, const OpcodeArg arg[])
 {
     TCGLabel *label = gen_new_label();
 
-    tcg_gen_brcondi_i32(TCG_COND_NE, cpu_R[arg[2]], 0, label);
+    tcg_gen_brcondi_i32(TCG_COND_NE, arg[2].in, 0, label);
     gen_exception_cause(dc, INTEGER_DIVIDE_BY_ZERO_CAUSE);
     gen_set_label(label);
 }
@@ -879,20 +585,290 @@ static inline unsigned xtensa_op0_insn_len(DisasContext *dc, uint8_t op0)
     return xtensa_isa_length_from_chars(dc->config->isa, &op0);
 }
 
+static int gen_postprocess(DisasContext *dc, int slot)
+{
+    uint32_t op_flags = dc->op_flags;
+
+#ifndef CONFIG_USER_ONLY
+    if (op_flags & XTENSA_OP_CHECK_INTERRUPTS) {
+        if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
+            gen_io_start();
+        }
+        gen_helper_check_interrupts(cpu_env);
+        if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
+            gen_io_end();
+        }
+    }
+#endif
+    if (op_flags & XTENSA_OP_SYNC_REGISTER_WINDOW) {
+        gen_helper_sync_windowbase(cpu_env);
+    }
+    if (op_flags & XTENSA_OP_EXIT_TB_M1) {
+        slot = -1;
+    }
+    return slot;
+}
+
+struct opcode_arg_copy {
+    uint32_t resource;
+    void *temp;
+    OpcodeArg *arg;
+};
+
+struct opcode_arg_info {
+    uint32_t resource;
+    int index;
+};
+
+struct slot_prop {
+    XtensaOpcodeOps *ops;
+    OpcodeArg arg[MAX_OPCODE_ARGS];
+    struct opcode_arg_info in[MAX_OPCODE_ARGS];
+    struct opcode_arg_info out[MAX_OPCODE_ARGS];
+    unsigned n_in;
+    unsigned n_out;
+    uint32_t op_flags;
+};
+
+enum resource_type {
+    RES_REGFILE,
+    RES_STATE,
+    RES_MAX,
+};
+
+static uint32_t encode_resource(enum resource_type r, unsigned g, unsigned n)
+{
+    assert(r < RES_MAX && g < 256 && n < 65536);
+    return (r << 24) | (g << 16) | n;
+}
+
+static enum resource_type get_resource_type(uint32_t resource)
+{
+    return resource >> 24;
+}
+
+/*
+ * a depends on b if b must be executed before a,
+ * because a's side effects will destroy b's inputs.
+ */
+static bool op_depends_on(const struct slot_prop *a,
+                          const struct slot_prop *b)
+{
+    unsigned i = 0;
+    unsigned j = 0;
+
+    if (a->op_flags & XTENSA_OP_CONTROL_FLOW) {
+        return true;
+    }
+    if ((a->op_flags & XTENSA_OP_LOAD_STORE) <
+        (b->op_flags & XTENSA_OP_LOAD_STORE)) {
+        return true;
+    }
+    while (i < a->n_out && j < b->n_in) {
+        if (a->out[i].resource < b->in[j].resource) {
+            ++i;
+        } else if (a->out[i].resource > b->in[j].resource) {
+            ++j;
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * Try to break a dependency on b, append temporary register copy records
+ * to the end of copy and update n_copy in case of success.
+ * This is not always possible: e.g. control flow must always be the last,
+ * load/store must be first and state dependencies are not supported yet.
+ */
+static bool break_dependency(struct slot_prop *a,
+                             struct slot_prop *b,
+                             struct opcode_arg_copy *copy,
+                             unsigned *n_copy)
+{
+    unsigned i = 0;
+    unsigned j = 0;
+    unsigned n = *n_copy;
+    bool rv = false;
+
+    if (a->op_flags & XTENSA_OP_CONTROL_FLOW) {
+        return false;
+    }
+    if ((a->op_flags & XTENSA_OP_LOAD_STORE) <
+        (b->op_flags & XTENSA_OP_LOAD_STORE)) {
+        return false;
+    }
+    while (i < a->n_out && j < b->n_in) {
+        if (a->out[i].resource < b->in[j].resource) {
+            ++i;
+        } else if (a->out[i].resource > b->in[j].resource) {
+            ++j;
+        } else {
+            int index = b->in[j].index;
+
+            if (get_resource_type(a->out[i].resource) != RES_REGFILE ||
+                index < 0) {
+                return false;
+            }
+            copy[n].resource = b->in[j].resource;
+            copy[n].arg = b->arg + index;
+            ++n;
+            ++j;
+            rv = true;
+        }
+    }
+    *n_copy = n;
+    return rv;
+}
+
+/*
+ * Calculate evaluation order for slot opcodes.
+ * Build opcode order graph and output its nodes in topological sort order.
+ * An edge a -> b in the graph means that opcode a must be followed by
+ * opcode b.
+ */
+static bool tsort(struct slot_prop *slot,
+                  struct slot_prop *sorted[],
+                  unsigned n,
+                  struct opcode_arg_copy *copy,
+                  unsigned *n_copy)
+{
+    struct tsnode {
+        unsigned n_in_edge;
+        unsigned n_out_edge;
+        unsigned out_edge[MAX_INSN_SLOTS];
+    } node[MAX_INSN_SLOTS];
+
+    unsigned in[MAX_INSN_SLOTS];
+    unsigned i, j;
+    unsigned n_in = 0;
+    unsigned n_out = 0;
+    unsigned n_edge = 0;
+    unsigned in_idx = 0;
+    unsigned node_idx = 0;
+
+    for (i = 0; i < n; ++i) {
+        node[i].n_in_edge = 0;
+        node[i].n_out_edge = 0;
+    }
+
+    for (i = 0; i < n; ++i) {
+        unsigned n_out_edge = 0;
+
+        for (j = 0; j < n; ++j) {
+            if (i != j && op_depends_on(slot + j, slot + i)) {
+                node[i].out_edge[n_out_edge] = j;
+                ++node[j].n_in_edge;
+                ++n_out_edge;
+                ++n_edge;
+            }
+        }
+        node[i].n_out_edge = n_out_edge;
+    }
+
+    for (i = 0; i < n; ++i) {
+        if (!node[i].n_in_edge) {
+            in[n_in] = i;
+            ++n_in;
+        }
+    }
+
+again:
+    for (; in_idx < n_in; ++in_idx) {
+        i = in[in_idx];
+        sorted[n_out] = slot + i;
+        ++n_out;
+        for (j = 0; j < node[i].n_out_edge; ++j) {
+            --n_edge;
+            if (--node[node[i].out_edge[j]].n_in_edge == 0) {
+                in[n_in] = node[i].out_edge[j];
+                ++n_in;
+            }
+        }
+    }
+    if (n_edge) {
+        for (; node_idx < n; ++node_idx) {
+            struct tsnode *cnode = node + node_idx;
+
+            if (cnode->n_in_edge) {
+                for (j = 0; j < cnode->n_out_edge; ++j) {
+                    unsigned k = cnode->out_edge[j];
+
+                    if (break_dependency(slot + k, slot + node_idx,
+                                         copy, n_copy) &&
+                        --node[k].n_in_edge == 0) {
+                        in[n_in] = k;
+                        ++n_in;
+                        --n_edge;
+                        cnode->out_edge[j] =
+                            cnode->out_edge[cnode->n_out_edge - 1];
+                        --cnode->n_out_edge;
+                        goto again;
+                    }
+                }
+            }
+        }
+    }
+    return n_edge == 0;
+}
+
+static void opcode_add_resource(struct slot_prop *op,
+                                uint32_t resource, char direction,
+                                int index)
+{
+    switch (direction) {
+    case 'm':
+    case 'i':
+        assert(op->n_in < ARRAY_SIZE(op->in));
+        op->in[op->n_in].resource = resource;
+        op->in[op->n_in].index = index;
+        ++op->n_in;
+        /* fall through */
+    case 'o':
+        if (direction == 'm' || direction == 'o') {
+            assert(op->n_out < ARRAY_SIZE(op->out));
+            op->out[op->n_out].resource = resource;
+            op->out[op->n_out].index = index;
+            ++op->n_out;
+        }
+        break;
+    default:
+        g_assert_not_reached();
+    }
+}
+
+static int resource_compare(const void *a, const void *b)
+{
+    const struct opcode_arg_info *pa = a;
+    const struct opcode_arg_info *pb = b;
+
+    return pa->resource < pb->resource ?
+        -1 : (pa->resource > pb->resource ? 1 : 0);
+}
+
+static int arg_copy_compare(const void *a, const void *b)
+{
+    const struct opcode_arg_copy *pa = a;
+    const struct opcode_arg_copy *pb = b;
+
+    return pa->resource < pb->resource ?
+        -1 : (pa->resource > pb->resource ? 1 : 0);
+}
+
 static void disas_xtensa_insn(CPUXtensaState *env, DisasContext *dc)
 {
     xtensa_isa isa = dc->config->isa;
-    unsigned char b[MAX_INSN_LENGTH] = {cpu_ldub_code(env, dc->pc)};
+    unsigned char b[MAX_INSN_LENGTH] = {translator_ldub(env, dc->pc)};
     unsigned len = xtensa_op0_insn_len(dc, b[0]);
     xtensa_format fmt;
     int slot, slots;
     unsigned i;
     uint32_t op_flags = 0;
-    struct {
-        XtensaOpcodeOps *ops;
-        uint32_t arg[MAX_OPCODE_ARGS];
-        uint32_t raw_arg[MAX_OPCODE_ARGS];
-    } slot_prop[MAX_INSN_SLOTS];
+    struct slot_prop slot_prop[MAX_INSN_SLOTS];
+    struct slot_prop *ordered[MAX_INSN_SLOTS];
+    struct opcode_arg_copy arg_copy[MAX_INSN_SLOTS * MAX_OPCODE_ARGS];
+    unsigned n_arg_copy = 0;
     uint32_t debug_cause = 0;
     uint32_t windowed_register = 0;
     uint32_t coprocessor = 0;
@@ -906,15 +882,8 @@ static void disas_xtensa_insn(CPUXtensaState *env, DisasContext *dc)
     }
 
     dc->base.pc_next = dc->pc + len;
-    if (xtensa_option_enabled(dc->config, XTENSA_OPTION_LOOP) &&
-        dc->lbeg == dc->pc &&
-        ((dc->pc ^ (dc->base.pc_next - 1)) & -dc->config->inst_fetch_width)) {
-        qemu_log_mask(LOG_GUEST_ERROR,
-                      "unaligned first instruction of a loop (pc = %08x)\n",
-                      dc->pc);
-    }
     for (i = 1; i < len; ++i) {
-        b[i] = cpu_ldub_code(env, dc->pc + i);
+        b[i] = translator_ldub(env, dc->pc + i);
     }
     xtensa_insnbuf_from_chars(isa, dc->insnbuf, b, len);
     fmt = xtensa_format_decode(isa, dc->insnbuf);
@@ -929,11 +898,8 @@ static void disas_xtensa_insn(CPUXtensaState *env, DisasContext *dc)
     for (slot = 0; slot < slots; ++slot) {
         xtensa_opcode opc;
         int opnd, vopnd, opnds;
-        uint32_t *raw_arg = slot_prop[slot].raw_arg;
-        uint32_t *arg = slot_prop[slot].arg;
+        OpcodeArg *arg = slot_prop[slot].arg;
         XtensaOpcodeOps *ops;
-
-        dc->raw_arg = raw_arg;
 
         xtensa_format_get_slot(isa, fmt, slot, dc->insnbuf, dc->slotbuf);
         opc = xtensa_opcode_decode(isa, fmt, slot, dc->slotbuf);
@@ -947,17 +913,37 @@ static void disas_xtensa_insn(CPUXtensaState *env, DisasContext *dc)
         opnds = xtensa_opcode_num_operands(isa, opc);
 
         for (opnd = vopnd = 0; opnd < opnds; ++opnd) {
+            void **register_file = NULL;
+
+            if (xtensa_operand_is_register(isa, opc, opnd)) {
+                xtensa_regfile rf = xtensa_operand_regfile(isa, opc, opnd);
+
+                register_file = dc->config->regfile[rf];
+
+                if (rf == dc->config->a_regfile) {
+                    uint32_t v;
+
+                    xtensa_operand_get_field(isa, opc, opnd, fmt, slot,
+                                             dc->slotbuf, &v);
+                    xtensa_operand_decode(isa, opc, opnd, &v);
+                    windowed_register |= 1u << v;
+                }
+            }
             if (xtensa_operand_is_visible(isa, opc, opnd)) {
                 uint32_t v;
 
                 xtensa_operand_get_field(isa, opc, opnd, fmt, slot,
                                          dc->slotbuf, &v);
                 xtensa_operand_decode(isa, opc, opnd, &v);
-                raw_arg[vopnd] = v;
+                arg[vopnd].raw_imm = v;
                 if (xtensa_operand_is_PCrelative(isa, opc, opnd)) {
                     xtensa_operand_undo_reloc(isa, opc, opnd, &v, dc->pc);
                 }
-                arg[vopnd] = v;
+                arg[vopnd].imm = v;
+                if (register_file) {
+                    arg[vopnd].in = register_file[v];
+                    arg[vopnd].out = register_file[v];
+                }
                 ++vopnd;
             }
         }
@@ -983,17 +969,69 @@ static void disas_xtensa_insn(CPUXtensaState *env, DisasContext *dc)
         if (ops->test_overflow) {
             windowed_register |= ops->test_overflow(dc, arg, ops->par);
         }
-        if (ops->windowed_register_op) {
-            uint32_t reg_opnd = ops->windowed_register_op;
-
-            while (reg_opnd) {
-                unsigned i = ctz32(reg_opnd);
-
-                windowed_register |= 1 << arg[i];
-                reg_opnd ^= 1 << i;
-            }
-        }
         coprocessor |= ops->coprocessor;
+
+        if (slots > 1) {
+            slot_prop[slot].n_in = 0;
+            slot_prop[slot].n_out = 0;
+            slot_prop[slot].op_flags = ops->op_flags & XTENSA_OP_LOAD_STORE;
+
+            opnds = xtensa_opcode_num_operands(isa, opc);
+
+            for (opnd = vopnd = 0; opnd < opnds; ++opnd) {
+                bool visible = xtensa_operand_is_visible(isa, opc, opnd);
+
+                if (xtensa_operand_is_register(isa, opc, opnd)) {
+                    xtensa_regfile rf = xtensa_operand_regfile(isa, opc, opnd);
+                    uint32_t v = 0;
+
+                    xtensa_operand_get_field(isa, opc, opnd, fmt, slot,
+                                             dc->slotbuf, &v);
+                    xtensa_operand_decode(isa, opc, opnd, &v);
+                    opcode_add_resource(slot_prop + slot,
+                                        encode_resource(RES_REGFILE, rf, v),
+                                        xtensa_operand_inout(isa, opc, opnd),
+                                        visible ? vopnd : -1);
+                }
+                if (visible) {
+                    ++vopnd;
+                }
+            }
+
+            opnds = xtensa_opcode_num_stateOperands(isa, opc);
+
+            for (opnd = 0; opnd < opnds; ++opnd) {
+                xtensa_state state = xtensa_stateOperand_state(isa, opc, opnd);
+
+                opcode_add_resource(slot_prop + slot,
+                                    encode_resource(RES_STATE, 0, state),
+                                    xtensa_stateOperand_inout(isa, opc, opnd),
+                                    -1);
+            }
+            if (xtensa_opcode_is_branch(isa, opc) ||
+                xtensa_opcode_is_jump(isa, opc) ||
+                xtensa_opcode_is_loop(isa, opc) ||
+                xtensa_opcode_is_call(isa, opc)) {
+                slot_prop[slot].op_flags |= XTENSA_OP_CONTROL_FLOW;
+            }
+
+            qsort(slot_prop[slot].in, slot_prop[slot].n_in,
+                  sizeof(slot_prop[slot].in[0]), resource_compare);
+            qsort(slot_prop[slot].out, slot_prop[slot].n_out,
+                  sizeof(slot_prop[slot].out[0]), resource_compare);
+        }
+    }
+
+    if (slots > 1) {
+        if (!tsort(slot_prop, ordered, slots, arg_copy, &n_arg_copy)) {
+            qemu_log_mask(LOG_UNIMP,
+                          "Circular resource dependencies (pc = %08x)\n",
+                          dc->pc);
+            gen_exception_cause(dc, ILLEGAL_INSTRUCTION_CAUSE);
+            return;
+        }
+    } else {
+        ordered[0] = slot_prop + 0;
     }
 
     if ((op_flags & XTENSA_OP_PRIVILEGED) &&
@@ -1033,6 +1071,29 @@ static void disas_xtensa_insn(CPUXtensaState *env, DisasContext *dc)
         return;
     }
 
+    if (n_arg_copy) {
+        uint32_t resource;
+        void *temp;
+        unsigned j;
+
+        qsort(arg_copy, n_arg_copy, sizeof(*arg_copy), arg_copy_compare);
+        for (i = j = 0; i < n_arg_copy; ++i) {
+            if (i == 0 || arg_copy[i].resource != resource) {
+                resource = arg_copy[i].resource;
+                temp = tcg_temp_local_new();
+                tcg_gen_mov_i32(temp, arg_copy[i].arg->in);
+                arg_copy[i].temp = temp;
+
+                if (i != j) {
+                    arg_copy[j] = arg_copy[i];
+                }
+                ++j;
+            }
+            arg_copy[i].arg->in = temp;
+        }
+        n_arg_copy = j;
+    }
+
     if (op_flags & XTENSA_OP_DIVIDE_BY_ZERO) {
         for (slot = 0; slot < slots; ++slot) {
             if (slot_prop[slot].ops->op_flags & XTENSA_OP_DIVIDE_BY_ZERO) {
@@ -1041,28 +1102,30 @@ static void disas_xtensa_insn(CPUXtensaState *env, DisasContext *dc)
         }
     }
 
-    for (slot = 0; slot < slots; ++slot) {
-        XtensaOpcodeOps *ops = slot_prop[slot].ops;
+    dc->op_flags = op_flags;
 
-        dc->raw_arg = slot_prop[slot].raw_arg;
-        ops->translate(dc, slot_prop[slot].arg, ops->par);
+    for (slot = 0; slot < slots; ++slot) {
+        struct slot_prop *pslot = ordered[slot];
+        XtensaOpcodeOps *ops = pslot->ops;
+
+        ops->translate(dc, pslot->arg, ops->par);
+    }
+
+    for (i = 0; i < n_arg_copy; ++i) {
+        tcg_temp_free(arg_copy[i].temp);
     }
 
     if (dc->base.is_jmp == DISAS_NEXT) {
-        if (op_flags & XTENSA_OP_CHECK_INTERRUPTS) {
-            gen_check_interrupts(dc);
-        }
-
+        gen_postprocess(dc, 0);
+        dc->op_flags = 0;
         if (op_flags & XTENSA_OP_EXIT_TB_M1) {
             /* Change in mmu index, memory mapping or tb->flags; exit tb */
             gen_jumpi_check_loop_end(dc, -1);
         } else if (op_flags & XTENSA_OP_EXIT_TB_0) {
             gen_jumpi_check_loop_end(dc, 0);
+        } else {
+            gen_check_loop_end(dc, 0);
         }
-    }
-
-    if (dc->base.is_jmp == DISAS_NEXT) {
-        gen_check_loop_end(dc, 0);
     }
     dc->pc = dc->base.pc_next;
 }
@@ -1097,8 +1160,10 @@ static void xtensa_tr_init_disas_context(DisasContextBase *dcbase,
     dc->pc = dc->base.pc_first;
     dc->ring = tb_flags & XTENSA_TBFLAG_RING_MASK;
     dc->cring = (tb_flags & XTENSA_TBFLAG_EXCM) ? 0 : dc->ring;
-    dc->lbeg = env->sregs[LBEG];
-    dc->lend = env->sregs[LEND];
+    dc->lbeg_off = (dc->base.tb->cs_base & XTENSA_CSBASE_LBEG_OFF_MASK) >>
+        XTENSA_CSBASE_LBEG_OFF_SHIFT;
+    dc->lend = (dc->base.tb->cs_base & XTENSA_CSBASE_LEND_MASK) +
+        (dc->base.pc_first & TARGET_PAGE_MASK);
     dc->debug = tb_flags & XTENSA_TBFLAG_DEBUG;
     dc->icount = tb_flags & XTENSA_TBFLAG_ICOUNT;
     dc->cpenable = (tb_flags & XTENSA_TBFLAG_CPENABLE_MASK) >>
@@ -1242,66 +1307,63 @@ static const TranslatorOps xtensa_translator_ops = {
     .disas_log          = xtensa_tr_disas_log,
 };
 
-void gen_intermediate_code(CPUState *cpu, TranslationBlock *tb)
+void gen_intermediate_code(CPUState *cpu, TranslationBlock *tb, int max_insns)
 {
     DisasContext dc = {};
-    translator_loop(&xtensa_translator_ops, &dc.base, cpu, tb);
+    translator_loop(&xtensa_translator_ops, &dc.base, cpu, tb, max_insns);
 }
 
-void xtensa_cpu_dump_state(CPUState *cs, FILE *f,
-                           fprintf_function cpu_fprintf, int flags)
+void xtensa_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 {
     XtensaCPU *cpu = XTENSA_CPU(cs);
     CPUXtensaState *env = &cpu->env;
+    xtensa_isa isa = env->config->isa;
     int i, j;
 
-    cpu_fprintf(f, "PC=%08x\n\n", env->pc);
+    qemu_fprintf(f, "PC=%08x\n\n", env->pc);
 
-    for (i = j = 0; i < 256; ++i) {
-        if (xtensa_option_bits_enabled(env->config, sregnames[i].opt_bits)) {
-            cpu_fprintf(f, "%12s=%08x%c", sregnames[i].name, env->sregs[i],
-                    (j++ % 4) == 3 ? '\n' : ' ');
+    for (i = j = 0; i < xtensa_isa_num_sysregs(isa); ++i) {
+        const uint32_t *reg =
+            xtensa_sysreg_is_user(isa, i) ? env->uregs : env->sregs;
+        int regno = xtensa_sysreg_number(isa, i);
+
+        if (regno >= 0) {
+            qemu_fprintf(f, "%12s=%08x%c",
+                         xtensa_sysreg_name(isa, i),
+                         reg[regno],
+                         (j++ % 4) == 3 ? '\n' : ' ');
         }
     }
 
-    cpu_fprintf(f, (j % 4) == 0 ? "\n" : "\n\n");
-
-    for (i = j = 0; i < 256; ++i) {
-        if (xtensa_option_bits_enabled(env->config, uregnames[i].opt_bits)) {
-            cpu_fprintf(f, "%s=%08x%c", uregnames[i].name, env->uregs[i],
-                    (j++ % 4) == 3 ? '\n' : ' ');
-        }
-    }
-
-    cpu_fprintf(f, (j % 4) == 0 ? "\n" : "\n\n");
+    qemu_fprintf(f, (j % 4) == 0 ? "\n" : "\n\n");
 
     for (i = 0; i < 16; ++i) {
-        cpu_fprintf(f, " A%02d=%08x%c", i, env->regs[i],
-                (i % 4) == 3 ? '\n' : ' ');
+        qemu_fprintf(f, " A%02d=%08x%c",
+                     i, env->regs[i], (i % 4) == 3 ? '\n' : ' ');
     }
 
     xtensa_sync_phys_from_window(env);
-    cpu_fprintf(f, "\n");
+    qemu_fprintf(f, "\n");
 
     for (i = 0; i < env->config->nareg; ++i) {
-        cpu_fprintf(f, "AR%02d=%08x ", i, env->phys_regs[i]);
+        qemu_fprintf(f, "AR%02d=%08x ", i, env->phys_regs[i]);
         if (i % 4 == 3) {
             bool ws = (env->sregs[WINDOW_START] & (1 << (i / 4))) != 0;
             bool cw = env->sregs[WINDOW_BASE] == i / 4;
 
-            cpu_fprintf(f, "%c%c\n", ws ? '<' : ' ', cw ? '=' : ' ');
+            qemu_fprintf(f, "%c%c\n", ws ? '<' : ' ', cw ? '=' : ' ');
         }
     }
 
     if ((flags & CPU_DUMP_FPU) &&
         xtensa_option_enabled(env->config, XTENSA_OPTION_FP_COPROCESSOR)) {
-        cpu_fprintf(f, "\n");
+        qemu_fprintf(f, "\n");
 
         for (i = 0; i < 16; ++i) {
-            cpu_fprintf(f, "F%02d=%08x (%+10.8e)%c", i,
-                    float32_val(env->fregs[i].f32[FP_F32_LOW]),
-                    *(float *)(env->fregs[i].f32 + FP_F32_LOW),
-                    (i % 2) == 1 ? '\n' : ' ');
+            qemu_fprintf(f, "F%02d=%08x (%+10.8e)%c", i,
+                         float32_val(env->fregs[i].f32[FP_F32_LOW]),
+                         *(float *)(env->fregs[i].f32 + FP_F32_LOW),
+                         (i % 2) == 1 ? '\n' : ' ');
         }
     }
 }
@@ -1312,105 +1374,84 @@ void restore_state_to_opc(CPUXtensaState *env, TranslationBlock *tb,
     env->pc = data[0];
 }
 
-static int compare_opcode_ops(const void *a, const void *b)
-{
-    return strcmp((const char *)a,
-                  ((const XtensaOpcodeOps *)b)->name);
-}
-
-XtensaOpcodeOps *
-xtensa_find_opcode_ops(const XtensaOpcodeTranslators *t,
-                       const char *name)
-{
-    return bsearch(name, t->opcode, t->num_opcodes,
-                   sizeof(XtensaOpcodeOps), compare_opcode_ops);
-}
-
-static void translate_abs(DisasContext *dc, const uint32_t arg[],
+static void translate_abs(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    TCGv_i32 zero = tcg_const_i32(0);
-    TCGv_i32 neg = tcg_temp_new_i32();
-
-    tcg_gen_neg_i32(neg, cpu_R[arg[1]]);
-    tcg_gen_movcond_i32(TCG_COND_GE, cpu_R[arg[0]],
-                        cpu_R[arg[1]], zero, cpu_R[arg[1]], neg);
-    tcg_temp_free(neg);
-    tcg_temp_free(zero);
+    tcg_gen_abs_i32(arg[0].out, arg[1].in);
 }
 
-static void translate_add(DisasContext *dc, const uint32_t arg[],
+static void translate_add(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_add_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_add_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_addi(DisasContext *dc, const uint32_t arg[],
+static void translate_addi(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_addi_i32(cpu_R[arg[0]], cpu_R[arg[1]], arg[2]);
+    tcg_gen_addi_i32(arg[0].out, arg[1].in, arg[2].imm);
 }
 
-static void translate_addx(DisasContext *dc, const uint32_t arg[],
+static void translate_addx(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_shli_i32(tmp, cpu_R[arg[1]], par[0]);
-    tcg_gen_add_i32(cpu_R[arg[0]], tmp, cpu_R[arg[2]]);
+    tcg_gen_shli_i32(tmp, arg[1].in, par[0]);
+    tcg_gen_add_i32(arg[0].out, tmp, arg[2].in);
     tcg_temp_free(tmp);
 }
 
-static void translate_all(DisasContext *dc, const uint32_t arg[],
+static void translate_all(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     uint32_t shift = par[1];
-    TCGv_i32 mask = tcg_const_i32(((1 << shift) - 1) << arg[1]);
+    TCGv_i32 mask = tcg_const_i32(((1 << shift) - 1) << arg[1].imm);
     TCGv_i32 tmp = tcg_temp_new_i32();
 
-    tcg_gen_and_i32(tmp, cpu_SR[BR], mask);
+    tcg_gen_and_i32(tmp, arg[1].in, mask);
     if (par[0]) {
-        tcg_gen_addi_i32(tmp, tmp, 1 << arg[1]);
+        tcg_gen_addi_i32(tmp, tmp, 1 << arg[1].imm);
     } else {
         tcg_gen_add_i32(tmp, tmp, mask);
     }
-    tcg_gen_shri_i32(tmp, tmp, arg[1] + shift);
-    tcg_gen_deposit_i32(cpu_SR[BR], cpu_SR[BR],
-                        tmp, arg[0], 1);
+    tcg_gen_shri_i32(tmp, tmp, arg[1].imm + shift);
+    tcg_gen_deposit_i32(arg[0].out, arg[0].out,
+                        tmp, arg[0].imm, 1);
     tcg_temp_free(mask);
     tcg_temp_free(tmp);
 }
 
-static void translate_and(DisasContext *dc, const uint32_t arg[],
+static void translate_and(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_and_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_and_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_ball(DisasContext *dc, const uint32_t arg[],
+static void translate_ball(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_and_i32(tmp, cpu_R[arg[0]], cpu_R[arg[1]]);
-    gen_brcond(dc, par[0], tmp, cpu_R[arg[1]], arg[2]);
+    tcg_gen_and_i32(tmp, arg[0].in, arg[1].in);
+    gen_brcond(dc, par[0], tmp, arg[1].in, arg[2].imm);
     tcg_temp_free(tmp);
 }
 
-static void translate_bany(DisasContext *dc, const uint32_t arg[],
+static void translate_bany(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_and_i32(tmp, cpu_R[arg[0]], cpu_R[arg[1]]);
-    gen_brcondi(dc, par[0], tmp, 0, arg[2]);
+    tcg_gen_and_i32(tmp, arg[0].in, arg[1].in);
+    gen_brcondi(dc, par[0], tmp, 0, arg[2].imm);
     tcg_temp_free(tmp);
 }
 
-static void translate_b(DisasContext *dc, const uint32_t arg[],
+static void translate_b(DisasContext *dc, const OpcodeArg arg[],
                         const uint32_t par[])
 {
-    gen_brcond(dc, par[0], cpu_R[arg[0]], cpu_R[arg[1]], arg[2]);
+    gen_brcond(dc, par[0], arg[0].in, arg[1].in, arg[2].imm);
 }
 
-static void translate_bb(DisasContext *dc, const uint32_t arg[],
+static void translate_bb(DisasContext *dc, const OpcodeArg arg[],
                          const uint32_t par[])
 {
 #ifdef TARGET_WORDS_BIGENDIAN
@@ -1419,41 +1460,41 @@ static void translate_bb(DisasContext *dc, const uint32_t arg[],
     TCGv_i32 bit = tcg_const_i32(0x00000001u);
 #endif
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_andi_i32(tmp, cpu_R[arg[1]], 0x1f);
+    tcg_gen_andi_i32(tmp, arg[1].in, 0x1f);
 #ifdef TARGET_WORDS_BIGENDIAN
     tcg_gen_shr_i32(bit, bit, tmp);
 #else
     tcg_gen_shl_i32(bit, bit, tmp);
 #endif
-    tcg_gen_and_i32(tmp, cpu_R[arg[0]], bit);
-    gen_brcondi(dc, par[0], tmp, 0, arg[2]);
+    tcg_gen_and_i32(tmp, arg[0].in, bit);
+    gen_brcondi(dc, par[0], tmp, 0, arg[2].imm);
     tcg_temp_free(tmp);
     tcg_temp_free(bit);
 }
 
-static void translate_bbi(DisasContext *dc, const uint32_t arg[],
+static void translate_bbi(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
 #ifdef TARGET_WORDS_BIGENDIAN
-    tcg_gen_andi_i32(tmp, cpu_R[arg[0]], 0x80000000u >> arg[1]);
+    tcg_gen_andi_i32(tmp, arg[0].in, 0x80000000u >> arg[1].imm);
 #else
-    tcg_gen_andi_i32(tmp, cpu_R[arg[0]], 0x00000001u << arg[1]);
+    tcg_gen_andi_i32(tmp, arg[0].in, 0x00000001u << arg[1].imm);
 #endif
-    gen_brcondi(dc, par[0], tmp, 0, arg[2]);
+    gen_brcondi(dc, par[0], tmp, 0, arg[2].imm);
     tcg_temp_free(tmp);
 }
 
-static void translate_bi(DisasContext *dc, const uint32_t arg[],
+static void translate_bi(DisasContext *dc, const OpcodeArg arg[],
                          const uint32_t par[])
 {
-    gen_brcondi(dc, par[0], cpu_R[arg[0]], arg[1], arg[2]);
+    gen_brcondi(dc, par[0], arg[0].in, arg[1].imm, arg[2].imm);
 }
 
-static void translate_bz(DisasContext *dc, const uint32_t arg[],
+static void translate_bz(DisasContext *dc, const OpcodeArg arg[],
                          const uint32_t par[])
 {
-    gen_brcondi(dc, par[0], cpu_R[arg[0]], 0, arg[1]);
+    gen_brcondi(dc, par[0], arg[0].in, 0, arg[1].imm);
 }
 
 enum {
@@ -1464,7 +1505,7 @@ enum {
     BOOLEAN_XOR,
 };
 
-static void translate_boolean(DisasContext *dc, const uint32_t arg[],
+static void translate_boolean(DisasContext *dc, const OpcodeArg arg[],
                               const uint32_t par[])
 {
     static void (* const op[])(TCGv_i32, TCGv_i32, TCGv_i32) = {
@@ -1478,114 +1519,122 @@ static void translate_boolean(DisasContext *dc, const uint32_t arg[],
     TCGv_i32 tmp1 = tcg_temp_new_i32();
     TCGv_i32 tmp2 = tcg_temp_new_i32();
 
-    tcg_gen_shri_i32(tmp1, cpu_SR[BR], arg[1]);
-    tcg_gen_shri_i32(tmp2, cpu_SR[BR], arg[2]);
+    tcg_gen_shri_i32(tmp1, arg[1].in, arg[1].imm);
+    tcg_gen_shri_i32(tmp2, arg[2].in, arg[2].imm);
     op[par[0]](tmp1, tmp1, tmp2);
-    tcg_gen_deposit_i32(cpu_SR[BR], cpu_SR[BR], tmp1, arg[0], 1);
+    tcg_gen_deposit_i32(arg[0].out, arg[0].out, tmp1, arg[0].imm, 1);
     tcg_temp_free(tmp1);
     tcg_temp_free(tmp2);
 }
 
-static void translate_bp(DisasContext *dc, const uint32_t arg[],
+static void translate_bp(DisasContext *dc, const OpcodeArg arg[],
                          const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
 
-    tcg_gen_andi_i32(tmp, cpu_SR[BR], 1 << arg[0]);
-    gen_brcondi(dc, par[0], tmp, 0, arg[1]);
+    tcg_gen_andi_i32(tmp, arg[0].in, 1 << arg[0].imm);
+    gen_brcondi(dc, par[0], tmp, 0, arg[1].imm);
     tcg_temp_free(tmp);
 }
 
-static void translate_call0(DisasContext *dc, const uint32_t arg[],
+static void translate_call0(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     tcg_gen_movi_i32(cpu_R[0], dc->base.pc_next);
-    gen_jumpi(dc, arg[0], 0);
+    gen_jumpi(dc, arg[0].imm, 0);
 }
 
-static uint32_t test_overflow_callw(DisasContext *dc, const uint32_t arg[],
-                                    const uint32_t par[])
-{
-    return 1 << (par[0] * 4);
-}
-
-static void translate_callw(DisasContext *dc, const uint32_t arg[],
+static void translate_callw(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    gen_callwi(dc, par[0], arg[0], 0);
+    TCGv_i32 tmp = tcg_const_i32(arg[0].imm);
+    gen_callw_slot(dc, par[0], tmp, adjust_jump_slot(dc, arg[0].imm, 0));
+    tcg_temp_free(tmp);
 }
 
-static void translate_callx0(DisasContext *dc, const uint32_t arg[],
+static void translate_callx0(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_mov_i32(tmp, cpu_R[arg[0]]);
+    tcg_gen_mov_i32(tmp, arg[0].in);
     tcg_gen_movi_i32(cpu_R[0], dc->base.pc_next);
     gen_jump(dc, tmp);
     tcg_temp_free(tmp);
 }
 
-static void translate_callxw(DisasContext *dc, const uint32_t arg[],
+static void translate_callxw(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
 
-    tcg_gen_mov_i32(tmp, cpu_R[arg[0]]);
-    gen_callw(dc, par[0], tmp);
+    tcg_gen_mov_i32(tmp, arg[0].in);
+    gen_callw_slot(dc, par[0], tmp, -1);
     tcg_temp_free(tmp);
 }
 
-static void translate_clamps(DisasContext *dc, const uint32_t arg[],
+static void translate_clamps(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
-    TCGv_i32 tmp1 = tcg_const_i32(-1u << arg[2]);
-    TCGv_i32 tmp2 = tcg_const_i32((1 << arg[2]) - 1);
+    TCGv_i32 tmp1 = tcg_const_i32(-1u << arg[2].imm);
+    TCGv_i32 tmp2 = tcg_const_i32((1 << arg[2].imm) - 1);
 
-    tcg_gen_smax_i32(tmp1, tmp1, cpu_R[arg[1]]);
-    tcg_gen_smin_i32(cpu_R[arg[0]], tmp1, tmp2);
+    tcg_gen_smax_i32(tmp1, tmp1, arg[1].in);
+    tcg_gen_smin_i32(arg[0].out, tmp1, tmp2);
     tcg_temp_free(tmp1);
     tcg_temp_free(tmp2);
 }
 
-static void translate_clrb_expstate(DisasContext *dc, const uint32_t arg[],
+static void translate_clrb_expstate(DisasContext *dc, const OpcodeArg arg[],
                                     const uint32_t par[])
 {
     /* TODO: GPIO32 may be a part of coprocessor */
-    tcg_gen_andi_i32(cpu_UR[EXPSTATE], cpu_UR[EXPSTATE], ~(1u << arg[0]));
+    tcg_gen_andi_i32(cpu_UR[EXPSTATE], cpu_UR[EXPSTATE], ~(1u << arg[0].imm));
 }
 
-static void translate_const16(DisasContext *dc, const uint32_t arg[],
+static void translate_clrex(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
+{
+    tcg_gen_movi_i32(cpu_exclusive_addr, -1);
+}
+
+static void translate_const16(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
-    TCGv_i32 c = tcg_const_i32(arg[1]);
+    TCGv_i32 c = tcg_const_i32(arg[1].imm);
 
-    tcg_gen_deposit_i32(cpu_R[arg[0]], c, cpu_R[arg[0]], 16, 16);
+    tcg_gen_deposit_i32(arg[0].out, c, arg[0].in, 16, 16);
     tcg_temp_free(c);
 }
 
-static void translate_dcache(DisasContext *dc, const uint32_t arg[],
+static void translate_dcache(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
     TCGv_i32 addr = tcg_temp_new_i32();
     TCGv_i32 res = tcg_temp_new_i32();
 
-    tcg_gen_addi_i32(addr, cpu_R[arg[0]], arg[1]);
+    tcg_gen_addi_i32(addr, arg[0].in, arg[1].imm);
     tcg_gen_qemu_ld8u(res, addr, dc->cring);
     tcg_temp_free(addr);
     tcg_temp_free(res);
 }
 
-static void translate_depbits(DisasContext *dc, const uint32_t arg[],
+static void translate_depbits(DisasContext *dc, const OpcodeArg arg[],
                               const uint32_t par[])
 {
-    tcg_gen_deposit_i32(cpu_R[arg[1]], cpu_R[arg[1]], cpu_R[arg[0]],
-                        arg[2], arg[3]);
+    tcg_gen_deposit_i32(arg[1].out, arg[1].in, arg[0].in,
+                        arg[2].imm, arg[3].imm);
 }
 
-static bool test_ill_entry(DisasContext *dc, const uint32_t arg[],
+static void translate_diwbuip(DisasContext *dc, const OpcodeArg arg[],
+                              const uint32_t par[])
+{
+    tcg_gen_addi_i32(arg[0].out, arg[0].in, dc->config->dcache_line_bytes);
+}
+
+static bool test_ill_entry(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    if (arg[0] > 3 || !dc->cwoe) {
+    if (arg[0].imm > 3 || !dc->cwoe) {
         qemu_log_mask(LOG_GUEST_ERROR,
                       "Illegal entry instruction(pc = %08x)\n", dc->pc);
         return true;
@@ -1594,88 +1643,131 @@ static bool test_ill_entry(DisasContext *dc, const uint32_t arg[],
     }
 }
 
-static uint32_t test_overflow_entry(DisasContext *dc, const uint32_t arg[],
+static uint32_t test_overflow_entry(DisasContext *dc, const OpcodeArg arg[],
                                     const uint32_t par[])
 {
     return 1 << (dc->callinc * 4);
 }
 
-static void translate_entry(DisasContext *dc, const uint32_t arg[],
+static void translate_entry(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     TCGv_i32 pc = tcg_const_i32(dc->pc);
-    TCGv_i32 s = tcg_const_i32(arg[0]);
-    TCGv_i32 imm = tcg_const_i32(arg[1]);
+    TCGv_i32 s = tcg_const_i32(arg[0].imm);
+    TCGv_i32 imm = tcg_const_i32(arg[1].imm);
     gen_helper_entry(cpu_env, pc, s, imm);
     tcg_temp_free(imm);
     tcg_temp_free(s);
     tcg_temp_free(pc);
 }
 
-static void translate_extui(DisasContext *dc, const uint32_t arg[],
+static void translate_extui(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    int maskimm = (1 << arg[3]) - 1;
+    int maskimm = (1 << arg[3].imm) - 1;
 
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_shri_i32(tmp, cpu_R[arg[1]], arg[2]);
-    tcg_gen_andi_i32(cpu_R[arg[0]], tmp, maskimm);
+    tcg_gen_shri_i32(tmp, arg[1].in, arg[2].imm);
+    tcg_gen_andi_i32(arg[0].out, tmp, maskimm);
     tcg_temp_free(tmp);
 }
 
-static void translate_icache(DisasContext *dc, const uint32_t arg[],
+static void translate_getex(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
+{
+    TCGv_i32 tmp = tcg_temp_new_i32();
+
+    tcg_gen_extract_i32(tmp, cpu_SR[ATOMCTL], 8, 1);
+    tcg_gen_deposit_i32(cpu_SR[ATOMCTL], cpu_SR[ATOMCTL], arg[0].in, 8, 1);
+    tcg_gen_mov_i32(arg[0].out, tmp);
+    tcg_temp_free(tmp);
+}
+
+static void translate_icache(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
 #ifndef CONFIG_USER_ONLY
     TCGv_i32 addr = tcg_temp_new_i32();
 
     tcg_gen_movi_i32(cpu_pc, dc->pc);
-    tcg_gen_addi_i32(addr, cpu_R[arg[0]], arg[1]);
+    tcg_gen_addi_i32(addr, arg[0].in, arg[1].imm);
     gen_helper_itlb_hit_test(cpu_env, addr);
     tcg_temp_free(addr);
 #endif
 }
 
-static void translate_itlb(DisasContext *dc, const uint32_t arg[],
+static void translate_itlb(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
 #ifndef CONFIG_USER_ONLY
     TCGv_i32 dtlb = tcg_const_i32(par[0]);
 
-    gen_helper_itlb(cpu_env, cpu_R[arg[0]], dtlb);
+    gen_helper_itlb(cpu_env, arg[0].in, dtlb);
     tcg_temp_free(dtlb);
 #endif
 }
 
-static void translate_j(DisasContext *dc, const uint32_t arg[],
+static void translate_j(DisasContext *dc, const OpcodeArg arg[],
                         const uint32_t par[])
 {
-    gen_jumpi(dc, arg[0], 0);
+    gen_jumpi(dc, arg[0].imm, 0);
 }
 
-static void translate_jx(DisasContext *dc, const uint32_t arg[],
+static void translate_jx(DisasContext *dc, const OpcodeArg arg[],
                          const uint32_t par[])
 {
-    gen_jump(dc, cpu_R[arg[0]]);
+    gen_jump(dc, arg[0].in);
 }
 
-static void translate_l32e(DisasContext *dc, const uint32_t arg[],
+static void translate_l32e(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 addr = tcg_temp_new_i32();
 
-    tcg_gen_addi_i32(addr, cpu_R[arg[1]], arg[2]);
+    tcg_gen_addi_i32(addr, arg[1].in, arg[2].imm);
     gen_load_store_alignment(dc, 2, addr, false);
-    tcg_gen_qemu_ld_tl(cpu_R[arg[0]], addr, dc->ring, MO_TEUL);
+    tcg_gen_qemu_ld_tl(arg[0].out, addr, dc->ring, MO_TEUL);
     tcg_temp_free(addr);
 }
 
-static void translate_ldst(DisasContext *dc, const uint32_t arg[],
+#ifdef CONFIG_USER_ONLY
+static void gen_check_exclusive(DisasContext *dc, TCGv_i32 addr, bool is_write)
+{
+}
+#else
+static void gen_check_exclusive(DisasContext *dc, TCGv_i32 addr, bool is_write)
+{
+    if (!option_enabled(dc, XTENSA_OPTION_MPU)) {
+        TCGv_i32 tpc = tcg_const_i32(dc->pc);
+        TCGv_i32 write = tcg_const_i32(is_write);
+
+        gen_helper_check_exclusive(cpu_env, tpc, addr, write);
+        tcg_temp_free(tpc);
+        tcg_temp_free(write);
+    }
+}
+#endif
+
+static void translate_l32ex(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
+{
+    TCGv_i32 addr = tcg_temp_new_i32();
+
+    tcg_gen_mov_i32(addr, arg[1].in);
+    gen_load_store_alignment(dc, 2, addr, true);
+    gen_check_exclusive(dc, addr, false);
+    tcg_gen_qemu_ld_i32(arg[0].out, addr, dc->ring, MO_TEUL);
+    tcg_gen_mov_i32(cpu_exclusive_addr, addr);
+    tcg_gen_mov_i32(cpu_exclusive_val, arg[0].out);
+    tcg_temp_free(addr);
+}
+
+static void translate_ldst(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 addr = tcg_temp_new_i32();
 
-    tcg_gen_addi_i32(addr, cpu_R[arg[1]], arg[2]);
+    tcg_gen_addi_i32(addr, arg[1].in, arg[2].imm);
     if (par[0] & MO_SIZE) {
         gen_load_store_alignment(dc, par[0] & MO_SIZE, addr, par[1]);
     }
@@ -1683,9 +1775,9 @@ static void translate_ldst(DisasContext *dc, const uint32_t arg[],
         if (par[1]) {
             tcg_gen_mb(TCG_BAR_STRL | TCG_MO_ALL);
         }
-        tcg_gen_qemu_st_tl(cpu_R[arg[0]], addr, dc->cring, par[0]);
+        tcg_gen_qemu_st_tl(arg[0].in, addr, dc->cring, par[0]);
     } else {
-        tcg_gen_qemu_ld_tl(cpu_R[arg[0]], addr, dc->cring, par[0]);
+        tcg_gen_qemu_ld_tl(arg[0].out, addr, dc->cring, par[0]);
         if (par[1]) {
             tcg_gen_mb(TCG_BAR_LDAQ | TCG_MO_ALL);
         }
@@ -1693,35 +1785,33 @@ static void translate_ldst(DisasContext *dc, const uint32_t arg[],
     tcg_temp_free(addr);
 }
 
-static void translate_l32r(DisasContext *dc, const uint32_t arg[],
+static void translate_l32r(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 tmp;
 
     if (dc->base.tb->flags & XTENSA_TBFLAG_LITBASE) {
-        tmp = tcg_const_i32(dc->raw_arg[1] - 1);
+        tmp = tcg_const_i32(arg[1].raw_imm - 1);
         tcg_gen_add_i32(tmp, cpu_SR[LITBASE], tmp);
     } else {
-        tmp = tcg_const_i32(arg[1]);
+        tmp = tcg_const_i32(arg[1].imm);
     }
-    tcg_gen_qemu_ld32u(cpu_R[arg[0]], tmp, dc->cring);
+    tcg_gen_qemu_ld32u(arg[0].out, tmp, dc->cring);
     tcg_temp_free(tmp);
 }
 
-static void translate_loop(DisasContext *dc, const uint32_t arg[],
+static void translate_loop(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    uint32_t lend = arg[1];
-    TCGv_i32 tmp = tcg_const_i32(lend);
+    uint32_t lend = arg[1].imm;
 
-    tcg_gen_subi_i32(cpu_SR[LCOUNT], cpu_R[arg[0]], 1);
+    tcg_gen_subi_i32(cpu_SR[LCOUNT], arg[0].in, 1);
     tcg_gen_movi_i32(cpu_SR[LBEG], dc->base.pc_next);
-    gen_helper_wsr_lend(cpu_env, tmp);
-    tcg_temp_free(tmp);
+    tcg_gen_movi_i32(cpu_SR[LEND], lend);
 
     if (par[0] != TCG_COND_NEVER) {
         TCGLabel *label = gen_new_label();
-        tcg_gen_brcondi_i32(par[0], cpu_R[arg[0]], 0, label);
+        tcg_gen_brcondi_i32(par[0], arg[0].in, 0, label);
         gen_jumpi(dc, lend, 1);
         gen_set_label(label);
     }
@@ -1747,41 +1837,25 @@ enum {
     MAC16_XH = 0x2,
 };
 
-enum {
-    MAC16_AA,
-    MAC16_AD,
-    MAC16_DA,
-    MAC16_DD,
-
-    MAC16_XD = 0x1,
-    MAC16_DX = 0x2,
-};
-
-static void translate_mac16(DisasContext *dc, const uint32_t arg[],
+static void translate_mac16(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     int op = par[0];
-    bool is_m1_sr = par[1] & MAC16_DX;
-    bool is_m2_sr = par[1] & MAC16_XD;
-    unsigned half = par[2];
-    uint32_t ld_offset = par[3];
+    unsigned half = par[1];
+    uint32_t ld_offset = par[2];
     unsigned off = ld_offset ? 2 : 0;
     TCGv_i32 vaddr = tcg_temp_new_i32();
     TCGv_i32 mem32 = tcg_temp_new_i32();
 
     if (ld_offset) {
-        tcg_gen_addi_i32(vaddr, cpu_R[arg[1]], ld_offset);
+        tcg_gen_addi_i32(vaddr, arg[1].in, ld_offset);
         gen_load_store_alignment(dc, 2, vaddr, false);
         tcg_gen_qemu_ld32u(mem32, vaddr, dc->cring);
     }
     if (op != MAC16_NONE) {
-        TCGv_i32 m1 = gen_mac16_m(is_m1_sr ?
-                                  cpu_SR[MR + arg[off]] :
-                                  cpu_R[arg[off]],
+        TCGv_i32 m1 = gen_mac16_m(arg[off].in,
                                   half & MAC16_HX, op == MAC16_UMUL);
-        TCGv_i32 m2 = gen_mac16_m(is_m2_sr ?
-                                  cpu_SR[MR + arg[off + 1]] :
-                                  cpu_R[arg[off + 1]],
+        TCGv_i32 m2 = gen_mac16_m(arg[off + 1].in,
                                   half & MAC16_XH, op == MAC16_UMUL);
 
         if (op == MAC16_MUL || op == MAC16_UMUL) {
@@ -1815,221 +1889,230 @@ static void translate_mac16(DisasContext *dc, const uint32_t arg[],
         tcg_temp_free(m2);
     }
     if (ld_offset) {
-        tcg_gen_mov_i32(cpu_R[arg[1]], vaddr);
-        tcg_gen_mov_i32(cpu_SR[MR + arg[0]], mem32);
+        tcg_gen_mov_i32(arg[1].out, vaddr);
+        tcg_gen_mov_i32(cpu_SR[MR + arg[0].imm], mem32);
     }
     tcg_temp_free(vaddr);
     tcg_temp_free(mem32);
 }
 
-static void translate_memw(DisasContext *dc, const uint32_t arg[],
+static void translate_memw(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     tcg_gen_mb(TCG_BAR_SC | TCG_MO_ALL);
 }
 
-static void translate_smin(DisasContext *dc, const uint32_t arg[],
+static void translate_smin(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_smin_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_smin_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_umin(DisasContext *dc, const uint32_t arg[],
+static void translate_umin(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_umin_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_umin_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_smax(DisasContext *dc, const uint32_t arg[],
+static void translate_smax(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_smax_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_smax_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_umax(DisasContext *dc, const uint32_t arg[],
+static void translate_umax(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_umax_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_umax_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_mov(DisasContext *dc, const uint32_t arg[],
+static void translate_mov(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_mov_i32(cpu_R[arg[0]], cpu_R[arg[1]]);
+    tcg_gen_mov_i32(arg[0].out, arg[1].in);
 }
 
-static void translate_movcond(DisasContext *dc, const uint32_t arg[],
+static void translate_movcond(DisasContext *dc, const OpcodeArg arg[],
                               const uint32_t par[])
 {
     TCGv_i32 zero = tcg_const_i32(0);
 
-    tcg_gen_movcond_i32(par[0], cpu_R[arg[0]],
-                        cpu_R[arg[2]], zero, cpu_R[arg[1]], cpu_R[arg[0]]);
+    tcg_gen_movcond_i32(par[0], arg[0].out,
+                        arg[2].in, zero, arg[1].in, arg[0].in);
     tcg_temp_free(zero);
 }
 
-static void translate_movi(DisasContext *dc, const uint32_t arg[],
+static void translate_movi(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_movi_i32(cpu_R[arg[0]], arg[1]);
+    tcg_gen_movi_i32(arg[0].out, arg[1].imm);
 }
 
-static void translate_movp(DisasContext *dc, const uint32_t arg[],
+static void translate_movp(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 zero = tcg_const_i32(0);
     TCGv_i32 tmp = tcg_temp_new_i32();
 
-    tcg_gen_andi_i32(tmp, cpu_SR[BR], 1 << arg[2]);
+    tcg_gen_andi_i32(tmp, arg[2].in, 1 << arg[2].imm);
     tcg_gen_movcond_i32(par[0],
-                        cpu_R[arg[0]], tmp, zero,
-                        cpu_R[arg[1]], cpu_R[arg[0]]);
+                        arg[0].out, tmp, zero,
+                        arg[1].in, arg[0].in);
     tcg_temp_free(tmp);
     tcg_temp_free(zero);
 }
 
-static void translate_movsp(DisasContext *dc, const uint32_t arg[],
+static void translate_movsp(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    tcg_gen_mov_i32(cpu_R[arg[0]], cpu_R[arg[1]]);
+    tcg_gen_mov_i32(arg[0].out, arg[1].in);
 }
 
-static void translate_mul16(DisasContext *dc, const uint32_t arg[],
+static void translate_mul16(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     TCGv_i32 v1 = tcg_temp_new_i32();
     TCGv_i32 v2 = tcg_temp_new_i32();
 
     if (par[0]) {
-        tcg_gen_ext16s_i32(v1, cpu_R[arg[1]]);
-        tcg_gen_ext16s_i32(v2, cpu_R[arg[2]]);
+        tcg_gen_ext16s_i32(v1, arg[1].in);
+        tcg_gen_ext16s_i32(v2, arg[2].in);
     } else {
-        tcg_gen_ext16u_i32(v1, cpu_R[arg[1]]);
-        tcg_gen_ext16u_i32(v2, cpu_R[arg[2]]);
+        tcg_gen_ext16u_i32(v1, arg[1].in);
+        tcg_gen_ext16u_i32(v2, arg[2].in);
     }
-    tcg_gen_mul_i32(cpu_R[arg[0]], v1, v2);
+    tcg_gen_mul_i32(arg[0].out, v1, v2);
     tcg_temp_free(v2);
     tcg_temp_free(v1);
 }
 
-static void translate_mull(DisasContext *dc, const uint32_t arg[],
+static void translate_mull(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_mul_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_mul_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_mulh(DisasContext *dc, const uint32_t arg[],
+static void translate_mulh(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 lo = tcg_temp_new();
 
     if (par[0]) {
-        tcg_gen_muls2_i32(lo, cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+        tcg_gen_muls2_i32(lo, arg[0].out, arg[1].in, arg[2].in);
     } else {
-        tcg_gen_mulu2_i32(lo, cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+        tcg_gen_mulu2_i32(lo, arg[0].out, arg[1].in, arg[2].in);
     }
     tcg_temp_free(lo);
 }
 
-static void translate_neg(DisasContext *dc, const uint32_t arg[],
+static void translate_neg(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_neg_i32(cpu_R[arg[0]], cpu_R[arg[1]]);
+    tcg_gen_neg_i32(arg[0].out, arg[1].in);
 }
 
-static void translate_nop(DisasContext *dc, const uint32_t arg[],
+static void translate_nop(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
 }
 
-static void translate_nsa(DisasContext *dc, const uint32_t arg[],
+static void translate_nsa(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_clrsb_i32(cpu_R[arg[0]], cpu_R[arg[1]]);
+    tcg_gen_clrsb_i32(arg[0].out, arg[1].in);
 }
 
-static void translate_nsau(DisasContext *dc, const uint32_t arg[],
+static void translate_nsau(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_clzi_i32(cpu_R[arg[0]], cpu_R[arg[1]], 32);
+    tcg_gen_clzi_i32(arg[0].out, arg[1].in, 32);
 }
 
-static void translate_or(DisasContext *dc, const uint32_t arg[],
+static void translate_or(DisasContext *dc, const OpcodeArg arg[],
                          const uint32_t par[])
 {
-    tcg_gen_or_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_or_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_ptlb(DisasContext *dc, const uint32_t arg[],
+static void translate_ptlb(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
 #ifndef CONFIG_USER_ONLY
     TCGv_i32 dtlb = tcg_const_i32(par[0]);
 
     tcg_gen_movi_i32(cpu_pc, dc->pc);
-    gen_helper_ptlb(cpu_R[arg[0]], cpu_env, cpu_R[arg[1]], dtlb);
+    gen_helper_ptlb(arg[0].out, cpu_env, arg[1].in, dtlb);
     tcg_temp_free(dtlb);
 #endif
 }
 
-static void translate_quos(DisasContext *dc, const uint32_t arg[],
+static void translate_pptlb(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    tcg_gen_movi_i32(cpu_pc, dc->pc);
+    gen_helper_pptlb(arg[0].out, cpu_env, arg[1].in);
+#endif
+}
+
+static void translate_quos(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGLabel *label1 = gen_new_label();
     TCGLabel *label2 = gen_new_label();
 
-    tcg_gen_brcondi_i32(TCG_COND_NE, cpu_R[arg[1]], 0x80000000,
+    tcg_gen_brcondi_i32(TCG_COND_NE, arg[1].in, 0x80000000,
                         label1);
-    tcg_gen_brcondi_i32(TCG_COND_NE, cpu_R[arg[2]], 0xffffffff,
+    tcg_gen_brcondi_i32(TCG_COND_NE, arg[2].in, 0xffffffff,
                         label1);
-    tcg_gen_movi_i32(cpu_R[arg[0]],
+    tcg_gen_movi_i32(arg[0].out,
                      par[0] ? 0x80000000 : 0);
     tcg_gen_br(label2);
     gen_set_label(label1);
     if (par[0]) {
-        tcg_gen_div_i32(cpu_R[arg[0]],
-                        cpu_R[arg[1]], cpu_R[arg[2]]);
+        tcg_gen_div_i32(arg[0].out,
+                        arg[1].in, arg[2].in);
     } else {
-        tcg_gen_rem_i32(cpu_R[arg[0]],
-                        cpu_R[arg[1]], cpu_R[arg[2]]);
+        tcg_gen_rem_i32(arg[0].out,
+                        arg[1].in, arg[2].in);
     }
     gen_set_label(label2);
 }
 
-static void translate_quou(DisasContext *dc, const uint32_t arg[],
+static void translate_quou(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_divu_i32(cpu_R[arg[0]],
-                     cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_divu_i32(arg[0].out,
+                     arg[1].in, arg[2].in);
 }
 
-static void translate_read_impwire(DisasContext *dc, const uint32_t arg[],
+static void translate_read_impwire(DisasContext *dc, const OpcodeArg arg[],
                                    const uint32_t par[])
 {
     /* TODO: GPIO32 may be a part of coprocessor */
-    tcg_gen_movi_i32(cpu_R[arg[0]], 0);
+    tcg_gen_movi_i32(arg[0].out, 0);
 }
 
-static void translate_remu(DisasContext *dc, const uint32_t arg[],
+static void translate_remu(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_remu_i32(cpu_R[arg[0]],
-                     cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_remu_i32(arg[0].out,
+                     arg[1].in, arg[2].in);
 }
 
-static void translate_rer(DisasContext *dc, const uint32_t arg[],
+static void translate_rer(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    gen_helper_rer(cpu_R[arg[0]], cpu_env, cpu_R[arg[1]]);
+    gen_helper_rer(arg[0].out, cpu_env, arg[1].in);
 }
 
-static void translate_ret(DisasContext *dc, const uint32_t arg[],
+static void translate_ret(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     gen_jump(dc, cpu_R[0]);
 }
 
-static bool test_ill_retw(DisasContext *dc, const uint32_t arg[],
+static bool test_ill_retw(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     if (!dc->cwoe) {
@@ -2045,36 +2128,41 @@ static bool test_ill_retw(DisasContext *dc, const uint32_t arg[],
     }
 }
 
-static void translate_retw(DisasContext *dc, const uint32_t arg[],
+static void translate_retw(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    TCGv_i32 tmp = tcg_const_i32(dc->pc);
-    gen_helper_retw(tmp, cpu_env, tmp);
+    TCGv_i32 tmp = tcg_const_i32(1);
+    tcg_gen_shl_i32(tmp, tmp, cpu_SR[WINDOW_BASE]);
+    tcg_gen_andc_i32(cpu_SR[WINDOW_START],
+                     cpu_SR[WINDOW_START], tmp);
+    tcg_gen_movi_i32(tmp, dc->pc);
+    tcg_gen_deposit_i32(tmp, tmp, cpu_R[0], 0, 30);
+    gen_helper_retw(cpu_env, cpu_R[0]);
     gen_jump(dc, tmp);
     tcg_temp_free(tmp);
 }
 
-static void translate_rfde(DisasContext *dc, const uint32_t arg[],
+static void translate_rfde(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     gen_jump(dc, cpu_SR[dc->config->ndepc ? DEPC : EPC1]);
 }
 
-static void translate_rfe(DisasContext *dc, const uint32_t arg[],
+static void translate_rfe(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     tcg_gen_andi_i32(cpu_SR[PS], cpu_SR[PS], ~PS_EXCM);
     gen_jump(dc, cpu_SR[EPC1]);
 }
 
-static void translate_rfi(DisasContext *dc, const uint32_t arg[],
+static void translate_rfi(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_mov_i32(cpu_SR[PS], cpu_SR[EPS2 + arg[0] - 2]);
-    gen_jump(dc, cpu_SR[EPC1 + arg[0] - 1]);
+    tcg_gen_mov_i32(cpu_SR[PS], cpu_SR[EPS2 + arg[0].imm - 2]);
+    gen_jump(dc, cpu_SR[EPC1 + arg[0].imm - 1]);
 }
 
-static void translate_rfw(DisasContext *dc, const uint32_t arg[],
+static void translate_rfw(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_const_i32(1);
@@ -2095,35 +2183,52 @@ static void translate_rfw(DisasContext *dc, const uint32_t arg[],
     gen_jump(dc, cpu_SR[EPC1]);
 }
 
-static void translate_rotw(DisasContext *dc, const uint32_t arg[],
+static void translate_rotw(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    TCGv_i32 tmp = tcg_const_i32(arg[0]);
-    gen_helper_rotw(cpu_env, tmp);
-    tcg_temp_free(tmp);
+    tcg_gen_addi_i32(cpu_windowbase_next, cpu_SR[WINDOW_BASE], arg[0].imm);
 }
 
-static void translate_rsil(DisasContext *dc, const uint32_t arg[],
+static void translate_rsil(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_mov_i32(cpu_R[arg[0]], cpu_SR[PS]);
+    tcg_gen_mov_i32(arg[0].out, cpu_SR[PS]);
     tcg_gen_andi_i32(cpu_SR[PS], cpu_SR[PS], ~PS_INTLEVEL);
-    tcg_gen_ori_i32(cpu_SR[PS], cpu_SR[PS], arg[1]);
+    tcg_gen_ori_i32(cpu_SR[PS], cpu_SR[PS], arg[1].imm);
 }
 
-static bool test_ill_rsr(DisasContext *dc, const uint32_t arg[],
-                         const uint32_t par[])
-{
-    return !check_sr(dc, par[0], SR_R);
-}
-
-static void translate_rsr(DisasContext *dc, const uint32_t arg[],
+static void translate_rsr(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    gen_rsr(dc, cpu_R[arg[0]], par[0]);
+    tcg_gen_mov_i32(arg[0].out, cpu_SR[par[0]]);
 }
 
-static void translate_rtlb(DisasContext *dc, const uint32_t arg[],
+static void translate_rsr_ccount(DisasContext *dc, const OpcodeArg arg[],
+                                 const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
+        gen_io_start();
+    }
+    gen_helper_update_ccount(cpu_env);
+    tcg_gen_mov_i32(arg[0].out, cpu_SR[par[0]]);
+#endif
+}
+
+static void translate_rsr_ptevaddr(DisasContext *dc, const OpcodeArg arg[],
+                                   const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    TCGv_i32 tmp = tcg_temp_new_i32();
+
+    tcg_gen_shri_i32(tmp, cpu_SR[EXCVADDR], 10);
+    tcg_gen_or_i32(tmp, tmp, cpu_SR[PTEVADDR]);
+    tcg_gen_andi_i32(arg[0].out, tmp, 0xfffffffc);
+    tcg_temp_free(tmp);
+#endif
+}
+
+static void translate_rtlb(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
 #ifndef CONFIG_USER_ONLY
@@ -2134,26 +2239,38 @@ static void translate_rtlb(DisasContext *dc, const uint32_t arg[],
     };
     TCGv_i32 dtlb = tcg_const_i32(par[0]);
 
-    helper[par[1]](cpu_R[arg[0]], cpu_env, cpu_R[arg[1]], dtlb);
+    helper[par[1]](arg[0].out, cpu_env, arg[1].in, dtlb);
     tcg_temp_free(dtlb);
 #endif
 }
 
-static void translate_rur(DisasContext *dc, const uint32_t arg[],
-                          const uint32_t par[])
+static void translate_rptlb0(DisasContext *dc, const OpcodeArg arg[],
+                             const uint32_t par[])
 {
-    if (uregnames[par[0]].name) {
-        tcg_gen_mov_i32(cpu_R[arg[0]], cpu_UR[par[0]]);
-    } else {
-        qemu_log_mask(LOG_UNIMP, "RUR %d not implemented\n", par[0]);
-    }
+#ifndef CONFIG_USER_ONLY
+    gen_helper_rptlb0(arg[0].out, cpu_env, arg[1].in);
+#endif
 }
 
-static void translate_setb_expstate(DisasContext *dc, const uint32_t arg[],
+static void translate_rptlb1(DisasContext *dc, const OpcodeArg arg[],
+                             const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    gen_helper_rptlb1(arg[0].out, cpu_env, arg[1].in);
+#endif
+}
+
+static void translate_rur(DisasContext *dc, const OpcodeArg arg[],
+                          const uint32_t par[])
+{
+    tcg_gen_mov_i32(arg[0].out, cpu_UR[par[0]]);
+}
+
+static void translate_setb_expstate(DisasContext *dc, const OpcodeArg arg[],
                                     const uint32_t par[])
 {
     /* TODO: GPIO32 may be a part of coprocessor */
-    tcg_gen_ori_i32(cpu_UR[EXPSTATE], cpu_UR[EXPSTATE], 1u << arg[0]);
+    tcg_gen_ori_i32(cpu_UR[EXPSTATE], cpu_UR[EXPSTATE], 1u << arg[0].imm);
 }
 
 #ifdef CONFIG_USER_ONLY
@@ -2170,59 +2287,86 @@ static void gen_check_atomctl(DisasContext *dc, TCGv_i32 addr)
 }
 #endif
 
-static void translate_s32c1i(DisasContext *dc, const uint32_t arg[],
+static void translate_s32c1i(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_local_new_i32();
     TCGv_i32 addr = tcg_temp_local_new_i32();
 
-    tcg_gen_mov_i32(tmp, cpu_R[arg[0]]);
-    tcg_gen_addi_i32(addr, cpu_R[arg[1]], arg[2]);
+    tcg_gen_mov_i32(tmp, arg[0].in);
+    tcg_gen_addi_i32(addr, arg[1].in, arg[2].imm);
     gen_load_store_alignment(dc, 2, addr, true);
     gen_check_atomctl(dc, addr);
-    tcg_gen_atomic_cmpxchg_i32(cpu_R[arg[0]], addr, cpu_SR[SCOMPARE1],
+    tcg_gen_atomic_cmpxchg_i32(arg[0].out, addr, cpu_SR[SCOMPARE1],
                                tmp, dc->cring, MO_TEUL);
     tcg_temp_free(addr);
     tcg_temp_free(tmp);
 }
 
-static void translate_s32e(DisasContext *dc, const uint32_t arg[],
+static void translate_s32e(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 addr = tcg_temp_new_i32();
 
-    tcg_gen_addi_i32(addr, cpu_R[arg[1]], arg[2]);
+    tcg_gen_addi_i32(addr, arg[1].in, arg[2].imm);
     gen_load_store_alignment(dc, 2, addr, false);
-    tcg_gen_qemu_st_tl(cpu_R[arg[0]], addr, dc->ring, MO_TEUL);
+    tcg_gen_qemu_st_tl(arg[0].in, addr, dc->ring, MO_TEUL);
     tcg_temp_free(addr);
 }
 
-static void translate_salt(DisasContext *dc, const uint32_t arg[],
+static void translate_s32ex(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
+{
+    TCGv_i32 prev = tcg_temp_new_i32();
+    TCGv_i32 addr = tcg_temp_local_new_i32();
+    TCGv_i32 res = tcg_temp_local_new_i32();
+    TCGLabel *label = gen_new_label();
+
+    tcg_gen_movi_i32(res, 0);
+    tcg_gen_mov_i32(addr, arg[1].in);
+    gen_load_store_alignment(dc, 2, addr, true);
+    tcg_gen_brcond_i32(TCG_COND_NE, addr, cpu_exclusive_addr, label);
+    gen_check_exclusive(dc, addr, true);
+    tcg_gen_atomic_cmpxchg_i32(prev, cpu_exclusive_addr, cpu_exclusive_val,
+                               arg[0].in, dc->cring, MO_TEUL);
+    tcg_gen_setcond_i32(TCG_COND_EQ, res, prev, cpu_exclusive_val);
+    tcg_gen_movcond_i32(TCG_COND_EQ, cpu_exclusive_val,
+                        prev, cpu_exclusive_val, prev, cpu_exclusive_val);
+    tcg_gen_movi_i32(cpu_exclusive_addr, -1);
+    gen_set_label(label);
+    tcg_gen_extract_i32(arg[0].out, cpu_SR[ATOMCTL], 8, 1);
+    tcg_gen_deposit_i32(cpu_SR[ATOMCTL], cpu_SR[ATOMCTL], res, 8, 1);
+    tcg_temp_free(prev);
+    tcg_temp_free(addr);
+    tcg_temp_free(res);
+}
+
+static void translate_salt(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     tcg_gen_setcond_i32(par[0],
-                        cpu_R[arg[0]],
-                        cpu_R[arg[1]], cpu_R[arg[2]]);
+                        arg[0].out,
+                        arg[1].in, arg[2].in);
 }
 
-static void translate_sext(DisasContext *dc, const uint32_t arg[],
+static void translate_sext(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    int shift = 31 - arg[2];
+    int shift = 31 - arg[2].imm;
 
     if (shift == 24) {
-        tcg_gen_ext8s_i32(cpu_R[arg[0]], cpu_R[arg[1]]);
+        tcg_gen_ext8s_i32(arg[0].out, arg[1].in);
     } else if (shift == 16) {
-        tcg_gen_ext16s_i32(cpu_R[arg[0]], cpu_R[arg[1]]);
+        tcg_gen_ext16s_i32(arg[0].out, arg[1].in);
     } else {
         TCGv_i32 tmp = tcg_temp_new_i32();
-        tcg_gen_shli_i32(tmp, cpu_R[arg[1]], shift);
-        tcg_gen_sari_i32(cpu_R[arg[0]], tmp, shift);
+        tcg_gen_shli_i32(tmp, arg[1].in, shift);
+        tcg_gen_sari_i32(arg[0].out, tmp, shift);
         tcg_temp_free(tmp);
     }
 }
 
-static bool test_ill_simcall(DisasContext *dc, const uint32_t arg[],
+static bool test_ill_simcall(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
 #ifdef CONFIG_USER_ONLY
@@ -2236,7 +2380,7 @@ static bool test_ill_simcall(DisasContext *dc, const uint32_t arg[],
     return ill;
 }
 
-static void translate_simcall(DisasContext *dc, const uint32_t arg[],
+static void translate_simcall(DisasContext *dc, const OpcodeArg arg[],
                               const uint32_t par[])
 {
 #ifndef CONFIG_USER_ONLY
@@ -2252,73 +2396,73 @@ static void translate_simcall(DisasContext *dc, const uint32_t arg[],
                     TCGv_i64 tmp = tcg_temp_new_i64(); \
                     tcg_gen_extu_i32_i64(tmp, reg); \
                     tcg_gen_##cmd##_i64(v, v, tmp); \
-                    tcg_gen_extrl_i64_i32(cpu_R[arg[0]], v); \
+                    tcg_gen_extrl_i64_i32(arg[0].out, v); \
                     tcg_temp_free_i64(v); \
                     tcg_temp_free_i64(tmp); \
                 } while (0)
 
 #define gen_shift(cmd) gen_shift_reg(cmd, cpu_SR[SAR])
 
-static void translate_sll(DisasContext *dc, const uint32_t arg[],
+static void translate_sll(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     if (dc->sar_m32_5bit) {
-        tcg_gen_shl_i32(cpu_R[arg[0]], cpu_R[arg[1]], dc->sar_m32);
+        tcg_gen_shl_i32(arg[0].out, arg[1].in, dc->sar_m32);
     } else {
         TCGv_i64 v = tcg_temp_new_i64();
         TCGv_i32 s = tcg_const_i32(32);
         tcg_gen_sub_i32(s, s, cpu_SR[SAR]);
         tcg_gen_andi_i32(s, s, 0x3f);
-        tcg_gen_extu_i32_i64(v, cpu_R[arg[1]]);
+        tcg_gen_extu_i32_i64(v, arg[1].in);
         gen_shift_reg(shl, s);
         tcg_temp_free(s);
     }
 }
 
-static void translate_slli(DisasContext *dc, const uint32_t arg[],
+static void translate_slli(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    if (arg[2] == 32) {
+    if (arg[2].imm == 32) {
         qemu_log_mask(LOG_GUEST_ERROR, "slli a%d, a%d, 32 is undefined\n",
-                      arg[0], arg[1]);
+                      arg[0].imm, arg[1].imm);
     }
-    tcg_gen_shli_i32(cpu_R[arg[0]], cpu_R[arg[1]], arg[2] & 0x1f);
+    tcg_gen_shli_i32(arg[0].out, arg[1].in, arg[2].imm & 0x1f);
 }
 
-static void translate_sra(DisasContext *dc, const uint32_t arg[],
+static void translate_sra(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     if (dc->sar_m32_5bit) {
-        tcg_gen_sar_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_SR[SAR]);
+        tcg_gen_sar_i32(arg[0].out, arg[1].in, cpu_SR[SAR]);
     } else {
         TCGv_i64 v = tcg_temp_new_i64();
-        tcg_gen_ext_i32_i64(v, cpu_R[arg[1]]);
+        tcg_gen_ext_i32_i64(v, arg[1].in);
         gen_shift(sar);
     }
 }
 
-static void translate_srai(DisasContext *dc, const uint32_t arg[],
+static void translate_srai(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_sari_i32(cpu_R[arg[0]], cpu_R[arg[1]], arg[2]);
+    tcg_gen_sari_i32(arg[0].out, arg[1].in, arg[2].imm);
 }
 
-static void translate_src(DisasContext *dc, const uint32_t arg[],
+static void translate_src(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     TCGv_i64 v = tcg_temp_new_i64();
-    tcg_gen_concat_i32_i64(v, cpu_R[arg[2]], cpu_R[arg[1]]);
+    tcg_gen_concat_i32_i64(v, arg[2].in, arg[1].in);
     gen_shift(shr);
 }
 
-static void translate_srl(DisasContext *dc, const uint32_t arg[],
+static void translate_srl(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     if (dc->sar_m32_5bit) {
-        tcg_gen_shr_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_SR[SAR]);
+        tcg_gen_shr_i32(arg[0].out, arg[1].in, cpu_SR[SAR]);
     } else {
         TCGv_i64 v = tcg_temp_new_i64();
-        tcg_gen_extu_i32_i64(v, cpu_R[arg[1]]);
+        tcg_gen_extu_i32_i64(v, arg[1].in);
         gen_shift(shr);
     }
 }
@@ -2326,182 +2470,417 @@ static void translate_srl(DisasContext *dc, const uint32_t arg[],
 #undef gen_shift
 #undef gen_shift_reg
 
-static void translate_srli(DisasContext *dc, const uint32_t arg[],
+static void translate_srli(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    tcg_gen_shri_i32(cpu_R[arg[0]], cpu_R[arg[1]], arg[2]);
+    tcg_gen_shri_i32(arg[0].out, arg[1].in, arg[2].imm);
 }
 
-static void translate_ssa8b(DisasContext *dc, const uint32_t arg[],
+static void translate_ssa8b(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_shli_i32(tmp, cpu_R[arg[0]], 3);
+    tcg_gen_shli_i32(tmp, arg[0].in, 3);
     gen_left_shift_sar(dc, tmp);
     tcg_temp_free(tmp);
 }
 
-static void translate_ssa8l(DisasContext *dc, const uint32_t arg[],
+static void translate_ssa8l(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_shli_i32(tmp, cpu_R[arg[0]], 3);
+    tcg_gen_shli_i32(tmp, arg[0].in, 3);
     gen_right_shift_sar(dc, tmp);
     tcg_temp_free(tmp);
 }
 
-static void translate_ssai(DisasContext *dc, const uint32_t arg[],
+static void translate_ssai(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
-    TCGv_i32 tmp = tcg_const_i32(arg[0]);
+    TCGv_i32 tmp = tcg_const_i32(arg[0].imm);
     gen_right_shift_sar(dc, tmp);
     tcg_temp_free(tmp);
 }
 
-static void translate_ssl(DisasContext *dc, const uint32_t arg[],
+static void translate_ssl(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    gen_left_shift_sar(dc, cpu_R[arg[0]]);
+    gen_left_shift_sar(dc, arg[0].in);
 }
 
-static void translate_ssr(DisasContext *dc, const uint32_t arg[],
+static void translate_ssr(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    gen_right_shift_sar(dc, cpu_R[arg[0]]);
+    gen_right_shift_sar(dc, arg[0].in);
 }
 
-static void translate_sub(DisasContext *dc, const uint32_t arg[],
+static void translate_sub(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_sub_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_sub_i32(arg[0].out, arg[1].in, arg[2].in);
 }
 
-static void translate_subx(DisasContext *dc, const uint32_t arg[],
+static void translate_subx(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
-    tcg_gen_shli_i32(tmp, cpu_R[arg[1]], par[0]);
-    tcg_gen_sub_i32(cpu_R[arg[0]], tmp, cpu_R[arg[2]]);
+    tcg_gen_shli_i32(tmp, arg[1].in, par[0]);
+    tcg_gen_sub_i32(arg[0].out, tmp, arg[2].in);
     tcg_temp_free(tmp);
 }
 
-static void translate_waiti(DisasContext *dc, const uint32_t arg[],
+static void translate_waiti(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
 #ifndef CONFIG_USER_ONLY
-    gen_waiti(dc, arg[0]);
+    gen_waiti(dc, arg[0].imm);
 #endif
 }
 
-static void translate_wtlb(DisasContext *dc, const uint32_t arg[],
+static void translate_wtlb(DisasContext *dc, const OpcodeArg arg[],
                            const uint32_t par[])
 {
 #ifndef CONFIG_USER_ONLY
     TCGv_i32 dtlb = tcg_const_i32(par[0]);
 
-    gen_helper_wtlb(cpu_env, cpu_R[arg[0]], cpu_R[arg[1]], dtlb);
+    gen_helper_wtlb(cpu_env, arg[0].in, arg[1].in, dtlb);
     tcg_temp_free(dtlb);
 #endif
 }
 
-static void translate_wer(DisasContext *dc, const uint32_t arg[],
-                          const uint32_t par[])
+static void translate_wptlb(DisasContext *dc, const OpcodeArg arg[],
+                            const uint32_t par[])
 {
-    gen_helper_wer(cpu_env, cpu_R[arg[0]], cpu_R[arg[1]]);
+#ifndef CONFIG_USER_ONLY
+    gen_helper_wptlb(cpu_env, arg[0].in, arg[1].in);
+#endif
 }
 
-static void translate_wrmsk_expstate(DisasContext *dc, const uint32_t arg[],
+static void translate_wer(DisasContext *dc, const OpcodeArg arg[],
+                          const uint32_t par[])
+{
+    gen_helper_wer(cpu_env, arg[0].in, arg[1].in);
+}
+
+static void translate_wrmsk_expstate(DisasContext *dc, const OpcodeArg arg[],
                                      const uint32_t par[])
 {
     /* TODO: GPIO32 may be a part of coprocessor */
-    tcg_gen_and_i32(cpu_UR[EXPSTATE], cpu_R[arg[0]], cpu_R[arg[1]]);
+    tcg_gen_and_i32(cpu_UR[EXPSTATE], arg[0].in, arg[1].in);
 }
 
-static bool test_ill_wsr(DisasContext *dc, const uint32_t arg[],
-                         const uint32_t par[])
-{
-    return !check_sr(dc, par[0], SR_W);
-}
-
-static void translate_wsr(DisasContext *dc, const uint32_t arg[],
+static void translate_wsr(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    gen_wsr(dc, par[0], cpu_R[arg[0]]);
+    tcg_gen_mov_i32(cpu_SR[par[0]], arg[0].in);
 }
 
-static void translate_wur(DisasContext *dc, const uint32_t arg[],
-                          const uint32_t par[])
+static void translate_wsr_mask(DisasContext *dc, const OpcodeArg arg[],
+                               const uint32_t par[])
 {
-    if (uregnames[par[0]].name) {
-        gen_wur(par[0], cpu_R[arg[0]]);
-    } else {
-        qemu_log_mask(LOG_UNIMP, "WUR %d not implemented\n", par[0]);
+    tcg_gen_andi_i32(cpu_SR[par[0]], arg[0].in, par[2]);
+}
+
+static void translate_wsr_acchi(DisasContext *dc, const OpcodeArg arg[],
+                                const uint32_t par[])
+{
+    tcg_gen_ext8s_i32(cpu_SR[par[0]], arg[0].in);
+}
+
+static void translate_wsr_ccompare(DisasContext *dc, const OpcodeArg arg[],
+                                   const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    uint32_t id = par[0] - CCOMPARE;
+    TCGv_i32 tmp = tcg_const_i32(id);
+
+    assert(id < dc->config->nccompare);
+    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
+        gen_io_start();
     }
+    tcg_gen_mov_i32(cpu_SR[par[0]], arg[0].in);
+    gen_helper_update_ccompare(cpu_env, tmp);
+    tcg_temp_free(tmp);
+#endif
 }
 
-static void translate_xor(DisasContext *dc, const uint32_t arg[],
+static void translate_wsr_ccount(DisasContext *dc, const OpcodeArg arg[],
+                                 const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
+        gen_io_start();
+    }
+    gen_helper_wsr_ccount(cpu_env, arg[0].in);
+#endif
+}
+
+static void translate_wsr_dbreaka(DisasContext *dc, const OpcodeArg arg[],
+                                  const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    unsigned id = par[0] - DBREAKA;
+    TCGv_i32 tmp = tcg_const_i32(id);
+
+    assert(id < dc->config->ndbreak);
+    gen_helper_wsr_dbreaka(cpu_env, tmp, arg[0].in);
+    tcg_temp_free(tmp);
+#endif
+}
+
+static void translate_wsr_dbreakc(DisasContext *dc, const OpcodeArg arg[],
+                                  const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    unsigned id = par[0] - DBREAKC;
+    TCGv_i32 tmp = tcg_const_i32(id);
+
+    assert(id < dc->config->ndbreak);
+    gen_helper_wsr_dbreakc(cpu_env, tmp, arg[0].in);
+    tcg_temp_free(tmp);
+#endif
+}
+
+static void translate_wsr_ibreaka(DisasContext *dc, const OpcodeArg arg[],
+                                  const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    unsigned id = par[0] - IBREAKA;
+    TCGv_i32 tmp = tcg_const_i32(id);
+
+    assert(id < dc->config->nibreak);
+    gen_helper_wsr_ibreaka(cpu_env, tmp, arg[0].in);
+    tcg_temp_free(tmp);
+#endif
+}
+
+static void translate_wsr_ibreakenable(DisasContext *dc, const OpcodeArg arg[],
+                                       const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    gen_helper_wsr_ibreakenable(cpu_env, arg[0].in);
+#endif
+}
+
+static void translate_wsr_icount(DisasContext *dc, const OpcodeArg arg[],
+                                 const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    if (dc->icount) {
+        tcg_gen_mov_i32(dc->next_icount, arg[0].in);
+    } else {
+        tcg_gen_mov_i32(cpu_SR[par[0]], arg[0].in);
+    }
+#endif
+}
+
+static void translate_wsr_intclear(DisasContext *dc, const OpcodeArg arg[],
+                                   const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    gen_helper_intclear(cpu_env, arg[0].in);
+#endif
+}
+
+static void translate_wsr_intset(DisasContext *dc, const OpcodeArg arg[],
+                                 const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    gen_helper_intset(cpu_env, arg[0].in);
+#endif
+}
+
+static void translate_wsr_memctl(DisasContext *dc, const OpcodeArg arg[],
+                                 const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    gen_helper_wsr_memctl(cpu_env, arg[0].in);
+#endif
+}
+
+static void translate_wsr_mpuenb(DisasContext *dc, const OpcodeArg arg[],
+                                 const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    gen_helper_wsr_mpuenb(cpu_env, arg[0].in);
+#endif
+}
+
+static void translate_wsr_ps(DisasContext *dc, const OpcodeArg arg[],
+                             const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    uint32_t mask = PS_WOE | PS_CALLINC | PS_OWB |
+        PS_UM | PS_EXCM | PS_INTLEVEL;
+
+    if (option_enabled(dc, XTENSA_OPTION_MMU)) {
+        mask |= PS_RING;
+    }
+    tcg_gen_andi_i32(cpu_SR[par[0]], arg[0].in, mask);
+#endif
+}
+
+static void translate_wsr_rasid(DisasContext *dc, const OpcodeArg arg[],
+                                const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    gen_helper_wsr_rasid(cpu_env, arg[0].in);
+#endif
+}
+
+static void translate_wsr_sar(DisasContext *dc, const OpcodeArg arg[],
+                              const uint32_t par[])
+{
+    tcg_gen_andi_i32(cpu_SR[par[0]], arg[0].in, 0x3f);
+    if (dc->sar_m32_5bit) {
+        tcg_gen_discard_i32(dc->sar_m32);
+    }
+    dc->sar_5bit = false;
+    dc->sar_m32_5bit = false;
+}
+
+static void translate_wsr_windowbase(DisasContext *dc, const OpcodeArg arg[],
+                                     const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    tcg_gen_mov_i32(cpu_windowbase_next, arg[0].in);
+#endif
+}
+
+static void translate_wsr_windowstart(DisasContext *dc, const OpcodeArg arg[],
+                                      const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    tcg_gen_andi_i32(cpu_SR[par[0]], arg[0].in,
+                     (1 << dc->config->nareg / 4) - 1);
+#endif
+}
+
+static void translate_wur(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
-    tcg_gen_xor_i32(cpu_R[arg[0]], cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_mov_i32(cpu_UR[par[0]], arg[0].in);
 }
 
-static bool test_ill_xsr(DisasContext *dc, const uint32_t arg[],
-                         const uint32_t par[])
+static void translate_wur_fcr(DisasContext *dc, const OpcodeArg arg[],
+                              const uint32_t par[])
 {
-    return !check_sr(dc, par[0], SR_X);
+    gen_helper_wur_fcr(cpu_env, arg[0].in);
 }
 
-static void translate_xsr(DisasContext *dc, const uint32_t arg[],
+static void translate_wur_fsr(DisasContext *dc, const OpcodeArg arg[],
+                              const uint32_t par[])
+{
+    tcg_gen_andi_i32(cpu_UR[par[0]], arg[0].in, 0xffffff80);
+}
+
+static void translate_xor(DisasContext *dc, const OpcodeArg arg[],
+                          const uint32_t par[])
+{
+    tcg_gen_xor_i32(arg[0].out, arg[1].in, arg[2].in);
+}
+
+static void translate_xsr(DisasContext *dc, const OpcodeArg arg[],
                           const uint32_t par[])
 {
     TCGv_i32 tmp = tcg_temp_new_i32();
 
-    tcg_gen_mov_i32(tmp, cpu_R[arg[0]]);
-    gen_rsr(dc, cpu_R[arg[0]], par[0]);
-    gen_wsr(dc, par[0], tmp);
+    tcg_gen_mov_i32(tmp, arg[0].in);
+    tcg_gen_mov_i32(arg[0].out, cpu_SR[par[0]]);
+    tcg_gen_mov_i32(cpu_SR[par[0]], tmp);
     tcg_temp_free(tmp);
 }
+
+static void translate_xsr_mask(DisasContext *dc, const OpcodeArg arg[],
+                               const uint32_t par[])
+{
+    TCGv_i32 tmp = tcg_temp_new_i32();
+
+    tcg_gen_mov_i32(tmp, arg[0].in);
+    tcg_gen_mov_i32(arg[0].out, cpu_SR[par[0]]);
+    tcg_gen_andi_i32(cpu_SR[par[0]], tmp, par[2]);
+    tcg_temp_free(tmp);
+}
+
+static void translate_xsr_ccount(DisasContext *dc, const OpcodeArg arg[],
+                                 const uint32_t par[])
+{
+#ifndef CONFIG_USER_ONLY
+    TCGv_i32 tmp = tcg_temp_new_i32();
+
+    if (tb_cflags(dc->base.tb) & CF_USE_ICOUNT) {
+        gen_io_start();
+    }
+
+    gen_helper_update_ccount(cpu_env);
+    tcg_gen_mov_i32(tmp, cpu_SR[par[0]]);
+    gen_helper_wsr_ccount(cpu_env, arg[0].in);
+    tcg_gen_mov_i32(arg[0].out, tmp);
+    tcg_temp_free(tmp);
+
+#endif
+}
+
+#define gen_translate_xsr(name) \
+    static void translate_xsr_##name(DisasContext *dc, const OpcodeArg arg[], \
+                                     const uint32_t par[]) \
+{ \
+    TCGv_i32 tmp = tcg_temp_new_i32(); \
+ \
+    tcg_gen_mov_i32(tmp, cpu_SR[par[0]]); \
+    translate_wsr_##name(dc, arg, par); \
+    tcg_gen_mov_i32(arg[0].out, tmp); \
+    tcg_temp_free(tmp); \
+}
+
+gen_translate_xsr(acchi)
+gen_translate_xsr(ccompare)
+gen_translate_xsr(dbreaka)
+gen_translate_xsr(dbreakc)
+gen_translate_xsr(ibreaka)
+gen_translate_xsr(ibreakenable)
+gen_translate_xsr(icount)
+gen_translate_xsr(memctl)
+gen_translate_xsr(mpuenb)
+gen_translate_xsr(ps)
+gen_translate_xsr(rasid)
+gen_translate_xsr(sar)
+gen_translate_xsr(windowbase)
+gen_translate_xsr(windowstart)
+
+#undef gen_translate_xsr
 
 static const XtensaOpcodeOps core_ops[] = {
     {
         .name = "abs",
         .translate = translate_abs,
-        .windowed_register_op = 0x3,
     }, {
-        .name = "add",
+        .name = (const char * const[]) {
+            "add", "add.n", NULL,
+        },
         .translate = translate_add,
-        .windowed_register_op = 0x7,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "add.n",
-        .translate = translate_add,
-        .windowed_register_op = 0x7,
-    }, {
-        .name = "addi",
+        .name = (const char * const[]) {
+            "addi", "addi.n", NULL,
+        },
         .translate = translate_addi,
-        .windowed_register_op = 0x3,
-    }, {
-        .name = "addi.n",
-        .translate = translate_addi,
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "addmi",
         .translate = translate_addi,
-        .windowed_register_op = 0x3,
     }, {
         .name = "addx2",
         .translate = translate_addx,
         .par = (const uint32_t[]){1},
-        .windowed_register_op = 0x7,
     }, {
         .name = "addx4",
         .translate = translate_addx,
         .par = (const uint32_t[]){2},
-        .windowed_register_op = 0x7,
     }, {
         .name = "addx8",
         .translate = translate_addx,
         .par = (const uint32_t[]){3},
-        .windowed_register_op = 0x7,
     }, {
         .name = "all4",
         .translate = translate_all,
@@ -2513,7 +2892,6 @@ static const XtensaOpcodeOps core_ops[] = {
     }, {
         .name = "and",
         .translate = translate_and,
-        .windowed_register_op = 0x7,
     }, {
         .name = "andb",
         .translate = translate_boolean,
@@ -2531,139 +2909,177 @@ static const XtensaOpcodeOps core_ops[] = {
         .translate = translate_all,
         .par = (const uint32_t[]){false, 8},
     }, {
-        .name = "ball",
+        .name = (const char * const[]) {
+            "ball", "ball.w15", "ball.w18", NULL,
+        },
         .translate = translate_ball,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bany",
+        .name = (const char * const[]) {
+            "bany", "bany.w15", "bany.w18", NULL,
+        },
         .translate = translate_bany,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bbc",
+        .name = (const char * const[]) {
+            "bbc", "bbc.w15", "bbc.w18", NULL,
+        },
         .translate = translate_bb,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bbci",
+        .name = (const char * const[]) {
+            "bbci", "bbci.w15", "bbci.w18", NULL,
+        },
         .translate = translate_bbi,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bbs",
+        .name = (const char * const[]) {
+            "bbs", "bbs.w15", "bbs.w18", NULL,
+        },
         .translate = translate_bb,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bbsi",
+        .name = (const char * const[]) {
+            "bbsi", "bbsi.w15", "bbsi.w18", NULL,
+        },
         .translate = translate_bbi,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "beq",
+        .name = (const char * const[]) {
+            "beq", "beq.w15", "beq.w18", NULL,
+        },
         .translate = translate_b,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "beqi",
+        .name = (const char * const[]) {
+            "beqi", "beqi.w15", "beqi.w18", NULL,
+        },
         .translate = translate_bi,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "beqz",
+        .name = (const char * const[]) {
+            "beqz", "beqz.n", "beqz.w15", "beqz.w18", NULL,
+        },
         .translate = translate_bz,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x1,
-    }, {
-        .name = "beqz.n",
-        .translate = translate_bz,
-        .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "bf",
         .translate = translate_bp,
         .par = (const uint32_t[]){TCG_COND_EQ},
     }, {
-        .name = "bge",
+        .name = (const char * const[]) {
+            "bge", "bge.w15", "bge.w18", NULL,
+        },
         .translate = translate_b,
         .par = (const uint32_t[]){TCG_COND_GE},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bgei",
+        .name = (const char * const[]) {
+            "bgei", "bgei.w15", "bgei.w18", NULL,
+        },
         .translate = translate_bi,
         .par = (const uint32_t[]){TCG_COND_GE},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bgeu",
+        .name = (const char * const[]) {
+            "bgeu", "bgeu.w15", "bgeu.w18", NULL,
+        },
         .translate = translate_b,
         .par = (const uint32_t[]){TCG_COND_GEU},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bgeui",
+        .name = (const char * const[]) {
+            "bgeui", "bgeui.w15", "bgeui.w18", NULL,
+        },
         .translate = translate_bi,
         .par = (const uint32_t[]){TCG_COND_GEU},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bgez",
+        .name = (const char * const[]) {
+            "bgez", "bgez.w15", "bgez.w18", NULL,
+        },
         .translate = translate_bz,
         .par = (const uint32_t[]){TCG_COND_GE},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "blt",
+        .name = (const char * const[]) {
+            "blt", "blt.w15", "blt.w18", NULL,
+        },
         .translate = translate_b,
         .par = (const uint32_t[]){TCG_COND_LT},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "blti",
+        .name = (const char * const[]) {
+            "blti", "blti.w15", "blti.w18", NULL,
+        },
         .translate = translate_bi,
         .par = (const uint32_t[]){TCG_COND_LT},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bltu",
+        .name = (const char * const[]) {
+            "bltu", "bltu.w15", "bltu.w18", NULL,
+        },
         .translate = translate_b,
         .par = (const uint32_t[]){TCG_COND_LTU},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bltui",
+        .name = (const char * const[]) {
+            "bltui", "bltui.w15", "bltui.w18", NULL,
+        },
         .translate = translate_bi,
         .par = (const uint32_t[]){TCG_COND_LTU},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bltz",
+        .name = (const char * const[]) {
+            "bltz", "bltz.w15", "bltz.w18", NULL,
+        },
         .translate = translate_bz,
         .par = (const uint32_t[]){TCG_COND_LT},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bnall",
+        .name = (const char * const[]) {
+            "bnall", "bnall.w15", "bnall.w18", NULL,
+        },
         .translate = translate_ball,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bne",
+        .name = (const char * const[]) {
+            "bne", "bne.w15", "bne.w18", NULL,
+        },
         .translate = translate_b,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bnei",
+        .name = (const char * const[]) {
+            "bnei", "bnei.w15", "bnei.w18", NULL,
+        },
         .translate = translate_bi,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bnez",
+        .name = (const char * const[]) {
+            "bnez", "bnez.n", "bnez.w15", "bnez.w18", NULL,
+        },
         .translate = translate_bz,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "bnez.n",
-        .translate = translate_bz,
-        .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x1,
-    }, {
-        .name = "bnone",
+        .name = (const char * const[]) {
+            "bnone", "bnone.w15", "bnone.w18", NULL,
+        },
         .translate = translate_bany,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "break",
         .translate = translate_nop,
@@ -2684,114 +3100,122 @@ static const XtensaOpcodeOps core_ops[] = {
     }, {
         .name = "call12",
         .translate = translate_callw,
-        .test_overflow = test_overflow_callw,
         .par = (const uint32_t[]){3},
     }, {
         .name = "call4",
         .translate = translate_callw,
-        .test_overflow = test_overflow_callw,
         .par = (const uint32_t[]){1},
     }, {
         .name = "call8",
         .translate = translate_callw,
-        .test_overflow = test_overflow_callw,
         .par = (const uint32_t[]){2},
     }, {
         .name = "callx0",
         .translate = translate_callx0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "callx12",
         .translate = translate_callxw,
-        .test_overflow = test_overflow_callw,
         .par = (const uint32_t[]){3},
-        .windowed_register_op = 0x1,
     }, {
         .name = "callx4",
         .translate = translate_callxw,
-        .test_overflow = test_overflow_callw,
         .par = (const uint32_t[]){1},
-        .windowed_register_op = 0x1,
     }, {
         .name = "callx8",
         .translate = translate_callxw,
-        .test_overflow = test_overflow_callw,
         .par = (const uint32_t[]){2},
-        .windowed_register_op = 0x1,
     }, {
         .name = "clamps",
         .translate = translate_clamps,
-        .windowed_register_op = 0x3,
     }, {
         .name = "clrb_expstate",
         .translate = translate_clrb_expstate,
     }, {
+        .name = "clrex",
+        .translate = translate_clrex,
+    }, {
         .name = "const16",
         .translate = translate_const16,
-        .windowed_register_op = 0x1,
     }, {
         .name = "depbits",
         .translate = translate_depbits,
-        .windowed_register_op = 0x3,
     }, {
         .name = "dhi",
         .translate = translate_dcache,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "dhi.b",
+        .translate = translate_nop,
     }, {
         .name = "dhu",
         .translate = translate_dcache,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "dhwb",
         .translate = translate_dcache,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "dhwb.b",
+        .translate = translate_nop,
     }, {
         .name = "dhwbi",
         .translate = translate_dcache,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "dhwbi.b",
+        .translate = translate_nop,
     }, {
         .name = "dii",
         .translate = translate_nop,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "diu",
         .translate = translate_nop,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "diwb",
         .translate = translate_nop,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "diwbi",
         .translate = translate_nop,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "diwbui.p",
+        .translate = translate_diwbuip,
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "dpfl",
         .translate = translate_dcache,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "dpfm.b",
+        .translate = translate_nop,
+    }, {
+        .name = "dpfm.bf",
+        .translate = translate_nop,
     }, {
         .name = "dpfr",
         .translate = translate_nop,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "dpfr.b",
+        .translate = translate_nop,
+    }, {
+        .name = "dpfr.bf",
+        .translate = translate_nop,
     }, {
         .name = "dpfro",
         .translate = translate_nop,
-        .windowed_register_op = 0x1,
     }, {
         .name = "dpfw",
         .translate = translate_nop,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "dpfw.b",
+        .translate = translate_nop,
+    }, {
+        .name = "dpfw.bf",
+        .translate = translate_nop,
     }, {
         .name = "dpfwo",
         .translate = translate_nop,
-        .windowed_register_op = 0x1,
     }, {
         .name = "dsync",
         .translate = translate_nop,
@@ -2800,7 +3224,8 @@ static const XtensaOpcodeOps core_ops[] = {
         .translate = translate_entry,
         .test_ill = test_ill_entry,
         .test_overflow = test_overflow_entry,
-        .op_flags = XTENSA_OP_EXIT_TB_M1,
+        .op_flags = XTENSA_OP_EXIT_TB_M1 |
+            XTENSA_OP_SYNC_REGISTER_WINDOW,
     }, {
         .name = "esync",
         .translate = translate_nop,
@@ -2810,10 +3235,12 @@ static const XtensaOpcodeOps core_ops[] = {
     }, {
         .name = "extui",
         .translate = translate_extui,
-        .windowed_register_op = 0x3,
     }, {
         .name = "extw",
         .translate = translate_memw,
+    }, {
+        .name = "getex",
+        .translate = translate_getex,
     }, {
         .name = "hwwdtlba",
         .op_flags = XTENSA_OP_ILL,
@@ -2825,47 +3252,38 @@ static const XtensaOpcodeOps core_ops[] = {
         .translate = translate_itlb,
         .par = (const uint32_t[]){true},
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "ihi",
         .translate = translate_icache,
-        .windowed_register_op = 0x1,
     }, {
         .name = "ihu",
         .translate = translate_icache,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "iii",
         .translate = translate_nop,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "iitlb",
         .translate = translate_itlb,
         .par = (const uint32_t[]){false},
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "iiu",
         .translate = translate_nop,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
-        .name = "ill",
-        .op_flags = XTENSA_OP_ILL,
-    }, {
-        .name = "ill.n",
-        .op_flags = XTENSA_OP_ILL,
+        .name = (const char * const[]) {
+            "ill", "ill.n", NULL,
+        },
+        .op_flags = XTENSA_OP_ILL | XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "ipf",
         .translate = translate_nop,
-        .windowed_register_op = 0x1,
     }, {
         .name = "ipfl",
         .translate = translate_icache,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "isync",
         .translate = translate_nop,
@@ -2875,498 +3293,427 @@ static const XtensaOpcodeOps core_ops[] = {
     }, {
         .name = "jx",
         .translate = translate_jx,
-        .windowed_register_op = 0x1,
     }, {
         .name = "l16si",
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_TESW, false, false},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_LOAD,
     }, {
         .name = "l16ui",
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_TEUW, false, false},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_LOAD,
     }, {
         .name = "l32ai",
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_TEUL, true, false},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_LOAD,
     }, {
         .name = "l32e",
         .translate = translate_l32e,
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_LOAD,
     }, {
-        .name = "l32i",
+        .name = "l32ex",
+        .translate = translate_l32ex,
+        .op_flags = XTENSA_OP_LOAD,
+    }, {
+        .name = (const char * const[]) {
+            "l32i", "l32i.n", NULL,
+        },
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_TEUL, false, false},
-        .windowed_register_op = 0x3,
-    }, {
-        .name = "l32i.n",
-        .translate = translate_ldst,
-        .par = (const uint32_t[]){MO_TEUL, false, false},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY | XTENSA_OP_LOAD,
     }, {
         .name = "l32r",
         .translate = translate_l32r,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_LOAD,
     }, {
         .name = "l8ui",
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_UB, false, false},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_LOAD,
     }, {
         .name = "lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_NONE, 0, 0, -4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_NONE, 0, -4},
+        .op_flags = XTENSA_OP_LOAD,
     }, {
         .name = "ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_NONE, 0, 0, 4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_NONE, 0, 4},
+        .op_flags = XTENSA_OP_LOAD,
     }, {
         .name = "ldpte",
         .op_flags = XTENSA_OP_ILL,
     }, {
-        .name = "loop",
+        .name = (const char * const[]) {
+            "loop", "loop.w15", NULL,
+        },
         .translate = translate_loop,
         .par = (const uint32_t[]){TCG_COND_NEVER},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "loopgtz",
+        .name = (const char * const[]) {
+            "loopgtz", "loopgtz.w15", NULL,
+        },
         .translate = translate_loop,
         .par = (const uint32_t[]){TCG_COND_GT},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "loopnez",
+        .name = (const char * const[]) {
+            "loopnez", "loopnez.w15", NULL,
+        },
         .translate = translate_loop,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "max",
         .translate = translate_smax,
-        .windowed_register_op = 0x7,
     }, {
         .name = "maxu",
         .translate = translate_umax,
-        .windowed_register_op = 0x7,
     }, {
         .name = "memw",
         .translate = translate_memw,
     }, {
         .name = "min",
         .translate = translate_smin,
-        .windowed_register_op = 0x7,
     }, {
         .name = "minu",
         .translate = translate_umin,
-        .windowed_register_op = 0x7,
     }, {
-        .name = "mov",
+        .name = (const char * const[]) {
+            "mov", "mov.n", NULL,
+        },
         .translate = translate_mov,
-        .windowed_register_op = 0x3,
-    }, {
-        .name = "mov.n",
-        .translate = translate_mov,
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "moveqz",
         .translate = translate_movcond,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x7,
     }, {
         .name = "movf",
         .translate = translate_movp,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x3,
     }, {
         .name = "movgez",
         .translate = translate_movcond,
         .par = (const uint32_t[]){TCG_COND_GE},
-        .windowed_register_op = 0x7,
     }, {
         .name = "movi",
         .translate = translate_movi,
-        .windowed_register_op = 0x1,
     }, {
         .name = "movi.n",
         .translate = translate_movi,
-        .windowed_register_op = 0x1,
     }, {
         .name = "movltz",
         .translate = translate_movcond,
         .par = (const uint32_t[]){TCG_COND_LT},
-        .windowed_register_op = 0x7,
     }, {
         .name = "movnez",
         .translate = translate_movcond,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x7,
     }, {
         .name = "movsp",
         .translate = translate_movsp,
-        .windowed_register_op = 0x3,
         .op_flags = XTENSA_OP_ALLOCA,
     }, {
         .name = "movt",
         .translate = translate_movp,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x3,
     }, {
         .name = "mul.aa.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AA, MAC16_HH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HH, 0},
     }, {
         .name = "mul.aa.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AA, MAC16_HL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HL, 0},
     }, {
         .name = "mul.aa.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AA, MAC16_LH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LH, 0},
     }, {
         .name = "mul.aa.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AA, MAC16_LL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LL, 0},
     }, {
         .name = "mul.ad.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AD, MAC16_HH, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HH, 0},
     }, {
         .name = "mul.ad.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AD, MAC16_HL, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HL, 0},
     }, {
         .name = "mul.ad.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AD, MAC16_LH, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LH, 0},
     }, {
         .name = "mul.ad.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_AD, MAC16_LL, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LL, 0},
     }, {
         .name = "mul.da.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DA, MAC16_HH, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HH, 0},
     }, {
         .name = "mul.da.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DA, MAC16_HL, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HL, 0},
     }, {
         .name = "mul.da.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DA, MAC16_LH, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LH, 0},
     }, {
         .name = "mul.da.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DA, MAC16_LL, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LL, 0},
     }, {
         .name = "mul.dd.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DD, MAC16_HH, 0},
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HH, 0},
     }, {
         .name = "mul.dd.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DD, MAC16_HL, 0},
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_HL, 0},
     }, {
         .name = "mul.dd.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DD, MAC16_LH, 0},
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LH, 0},
     }, {
         .name = "mul.dd.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MUL, MAC16_DD, MAC16_LL, 0},
+        .par = (const uint32_t[]){MAC16_MUL, MAC16_LL, 0},
     }, {
         .name = "mul16s",
         .translate = translate_mul16,
         .par = (const uint32_t[]){true},
-        .windowed_register_op = 0x7,
     }, {
         .name = "mul16u",
         .translate = translate_mul16,
         .par = (const uint32_t[]){false},
-        .windowed_register_op = 0x7,
     }, {
         .name = "mula.aa.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AA, MAC16_HH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, 0},
     }, {
         .name = "mula.aa.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AA, MAC16_HL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, 0},
     }, {
         .name = "mula.aa.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AA, MAC16_LH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, 0},
     }, {
         .name = "mula.aa.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AA, MAC16_LL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, 0},
     }, {
         .name = "mula.ad.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AD, MAC16_HH, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, 0},
     }, {
         .name = "mula.ad.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AD, MAC16_HL, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, 0},
     }, {
         .name = "mula.ad.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AD, MAC16_LH, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, 0},
     }, {
         .name = "mula.ad.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_AD, MAC16_LL, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, 0},
     }, {
         .name = "mula.da.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_HH, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, 0},
     }, {
         .name = "mula.da.hh.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_HH, -4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, -4},
     }, {
         .name = "mula.da.hh.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_HH, 4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, 4},
     }, {
         .name = "mula.da.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_HL, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, 0},
     }, {
         .name = "mula.da.hl.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_HL, -4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, -4},
     }, {
         .name = "mula.da.hl.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_HL, 4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, 4},
     }, {
         .name = "mula.da.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_LH, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, 0},
     }, {
         .name = "mula.da.lh.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_LH, -4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, -4},
     }, {
         .name = "mula.da.lh.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_LH, 4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, 4},
     }, {
         .name = "mula.da.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_LL, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, 0},
     }, {
         .name = "mula.da.ll.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_LL, -4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, -4},
     }, {
         .name = "mula.da.ll.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DA, MAC16_LL, 4},
-        .windowed_register_op = 0xa,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, 4},
     }, {
         .name = "mula.dd.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_HH, 0},
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, 0},
     }, {
         .name = "mula.dd.hh.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_HH, -4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, -4},
     }, {
         .name = "mula.dd.hh.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_HH, 4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HH, 4},
     }, {
         .name = "mula.dd.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_HL, 0},
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, 0},
     }, {
         .name = "mula.dd.hl.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_HL, -4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, -4},
     }, {
         .name = "mula.dd.hl.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_HL, 4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_HL, 4},
     }, {
         .name = "mula.dd.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_LH, 0},
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, 0},
     }, {
         .name = "mula.dd.lh.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_LH, -4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, -4},
     }, {
         .name = "mula.dd.lh.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_LH, 4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LH, 4},
     }, {
         .name = "mula.dd.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_LL, 0},
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, 0},
     }, {
         .name = "mula.dd.ll.lddec",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_LL, -4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, -4},
     }, {
         .name = "mula.dd.ll.ldinc",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULA, MAC16_DD, MAC16_LL, 4},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULA, MAC16_LL, 4},
     }, {
         .name = "mull",
         .translate = translate_mull,
-        .windowed_register_op = 0x7,
     }, {
         .name = "muls.aa.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AA, MAC16_HH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HH, 0},
     }, {
         .name = "muls.aa.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AA, MAC16_HL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HL, 0},
     }, {
         .name = "muls.aa.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AA, MAC16_LH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LH, 0},
     }, {
         .name = "muls.aa.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AA, MAC16_LL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LL, 0},
     }, {
         .name = "muls.ad.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AD, MAC16_HH, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HH, 0},
     }, {
         .name = "muls.ad.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AD, MAC16_HL, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HL, 0},
     }, {
         .name = "muls.ad.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AD, MAC16_LH, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LH, 0},
     }, {
         .name = "muls.ad.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_AD, MAC16_LL, 0},
-        .windowed_register_op = 0x1,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LL, 0},
     }, {
         .name = "muls.da.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DA, MAC16_HH, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HH, 0},
     }, {
         .name = "muls.da.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DA, MAC16_HL, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HL, 0},
     }, {
         .name = "muls.da.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DA, MAC16_LH, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LH, 0},
     }, {
         .name = "muls.da.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DA, MAC16_LL, 0},
-        .windowed_register_op = 0x2,
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LL, 0},
     }, {
         .name = "muls.dd.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DD, MAC16_HH, 0},
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HH, 0},
     }, {
         .name = "muls.dd.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DD, MAC16_HL, 0},
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_HL, 0},
     }, {
         .name = "muls.dd.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DD, MAC16_LH, 0},
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LH, 0},
     }, {
         .name = "muls.dd.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_MULS, MAC16_DD, MAC16_LL, 0},
+        .par = (const uint32_t[]){MAC16_MULS, MAC16_LL, 0},
     }, {
         .name = "mulsh",
         .translate = translate_mulh,
         .par = (const uint32_t[]){true},
-        .windowed_register_op = 0x7,
     }, {
         .name = "muluh",
         .translate = translate_mulh,
         .par = (const uint32_t[]){false},
-        .windowed_register_op = 0x7,
     }, {
         .name = "neg",
         .translate = translate_neg,
-        .windowed_register_op = 0x3,
     }, {
-        .name = "nop",
+        .name = (const char * const[]) {
+            "nop", "nop.n", NULL,
+        },
         .translate = translate_nop,
-    }, {
-        .name = "nop.n",
-        .translate = translate_nop,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "nsa",
         .translate = translate_nsa,
-        .windowed_register_op = 0x3,
     }, {
         .name = "nsau",
         .translate = translate_nsau,
-        .windowed_register_op = 0x3,
     }, {
         .name = "or",
         .translate = translate_or,
-        .windowed_register_op = 0x7,
     }, {
         .name = "orb",
         .translate = translate_boolean,
@@ -3380,72 +3727,78 @@ static const XtensaOpcodeOps core_ops[] = {
         .translate = translate_ptlb,
         .par = (const uint32_t[]){true},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
+    }, {
+        .name = "pfend.a",
+        .translate = translate_nop,
+    }, {
+        .name = "pfend.o",
+        .translate = translate_nop,
+    }, {
+        .name = "pfnxt.f",
+        .translate = translate_nop,
+    }, {
+        .name = "pfwait.a",
+        .translate = translate_nop,
+    }, {
+        .name = "pfwait.o",
+        .translate = translate_nop,
     }, {
         .name = "pitlb",
         .translate = translate_ptlb,
         .par = (const uint32_t[]){false},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
+    }, {
+        .name = "pptlb",
+        .translate = translate_pptlb,
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "quos",
         .translate = translate_quos,
         .par = (const uint32_t[]){true},
         .op_flags = XTENSA_OP_DIVIDE_BY_ZERO,
-        .windowed_register_op = 0x7,
     }, {
         .name = "quou",
         .translate = translate_quou,
         .op_flags = XTENSA_OP_DIVIDE_BY_ZERO,
-        .windowed_register_op = 0x7,
     }, {
         .name = "rdtlb0",
         .translate = translate_rtlb,
         .par = (const uint32_t[]){true, 0},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
     }, {
         .name = "rdtlb1",
         .translate = translate_rtlb,
         .par = (const uint32_t[]){true, 1},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
     }, {
         .name = "read_impwire",
         .translate = translate_read_impwire,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rems",
         .translate = translate_quos,
         .par = (const uint32_t[]){false},
         .op_flags = XTENSA_OP_DIVIDE_BY_ZERO,
-        .windowed_register_op = 0x7,
     }, {
         .name = "remu",
         .translate = translate_remu,
         .op_flags = XTENSA_OP_DIVIDE_BY_ZERO,
-        .windowed_register_op = 0x7,
     }, {
         .name = "rer",
         .translate = translate_rer,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
     }, {
-        .name = "ret",
+        .name = (const char * const[]) {
+            "ret", "ret.n", NULL,
+        },
         .translate = translate_ret,
+        .op_flags = XTENSA_OP_NAME_ARRAY,
     }, {
-        .name = "ret.n",
-        .translate = translate_ret,
-    }, {
-        .name = "retw",
+        .name = (const char * const[]) {
+            "retw", "retw.n", NULL,
+        },
         .translate = translate_retw,
         .test_ill = test_ill_retw,
-        .op_flags = XTENSA_OP_UNDERFLOW,
-    }, {
-        .name = "retw.n",
-        .translate = translate_retw,
-        .test_ill = test_ill_retw,
-        .op_flags = XTENSA_OP_UNDERFLOW,
+        .op_flags = XTENSA_OP_UNDERFLOW | XTENSA_OP_NAME_ARRAY,
     }, {
         .name = "rfdd",
         .op_flags = XTENSA_OP_ILL,
@@ -3479,17 +3832,25 @@ static const XtensaOpcodeOps core_ops[] = {
         .translate = translate_rtlb,
         .par = (const uint32_t[]){false, 0},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
     }, {
         .name = "ritlb1",
         .translate = translate_rtlb,
         .par = (const uint32_t[]){false, 1},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
+    }, {
+        .name = "rptlb0",
+        .translate = translate_rptlb0,
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rptlb1",
+        .translate = translate_rptlb1,
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "rotw",
         .translate = translate_rotw,
-        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
+        .op_flags = XTENSA_OP_PRIVILEGED |
+            XTENSA_OP_EXIT_TB_M1 |
+            XTENSA_OP_SYNC_REGISTER_WINDOW,
     }, {
         .name = "rsil",
         .translate = translate_rsil,
@@ -3497,526 +3858,743 @@ static const XtensaOpcodeOps core_ops[] = {
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_0 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.176",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
         .par = (const uint32_t[]){176},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.208",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
         .par = (const uint32_t[]){208},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.acchi",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){ACCHI},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ACCHI,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "rsr.acclo",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){ACCLO},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ACCLO,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "rsr.atomctl",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){ATOMCTL},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ATOMCTL,
+            XTENSA_OPTION_ATOMCTL,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.br",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){BR},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            BR,
+            XTENSA_OPTION_BOOLEAN,
+        },
+    }, {
+        .name = "rsr.cacheadrdis",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CACHEADRDIS,
+            XTENSA_OPTION_MPU,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "rsr.cacheattr",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){CACHEATTR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CACHEATTR,
+            XTENSA_OPTION_CACHEATTR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ccompare0",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){CCOMPARE},
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ccompare1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){CCOMPARE + 1},
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE + 1,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ccompare2",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){CCOMPARE + 2},
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE + 2,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ccount",
-        .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){CCOUNT},
+        .translate = translate_rsr_ccount,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CCOUNT,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.configid0",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
         .par = (const uint32_t[]){CONFIGID0},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.configid1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
         .par = (const uint32_t[]){CONFIGID1},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.cpenable",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){CPENABLE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CPENABLE,
+            XTENSA_OPTION_COPROCESSOR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.dbreaka0",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DBREAKA},
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKA,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.dbreaka1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DBREAKA + 1},
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKA + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.dbreakc0",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DBREAKC},
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKC,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.dbreakc1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DBREAKC + 1},
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKC + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ddr",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DDR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DDR,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.debugcause",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DEBUGCAUSE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DEBUGCAUSE,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.depc",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DEPC},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DEPC,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.dtlbcfg",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){DTLBCFG},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DTLBCFG,
+            XTENSA_OPTION_MMU,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.epc1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPC1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EPC1,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.epc2",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPC1 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.epc3",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPC1 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.epc4",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPC1 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.epc5",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPC1 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.epc6",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPC1 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.epc7",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPC1 + 6},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 6,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.eps2",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPS2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.eps3",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPS2 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.eps4",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPS2 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.eps5",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPS2 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.eps6",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPS2 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.eps7",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EPS2 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "rsr.eraccess",
+        .translate = translate_rsr,
+        .par = (const uint32_t[]){ERACCESS},
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "rsr.exccause",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCCAUSE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCCAUSE,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excsave1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCSAVE1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCSAVE1,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excsave2",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excsave3",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excsave4",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excsave5",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excsave6",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excsave7",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 6},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 6,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.excvaddr",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){EXCVADDR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCVADDR,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ibreaka0",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){IBREAKA},
+        .test_ill = test_ill_ibreak,
+        .par = (const uint32_t[]){
+            IBREAKA,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ibreaka1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){IBREAKA + 1},
+        .test_ill = test_ill_ibreak,
+        .par = (const uint32_t[]){
+            IBREAKA + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ibreakenable",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){IBREAKENABLE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            IBREAKENABLE,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.icount",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){ICOUNT},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ICOUNT,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.icountlevel",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){ICOUNTLEVEL},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ICOUNTLEVEL,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.intclear",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){INTCLEAR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTCLEAR,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.intenable",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){INTENABLE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTENABLE,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.interrupt",
-        .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){INTSET},
+        .translate = translate_rsr_ccount,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTSET,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.intset",
-        .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){INTSET},
+        .translate = translate_rsr_ccount,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTSET,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.itlbcfg",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){ITLBCFG},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ITLBCFG,
+            XTENSA_OPTION_MMU,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.lbeg",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){LBEG},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LBEG,
+            XTENSA_OPTION_LOOP,
+        },
     }, {
         .name = "rsr.lcount",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){LCOUNT},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LCOUNT,
+            XTENSA_OPTION_LOOP,
+        },
     }, {
         .name = "rsr.lend",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){LEND},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LEND,
+            XTENSA_OPTION_LOOP,
+        },
     }, {
         .name = "rsr.litbase",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){LITBASE},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LITBASE,
+            XTENSA_OPTION_EXTENDED_L32R,
+        },
     }, {
         .name = "rsr.m0",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MR},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "rsr.m1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MR + 1},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 1,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "rsr.m2",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MR + 2},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 2,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "rsr.m3",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MR + 3},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 3,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "rsr.memctl",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
         .par = (const uint32_t[]){MEMCTL},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "rsr.mecr",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MECR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rsr.mepc",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MEPC,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rsr.meps",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MEPS,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rsr.mesave",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESAVE,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rsr.mesr",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rsr.mevaddr",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "rsr.misc0",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MISC},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.misc1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MISC + 1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 1,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.misc2",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MISC + 2},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 2,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.misc3",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){MISC + 3},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 3,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "rsr.mpucfg",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MPUCFG,
+            XTENSA_OPTION_MPU,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rsr.mpuenb",
+        .translate = translate_rsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MPUENB,
+            XTENSA_OPTION_MPU,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "rsr.prefctl",
+        .translate = translate_rsr,
+        .par = (const uint32_t[]){PREFCTL},
     }, {
         .name = "rsr.prid",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){PRID},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            PRID,
+            XTENSA_OPTION_PROCESSOR_ID,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ps",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){PS},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            PS,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.ptevaddr",
-        .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){PTEVADDR},
+        .translate = translate_rsr_ptevaddr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            PTEVADDR,
+            XTENSA_OPTION_MMU,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.rasid",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){RASID},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            RASID,
+            XTENSA_OPTION_MMU,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.sar",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
         .par = (const uint32_t[]){SAR},
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.scompare1",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){SCOMPARE1},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            SCOMPARE1,
+            XTENSA_OPTION_CONDITIONAL_STORE,
+        },
     }, {
         .name = "rsr.vecbase",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){VECBASE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            VECBASE,
+            XTENSA_OPTION_RELOCATABLE_VECTOR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.windowbase",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){WINDOW_BASE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            WINDOW_BASE,
+            XTENSA_OPTION_WINDOWED_REGISTER,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsr.windowstart",
         .translate = translate_rsr,
-        .test_ill = test_ill_rsr,
-        .par = (const uint32_t[]){WINDOW_START},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            WINDOW_START,
+            XTENSA_OPTION_WINDOWED_REGISTER,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "rsync",
         .translate = translate_nop,
@@ -4024,80 +4602,68 @@ static const XtensaOpcodeOps core_ops[] = {
         .name = "rur.expstate",
         .translate = translate_rur,
         .par = (const uint32_t[]){EXPSTATE},
-        .windowed_register_op = 0x1,
     }, {
         .name = "rur.fcr",
         .translate = translate_rur,
         .par = (const uint32_t[]){FCR},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "rur.fsr",
         .translate = translate_rur,
         .par = (const uint32_t[]){FSR},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "rur.threadptr",
         .translate = translate_rur,
         .par = (const uint32_t[]){THREADPTR},
-        .windowed_register_op = 0x1,
     }, {
         .name = "s16i",
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_TEUW, false, true},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_STORE,
     }, {
         .name = "s32c1i",
         .translate = translate_s32c1i,
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_LOAD | XTENSA_OP_STORE,
     }, {
         .name = "s32e",
         .translate = translate_s32e,
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_STORE,
     }, {
-        .name = "s32i",
+        .name = "s32ex",
+        .translate = translate_s32ex,
+        .op_flags = XTENSA_OP_LOAD | XTENSA_OP_STORE,
+    }, {
+        .name = (const char * const[]) {
+            "s32i", "s32i.n", "s32nb", NULL,
+        },
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_TEUL, false, true},
-        .windowed_register_op = 0x3,
-    }, {
-        .name = "s32i.n",
-        .translate = translate_ldst,
-        .par = (const uint32_t[]){MO_TEUL, false, true},
-        .windowed_register_op = 0x3,
-    }, {
-        .name = "s32nb",
-        .translate = translate_ldst,
-        .par = (const uint32_t[]){MO_TEUL, false, true},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_NAME_ARRAY | XTENSA_OP_STORE,
     }, {
         .name = "s32ri",
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_TEUL, true, true},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_STORE,
     }, {
         .name = "s8i",
         .translate = translate_ldst,
         .par = (const uint32_t[]){MO_UB, false, true},
-        .windowed_register_op = 0x3,
+        .op_flags = XTENSA_OP_STORE,
     }, {
         .name = "salt",
         .translate = translate_salt,
         .par = (const uint32_t[]){TCG_COND_LT},
-        .windowed_register_op = 0x7,
     }, {
         .name = "saltu",
         .translate = translate_salt,
         .par = (const uint32_t[]){TCG_COND_LTU},
-        .windowed_register_op = 0x7,
     }, {
         .name = "setb_expstate",
         .translate = translate_setb_expstate,
     }, {
         .name = "sext",
         .translate = translate_sext,
-        .windowed_register_op = 0x3,
     }, {
         .name = "simcall",
         .translate = translate_simcall,
@@ -4106,92 +4672,73 @@ static const XtensaOpcodeOps core_ops[] = {
     }, {
         .name = "sll",
         .translate = translate_sll,
-        .windowed_register_op = 0x3,
     }, {
         .name = "slli",
         .translate = translate_slli,
-        .windowed_register_op = 0x3,
     }, {
         .name = "sra",
         .translate = translate_sra,
-        .windowed_register_op = 0x3,
     }, {
         .name = "srai",
         .translate = translate_srai,
-        .windowed_register_op = 0x3,
     }, {
         .name = "src",
         .translate = translate_src,
-        .windowed_register_op = 0x7,
     }, {
         .name = "srl",
         .translate = translate_srl,
-        .windowed_register_op = 0x3,
     }, {
         .name = "srli",
         .translate = translate_srli,
-        .windowed_register_op = 0x3,
     }, {
         .name = "ssa8b",
         .translate = translate_ssa8b,
-        .windowed_register_op = 0x1,
     }, {
         .name = "ssa8l",
         .translate = translate_ssa8l,
-        .windowed_register_op = 0x1,
     }, {
         .name = "ssai",
         .translate = translate_ssai,
     }, {
         .name = "ssl",
         .translate = translate_ssl,
-        .windowed_register_op = 0x1,
     }, {
         .name = "ssr",
         .translate = translate_ssr,
-        .windowed_register_op = 0x1,
     }, {
         .name = "sub",
         .translate = translate_sub,
-        .windowed_register_op = 0x7,
     }, {
         .name = "subx2",
         .translate = translate_subx,
         .par = (const uint32_t[]){1},
-        .windowed_register_op = 0x7,
     }, {
         .name = "subx4",
         .translate = translate_subx,
         .par = (const uint32_t[]){2},
-        .windowed_register_op = 0x7,
     }, {
         .name = "subx8",
         .translate = translate_subx,
         .par = (const uint32_t[]){3},
-        .windowed_register_op = 0x7,
     }, {
         .name = "syscall",
         .op_flags = XTENSA_OP_SYSCALL,
     }, {
         .name = "umul.aa.hh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_UMUL, MAC16_AA, MAC16_HH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_UMUL, MAC16_HH, 0},
     }, {
         .name = "umul.aa.hl",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_UMUL, MAC16_AA, MAC16_HL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_UMUL, MAC16_HL, 0},
     }, {
         .name = "umul.aa.lh",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_UMUL, MAC16_AA, MAC16_LH, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_UMUL, MAC16_LH, 0},
     }, {
         .name = "umul.aa.ll",
         .translate = translate_mac16,
-        .par = (const uint32_t[]){MAC16_UMUL, MAC16_AA, MAC16_LL, 0},
-        .windowed_register_op = 0x3,
+        .par = (const uint32_t[]){MAC16_UMUL, MAC16_LL, 0},
     }, {
         .name = "waiti",
         .translate = translate_waiti,
@@ -4201,1133 +4748,1511 @@ static const XtensaOpcodeOps core_ops[] = {
         .translate = translate_wtlb,
         .par = (const uint32_t[]){true},
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x3,
     }, {
         .name = "wer",
         .translate = translate_wer,
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x3,
     }, {
         .name = "witlb",
         .translate = translate_wtlb,
         .par = (const uint32_t[]){false},
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x3,
+    }, {
+        .name = "wptlb",
+        .translate = translate_wptlb,
+        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
     }, {
         .name = "wrmsk_expstate",
         .translate = translate_wrmsk_expstate,
-        .windowed_register_op = 0x3,
     }, {
         .name = "wsr.176",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){176},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "wsr.208",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){208},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "wsr.acchi",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){ACCHI},
-        .windowed_register_op = 0x1,
+        .translate = translate_wsr_acchi,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ACCHI,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "wsr.acclo",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){ACCLO},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ACCLO,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "wsr.atomctl",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){ATOMCTL},
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ATOMCTL,
+            XTENSA_OPTION_ATOMCTL,
+            0x3f,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.br",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){BR},
-        .windowed_register_op = 0x1,
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            BR,
+            XTENSA_OPTION_BOOLEAN,
+            0xffff,
+        },
+    }, {
+        .name = "wsr.cacheadrdis",
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CACHEADRDIS,
+            XTENSA_OPTION_MPU,
+            0xff,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "wsr.cacheattr",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CACHEATTR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CACHEATTR,
+            XTENSA_OPTION_CACHEATTR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ccompare0",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CCOMPARE},
+        .translate = translate_wsr_ccompare,
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ccompare1",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CCOMPARE + 1},
+        .translate = translate_wsr_ccompare,
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE + 1,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ccompare2",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CCOMPARE + 2},
+        .translate = translate_wsr_ccompare,
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE + 2,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ccount",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CCOUNT},
+        .translate = translate_wsr_ccount,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CCOUNT,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.configid0",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CONFIGID0},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "wsr.configid1",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CONFIGID1},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "wsr.cpenable",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){CPENABLE},
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CPENABLE,
+            XTENSA_OPTION_COPROCESSOR,
+            0xff,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.dbreaka0",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DBREAKA},
+        .translate = translate_wsr_dbreaka,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKA,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.dbreaka1",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DBREAKA + 1},
+        .translate = translate_wsr_dbreaka,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKA + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.dbreakc0",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DBREAKC},
+        .translate = translate_wsr_dbreakc,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKC,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.dbreakc1",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DBREAKC + 1},
+        .translate = translate_wsr_dbreakc,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKC + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ddr",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DDR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DDR,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.debugcause",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DEBUGCAUSE},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "wsr.depc",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DEPC},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DEPC,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.dtlbcfg",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){DTLBCFG},
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DTLBCFG,
+            XTENSA_OPTION_MMU,
+            0x01130000,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.epc1",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPC1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EPC1,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.epc2",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPC1 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.epc3",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPC1 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.epc4",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPC1 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.epc5",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPC1 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.epc6",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPC1 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.epc7",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPC1 + 6},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 6,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.eps2",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPS2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.eps3",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPS2 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.eps4",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPS2 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.eps5",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPS2 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.eps6",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPS2 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.eps7",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EPS2 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "wsr.eraccess",
+        .translate = translate_wsr_mask,
+        .par = (const uint32_t[]){
+            ERACCESS,
+            0,
+            0xffff,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "wsr.exccause",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCCAUSE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCCAUSE,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excsave1",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCSAVE1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCSAVE1,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excsave2",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excsave3",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excsave4",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excsave5",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excsave6",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excsave7",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 6},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 6,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.excvaddr",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){EXCVADDR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCVADDR,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ibreaka0",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){IBREAKA},
+        .translate = translate_wsr_ibreaka,
+        .test_ill = test_ill_ibreak,
+        .par = (const uint32_t[]){
+            IBREAKA,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ibreaka1",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){IBREAKA + 1},
+        .translate = translate_wsr_ibreaka,
+        .test_ill = test_ill_ibreak,
+        .par = (const uint32_t[]){
+            IBREAKA + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ibreakenable",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){IBREAKENABLE},
+        .translate = translate_wsr_ibreakenable,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            IBREAKENABLE,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.icount",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){ICOUNT},
+        .translate = translate_wsr_icount,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ICOUNT,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.icountlevel",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){ICOUNTLEVEL},
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ICOUNTLEVEL,
+            XTENSA_OPTION_DEBUG,
+            0xf,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.intclear",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){INTCLEAR},
+        .translate = translate_wsr_intclear,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTCLEAR,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags =
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_0 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.intenable",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){INTENABLE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTENABLE,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags =
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_0 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.interrupt",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){INTSET},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTSET,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags =
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_0 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.intset",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){INTSET},
+        .translate = translate_wsr_intset,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTSET,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags =
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_0 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.itlbcfg",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){ITLBCFG},
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ITLBCFG,
+            XTENSA_OPTION_MMU,
+            0x01130000,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.lbeg",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){LBEG},
-        .op_flags = XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LBEG,
+            XTENSA_OPTION_LOOP,
+        },
+        .op_flags = XTENSA_OP_EXIT_TB_M1,
     }, {
         .name = "wsr.lcount",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){LCOUNT},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LCOUNT,
+            XTENSA_OPTION_LOOP,
+        },
     }, {
         .name = "wsr.lend",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){LEND},
-        .op_flags = XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LEND,
+            XTENSA_OPTION_LOOP,
+        },
+        .op_flags = XTENSA_OP_EXIT_TB_M1,
     }, {
         .name = "wsr.litbase",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){LITBASE},
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LITBASE,
+            XTENSA_OPTION_EXTENDED_L32R,
+            0xfffff001,
+        },
         .op_flags = XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.m0",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MR},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "wsr.m1",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MR + 1},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 1,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "wsr.m2",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MR + 2},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 2,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "wsr.m3",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MR + 3},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 3,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "wsr.memctl",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
+        .translate = translate_wsr_memctl,
         .par = (const uint32_t[]){MEMCTL},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "wsr.mecr",
+        .translate = translate_wsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MECR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "wsr.mepc",
+        .translate = translate_wsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MEPC,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "wsr.meps",
+        .translate = translate_wsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MEPS,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "wsr.mesave",
+        .translate = translate_wsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESAVE,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "wsr.mesr",
+        .translate = translate_wsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "wsr.mevaddr",
+        .translate = translate_wsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "wsr.misc0",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MISC},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.misc1",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MISC + 1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 1,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.misc2",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MISC + 2},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 2,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.misc3",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MISC + 3},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 3,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.mmid",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){MMID},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MMID,
+            XTENSA_OPTION_TRACE_PORT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "wsr.mpuenb",
+        .translate = translate_wsr_mpuenb,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MPUENB,
+            XTENSA_OPTION_MPU,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
+    }, {
+        .name = "wsr.prefctl",
+        .translate = translate_wsr,
+        .par = (const uint32_t[]){PREFCTL},
     }, {
         .name = "wsr.prid",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){PRID},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "wsr.ps",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){PS},
+        .translate = translate_wsr_ps,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            PS,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags =
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_M1 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.ptevaddr",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){PTEVADDR},
+        .translate = translate_wsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            PTEVADDR,
+            XTENSA_OPTION_MMU,
+            0xffc00000,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.rasid",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){RASID},
+        .translate = translate_wsr_rasid,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            RASID,
+            XTENSA_OPTION_MMU,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.sar",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
+        .translate = translate_wsr_sar,
         .par = (const uint32_t[]){SAR},
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.scompare1",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){SCOMPARE1},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            SCOMPARE1,
+            XTENSA_OPTION_CONDITIONAL_STORE,
+        },
     }, {
         .name = "wsr.vecbase",
         .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){VECBASE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            VECBASE,
+            XTENSA_OPTION_RELOCATABLE_VECTOR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wsr.windowbase",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){WINDOW_BASE},
-        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
+        .translate = translate_wsr_windowbase,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            WINDOW_BASE,
+            XTENSA_OPTION_WINDOWED_REGISTER,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED |
+            XTENSA_OP_EXIT_TB_M1 |
+            XTENSA_OP_SYNC_REGISTER_WINDOW,
     }, {
         .name = "wsr.windowstart",
-        .translate = translate_wsr,
-        .test_ill = test_ill_wsr,
-        .par = (const uint32_t[]){WINDOW_START},
+        .translate = translate_wsr_windowstart,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            WINDOW_START,
+            XTENSA_OPTION_WINDOWED_REGISTER,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "wur.expstate",
         .translate = translate_wur,
         .par = (const uint32_t[]){EXPSTATE},
-        .windowed_register_op = 0x1,
     }, {
         .name = "wur.fcr",
-        .translate = translate_wur,
+        .translate = translate_wur_fcr,
         .par = (const uint32_t[]){FCR},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "wur.fsr",
-        .translate = translate_wur,
+        .translate = translate_wur_fsr,
         .par = (const uint32_t[]){FSR},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "wur.threadptr",
         .translate = translate_wur,
         .par = (const uint32_t[]){THREADPTR},
-        .windowed_register_op = 0x1,
     }, {
         .name = "xor",
         .translate = translate_xor,
-        .windowed_register_op = 0x7,
     }, {
         .name = "xorb",
         .translate = translate_boolean,
         .par = (const uint32_t[]){BOOLEAN_XOR},
     }, {
         .name = "xsr.176",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){176},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.208",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){208},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.acchi",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){ACCHI},
-        .windowed_register_op = 0x1,
+        .translate = translate_xsr_acchi,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ACCHI,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "xsr.acclo",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){ACCLO},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ACCLO,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "xsr.atomctl",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){ATOMCTL},
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ATOMCTL,
+            XTENSA_OPTION_ATOMCTL,
+            0x3f,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.br",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){BR},
-        .windowed_register_op = 0x1,
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            BR,
+            XTENSA_OPTION_BOOLEAN,
+            0xffff,
+        },
+    }, {
+        .name = "xsr.cacheadrdis",
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CACHEADRDIS,
+            XTENSA_OPTION_MPU,
+            0xff,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "xsr.cacheattr",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CACHEATTR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CACHEATTR,
+            XTENSA_OPTION_CACHEATTR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ccompare0",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CCOMPARE},
+        .translate = translate_xsr_ccompare,
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ccompare1",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CCOMPARE + 1},
+        .translate = translate_xsr_ccompare,
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE + 1,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ccompare2",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CCOMPARE + 2},
+        .translate = translate_xsr_ccompare,
+        .test_ill = test_ill_ccompare,
+        .par = (const uint32_t[]){
+            CCOMPARE + 2,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ccount",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CCOUNT},
+        .translate = translate_xsr_ccount,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CCOUNT,
+            XTENSA_OPTION_TIMER_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.configid0",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CONFIGID0},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.configid1",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CONFIGID1},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.cpenable",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){CPENABLE},
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            CPENABLE,
+            XTENSA_OPTION_COPROCESSOR,
+            0xff,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.dbreaka0",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DBREAKA},
+        .translate = translate_xsr_dbreaka,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKA,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.dbreaka1",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DBREAKA + 1},
+        .translate = translate_xsr_dbreaka,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKA + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.dbreakc0",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DBREAKC},
+        .translate = translate_xsr_dbreakc,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKC,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.dbreakc1",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DBREAKC + 1},
+        .translate = translate_xsr_dbreakc,
+        .test_ill = test_ill_dbreak,
+        .par = (const uint32_t[]){
+            DBREAKC + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ddr",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DDR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DDR,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.debugcause",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DEBUGCAUSE},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.depc",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DEPC},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DEPC,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.dtlbcfg",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){DTLBCFG},
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            DTLBCFG,
+            XTENSA_OPTION_MMU,
+            0x01130000,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.epc1",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPC1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EPC1,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.epc2",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPC1 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.epc3",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPC1 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.epc4",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPC1 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.epc5",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPC1 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.epc6",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPC1 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.epc7",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPC1 + 6},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPC1 + 6,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.eps2",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPS2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.eps3",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPS2 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.eps4",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPS2 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.eps5",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPS2 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.eps6",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPS2 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.eps7",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EPS2 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EPS2 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "xsr.eraccess",
+        .translate = translate_xsr_mask,
+        .par = (const uint32_t[]){
+            ERACCESS,
+            0,
+            0xffff,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "xsr.exccause",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCCAUSE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCCAUSE,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excsave1",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCSAVE1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCSAVE1,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excsave2",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 1},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 1,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excsave3",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 2},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 2,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excsave4",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 3},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 3,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excsave5",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 4},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 4,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excsave6",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 5},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 5,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excsave7",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCSAVE1 + 6},
+        .test_ill = test_ill_hpi,
+        .par = (const uint32_t[]){
+            EXCSAVE1 + 6,
+            XTENSA_OPTION_HIGH_PRIORITY_INTERRUPT,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.excvaddr",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){EXCVADDR},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            EXCVADDR,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ibreaka0",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){IBREAKA},
+        .translate = translate_xsr_ibreaka,
+        .test_ill = test_ill_ibreak,
+        .par = (const uint32_t[]){
+            IBREAKA,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ibreaka1",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){IBREAKA + 1},
+        .translate = translate_xsr_ibreaka,
+        .test_ill = test_ill_ibreak,
+        .par = (const uint32_t[]){
+            IBREAKA + 1,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ibreakenable",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){IBREAKENABLE},
+        .translate = translate_xsr_ibreakenable,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            IBREAKENABLE,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.icount",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){ICOUNT},
+        .translate = translate_xsr_icount,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ICOUNT,
+            XTENSA_OPTION_DEBUG,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.icountlevel",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){ICOUNTLEVEL},
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ICOUNTLEVEL,
+            XTENSA_OPTION_DEBUG,
+            0xf,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.intclear",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){INTCLEAR},
-        .op_flags =
-            XTENSA_OP_PRIVILEGED |
-            XTENSA_OP_EXIT_TB_0 |
-            XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.intenable",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){INTENABLE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            INTENABLE,
+            XTENSA_OPTION_INTERRUPT,
+        },
         .op_flags =
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_0 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.interrupt",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){INTSET},
-        .op_flags =
-            XTENSA_OP_PRIVILEGED |
-            XTENSA_OP_EXIT_TB_0 |
-            XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.intset",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){INTSET},
-        .op_flags =
-            XTENSA_OP_PRIVILEGED |
-            XTENSA_OP_EXIT_TB_0 |
-            XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.itlbcfg",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){ITLBCFG},
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            ITLBCFG,
+            XTENSA_OPTION_MMU,
+            0x01130000,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.lbeg",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){LBEG},
-        .op_flags = XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LBEG,
+            XTENSA_OPTION_LOOP,
+        },
+        .op_flags = XTENSA_OP_EXIT_TB_M1,
     }, {
         .name = "xsr.lcount",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){LCOUNT},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LCOUNT,
+            XTENSA_OPTION_LOOP,
+        },
     }, {
         .name = "xsr.lend",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){LEND},
-        .op_flags = XTENSA_OP_EXIT_TB_0,
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LEND,
+            XTENSA_OPTION_LOOP,
+        },
+        .op_flags = XTENSA_OP_EXIT_TB_M1,
     }, {
         .name = "xsr.litbase",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){LITBASE},
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            LITBASE,
+            XTENSA_OPTION_EXTENDED_L32R,
+            0xfffff001,
+        },
         .op_flags = XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.m0",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MR},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "xsr.m1",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MR + 1},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 1,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "xsr.m2",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MR + 2},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 2,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "xsr.m3",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MR + 3},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MR + 3,
+            XTENSA_OPTION_MAC16,
+        },
     }, {
         .name = "xsr.memctl",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
+        .translate = translate_xsr_memctl,
         .par = (const uint32_t[]){MEMCTL},
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "xsr.mecr",
+        .translate = translate_xsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MECR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "xsr.mepc",
+        .translate = translate_xsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MEPC,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "xsr.meps",
+        .translate = translate_xsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MEPS,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "xsr.mesave",
+        .translate = translate_xsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESAVE,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "xsr.mesr",
+        .translate = translate_xsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
+    }, {
+        .name = "xsr.mevaddr",
+        .translate = translate_xsr,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MESR,
+            XTENSA_OPTION_MEMORY_ECC_PARITY,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED,
     }, {
         .name = "xsr.misc0",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MISC},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.misc1",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MISC + 1},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 1,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.misc2",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MISC + 2},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 2,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.misc3",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){MISC + 3},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MISC + 3,
+            XTENSA_OPTION_MISC_SR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+    }, {
+        .name = "xsr.mpuenb",
+        .translate = translate_xsr_mpuenb,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            MPUENB,
+            XTENSA_OPTION_MPU,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
+    }, {
+        .name = "xsr.prefctl",
+        .translate = translate_xsr,
+        .par = (const uint32_t[]){PREFCTL},
     }, {
         .name = "xsr.prid",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){PRID},
-        .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
+        .op_flags = XTENSA_OP_ILL,
     }, {
         .name = "xsr.ps",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){PS},
+        .translate = translate_xsr_ps,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            PS,
+            XTENSA_OPTION_EXCEPTION,
+        },
         .op_flags =
             XTENSA_OP_PRIVILEGED |
             XTENSA_OP_EXIT_TB_M1 |
             XTENSA_OP_CHECK_INTERRUPTS,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.ptevaddr",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){PTEVADDR},
+        .translate = translate_xsr_mask,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            PTEVADDR,
+            XTENSA_OPTION_MMU,
+            0xffc00000,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.rasid",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){RASID},
+        .translate = translate_xsr_rasid,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            RASID,
+            XTENSA_OPTION_MMU,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.sar",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
+        .translate = translate_xsr_sar,
         .par = (const uint32_t[]){SAR},
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.scompare1",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){SCOMPARE1},
-        .windowed_register_op = 0x1,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            SCOMPARE1,
+            XTENSA_OPTION_CONDITIONAL_STORE,
+        },
     }, {
         .name = "xsr.vecbase",
         .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){VECBASE},
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            VECBASE,
+            XTENSA_OPTION_RELOCATABLE_VECTOR,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED,
-        .windowed_register_op = 0x1,
     }, {
         .name = "xsr.windowbase",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){WINDOW_BASE},
-        .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
+        .translate = translate_xsr_windowbase,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            WINDOW_BASE,
+            XTENSA_OPTION_WINDOWED_REGISTER,
+        },
+        .op_flags = XTENSA_OP_PRIVILEGED |
+            XTENSA_OP_EXIT_TB_M1 |
+            XTENSA_OP_SYNC_REGISTER_WINDOW,
     }, {
         .name = "xsr.windowstart",
-        .translate = translate_xsr,
-        .test_ill = test_ill_xsr,
-        .par = (const uint32_t[]){WINDOW_START},
+        .translate = translate_xsr_windowstart,
+        .test_ill = test_ill_sr,
+        .par = (const uint32_t[]){
+            WINDOW_START,
+            XTENSA_OPTION_WINDOWED_REGISTER,
+        },
         .op_flags = XTENSA_OP_PRIVILEGED | XTENSA_OP_EXIT_TB_M1,
-        .windowed_register_op = 0x1,
     },
 };
 
@@ -5337,17 +6262,17 @@ const XtensaOpcodeTranslators xtensa_core_opcodes = {
 };
 
 
-static void translate_abs_s(DisasContext *dc, const uint32_t arg[],
+static void translate_abs_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    gen_helper_abs_s(cpu_FR[arg[0]], cpu_FR[arg[1]]);
+    gen_helper_abs_s(arg[0].out, arg[1].in);
 }
 
-static void translate_add_s(DisasContext *dc, const uint32_t arg[],
+static void translate_add_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    gen_helper_add_s(cpu_FR[arg[0]], cpu_env,
-                     cpu_FR[arg[1]], cpu_FR[arg[2]]);
+    gen_helper_add_s(arg[0].out, cpu_env,
+                     arg[1].in, arg[2].in);
 }
 
 enum {
@@ -5360,7 +6285,7 @@ enum {
     COMPARE_ULE,
 };
 
-static void translate_compare_s(DisasContext *dc, const uint32_t arg[],
+static void translate_compare_s(DisasContext *dc, const OpcodeArg arg[],
                                 const uint32_t par[])
 {
     static void (* const helper[])(TCGv_env env, TCGv_i32 bit,
@@ -5373,153 +6298,153 @@ static void translate_compare_s(DisasContext *dc, const uint32_t arg[],
         [COMPARE_OLE] = gen_helper_ole_s,
         [COMPARE_ULE] = gen_helper_ule_s,
     };
-    TCGv_i32 bit = tcg_const_i32(1 << arg[0]);
+    TCGv_i32 bit = tcg_const_i32(1 << arg[0].imm);
 
-    helper[par[0]](cpu_env, bit, cpu_FR[arg[1]], cpu_FR[arg[2]]);
+    helper[par[0]](cpu_env, bit, arg[1].in, arg[2].in);
     tcg_temp_free(bit);
 }
 
-static void translate_float_s(DisasContext *dc, const uint32_t arg[],
+static void translate_float_s(DisasContext *dc, const OpcodeArg arg[],
                               const uint32_t par[])
 {
-    TCGv_i32 scale = tcg_const_i32(-arg[2]);
+    TCGv_i32 scale = tcg_const_i32(-arg[2].imm);
 
     if (par[0]) {
-        gen_helper_uitof(cpu_FR[arg[0]], cpu_env, cpu_R[arg[1]], scale);
+        gen_helper_uitof(arg[0].out, cpu_env, arg[1].in, scale);
     } else {
-        gen_helper_itof(cpu_FR[arg[0]], cpu_env, cpu_R[arg[1]], scale);
+        gen_helper_itof(arg[0].out, cpu_env, arg[1].in, scale);
     }
     tcg_temp_free(scale);
 }
 
-static void translate_ftoi_s(DisasContext *dc, const uint32_t arg[],
+static void translate_ftoi_s(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
     TCGv_i32 rounding_mode = tcg_const_i32(par[0]);
-    TCGv_i32 scale = tcg_const_i32(arg[2]);
+    TCGv_i32 scale = tcg_const_i32(arg[2].imm);
 
     if (par[1]) {
-        gen_helper_ftoui(cpu_R[arg[0]], cpu_FR[arg[1]],
+        gen_helper_ftoui(arg[0].out, arg[1].in,
                          rounding_mode, scale);
     } else {
-        gen_helper_ftoi(cpu_R[arg[0]], cpu_FR[arg[1]],
+        gen_helper_ftoi(arg[0].out, arg[1].in,
                         rounding_mode, scale);
     }
     tcg_temp_free(rounding_mode);
     tcg_temp_free(scale);
 }
 
-static void translate_ldsti(DisasContext *dc, const uint32_t arg[],
+static void translate_ldsti(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     TCGv_i32 addr = tcg_temp_new_i32();
 
-    tcg_gen_addi_i32(addr, cpu_R[arg[1]], arg[2]);
+    tcg_gen_addi_i32(addr, arg[1].in, arg[2].imm);
     gen_load_store_alignment(dc, 2, addr, false);
     if (par[0]) {
-        tcg_gen_qemu_st32(cpu_FR[arg[0]], addr, dc->cring);
+        tcg_gen_qemu_st32(arg[0].in, addr, dc->cring);
     } else {
-        tcg_gen_qemu_ld32u(cpu_FR[arg[0]], addr, dc->cring);
+        tcg_gen_qemu_ld32u(arg[0].out, addr, dc->cring);
     }
     if (par[1]) {
-        tcg_gen_mov_i32(cpu_R[arg[1]], addr);
+        tcg_gen_mov_i32(arg[1].out, addr);
     }
     tcg_temp_free(addr);
 }
 
-static void translate_ldstx(DisasContext *dc, const uint32_t arg[],
+static void translate_ldstx(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
     TCGv_i32 addr = tcg_temp_new_i32();
 
-    tcg_gen_add_i32(addr, cpu_R[arg[1]], cpu_R[arg[2]]);
+    tcg_gen_add_i32(addr, arg[1].in, arg[2].in);
     gen_load_store_alignment(dc, 2, addr, false);
     if (par[0]) {
-        tcg_gen_qemu_st32(cpu_FR[arg[0]], addr, dc->cring);
+        tcg_gen_qemu_st32(arg[0].in, addr, dc->cring);
     } else {
-        tcg_gen_qemu_ld32u(cpu_FR[arg[0]], addr, dc->cring);
+        tcg_gen_qemu_ld32u(arg[0].out, addr, dc->cring);
     }
     if (par[1]) {
-        tcg_gen_mov_i32(cpu_R[arg[1]], addr);
+        tcg_gen_mov_i32(arg[1].out, addr);
     }
     tcg_temp_free(addr);
 }
 
-static void translate_madd_s(DisasContext *dc, const uint32_t arg[],
+static void translate_madd_s(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
-    gen_helper_madd_s(cpu_FR[arg[0]], cpu_env,
-                      cpu_FR[arg[0]], cpu_FR[arg[1]], cpu_FR[arg[2]]);
+    gen_helper_madd_s(arg[0].out, cpu_env,
+                      arg[0].in, arg[1].in, arg[2].in);
 }
 
-static void translate_mov_s(DisasContext *dc, const uint32_t arg[],
+static void translate_mov_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    tcg_gen_mov_i32(cpu_FR[arg[0]], cpu_FR[arg[1]]);
+    tcg_gen_mov_i32(arg[0].out, arg[1].in);
 }
 
-static void translate_movcond_s(DisasContext *dc, const uint32_t arg[],
+static void translate_movcond_s(DisasContext *dc, const OpcodeArg arg[],
                                 const uint32_t par[])
 {
     TCGv_i32 zero = tcg_const_i32(0);
 
-    tcg_gen_movcond_i32(par[0], cpu_FR[arg[0]],
-                        cpu_R[arg[2]], zero,
-                        cpu_FR[arg[1]], cpu_FR[arg[0]]);
+    tcg_gen_movcond_i32(par[0], arg[0].out,
+                        arg[2].in, zero,
+                        arg[1].in, arg[0].in);
     tcg_temp_free(zero);
 }
 
-static void translate_movp_s(DisasContext *dc, const uint32_t arg[],
+static void translate_movp_s(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
     TCGv_i32 zero = tcg_const_i32(0);
     TCGv_i32 tmp = tcg_temp_new_i32();
 
-    tcg_gen_andi_i32(tmp, cpu_SR[BR], 1 << arg[2]);
+    tcg_gen_andi_i32(tmp, arg[2].in, 1 << arg[2].imm);
     tcg_gen_movcond_i32(par[0],
-                        cpu_FR[arg[0]], tmp, zero,
-                        cpu_FR[arg[1]], cpu_FR[arg[0]]);
+                        arg[0].out, tmp, zero,
+                        arg[1].in, arg[0].in);
     tcg_temp_free(tmp);
     tcg_temp_free(zero);
 }
 
-static void translate_mul_s(DisasContext *dc, const uint32_t arg[],
+static void translate_mul_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    gen_helper_mul_s(cpu_FR[arg[0]], cpu_env,
-                     cpu_FR[arg[1]], cpu_FR[arg[2]]);
+    gen_helper_mul_s(arg[0].out, cpu_env,
+                     arg[1].in, arg[2].in);
 }
 
-static void translate_msub_s(DisasContext *dc, const uint32_t arg[],
+static void translate_msub_s(DisasContext *dc, const OpcodeArg arg[],
                              const uint32_t par[])
 {
-    gen_helper_msub_s(cpu_FR[arg[0]], cpu_env,
-                      cpu_FR[arg[0]], cpu_FR[arg[1]], cpu_FR[arg[2]]);
+    gen_helper_msub_s(arg[0].out, cpu_env,
+                      arg[0].in, arg[1].in, arg[2].in);
 }
 
-static void translate_neg_s(DisasContext *dc, const uint32_t arg[],
+static void translate_neg_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    gen_helper_neg_s(cpu_FR[arg[0]], cpu_FR[arg[1]]);
+    gen_helper_neg_s(arg[0].out, arg[1].in);
 }
 
-static void translate_rfr_s(DisasContext *dc, const uint32_t arg[],
+static void translate_rfr_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    tcg_gen_mov_i32(cpu_R[arg[0]], cpu_FR[arg[1]]);
+    tcg_gen_mov_i32(arg[0].out, arg[1].in);
 }
 
-static void translate_sub_s(DisasContext *dc, const uint32_t arg[],
+static void translate_sub_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    gen_helper_sub_s(cpu_FR[arg[0]], cpu_env,
-                     cpu_FR[arg[1]], cpu_FR[arg[2]]);
+    gen_helper_sub_s(arg[0].out, cpu_env,
+                     arg[1].in, arg[2].in);
 }
 
-static void translate_wfr_s(DisasContext *dc, const uint32_t arg[],
+static void translate_wfr_s(DisasContext *dc, const OpcodeArg arg[],
                             const uint32_t par[])
 {
-    tcg_gen_mov_i32(cpu_FR[arg[0]], cpu_R[arg[1]]);
+    tcg_gen_mov_i32(arg[0].out, arg[1].in);
 }
 
 static const XtensaOpcodeOps fpu2000_ops[] = {
@@ -5535,43 +6460,40 @@ static const XtensaOpcodeOps fpu2000_ops[] = {
         .name = "ceil.s",
         .translate = translate_ftoi_s,
         .par = (const uint32_t[]){float_round_up, false},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "float.s",
         .translate = translate_float_s,
         .par = (const uint32_t[]){false},
-        .windowed_register_op = 0x2,
         .coprocessor = 0x1,
     }, {
         .name = "floor.s",
         .translate = translate_ftoi_s,
         .par = (const uint32_t[]){float_round_down, false},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "lsi",
         .translate = translate_ldsti,
         .par = (const uint32_t[]){false, false},
-        .windowed_register_op = 0x2,
+        .op_flags = XTENSA_OP_LOAD,
         .coprocessor = 0x1,
     }, {
         .name = "lsiu",
         .translate = translate_ldsti,
         .par = (const uint32_t[]){false, true},
-        .windowed_register_op = 0x2,
+        .op_flags = XTENSA_OP_LOAD,
         .coprocessor = 0x1,
     }, {
         .name = "lsx",
         .translate = translate_ldstx,
         .par = (const uint32_t[]){false, false},
-        .windowed_register_op = 0x6,
+        .op_flags = XTENSA_OP_LOAD,
         .coprocessor = 0x1,
     }, {
         .name = "lsxu",
         .translate = translate_ldstx,
         .par = (const uint32_t[]){false, true},
-        .windowed_register_op = 0x6,
+        .op_flags = XTENSA_OP_LOAD,
         .coprocessor = 0x1,
     }, {
         .name = "madd.s",
@@ -5585,7 +6507,6 @@ static const XtensaOpcodeOps fpu2000_ops[] = {
         .name = "moveqz.s",
         .translate = translate_movcond_s,
         .par = (const uint32_t[]){TCG_COND_EQ},
-        .windowed_register_op = 0x4,
         .coprocessor = 0x1,
     }, {
         .name = "movf.s",
@@ -5596,19 +6517,16 @@ static const XtensaOpcodeOps fpu2000_ops[] = {
         .name = "movgez.s",
         .translate = translate_movcond_s,
         .par = (const uint32_t[]){TCG_COND_GE},
-        .windowed_register_op = 0x4,
         .coprocessor = 0x1,
     }, {
         .name = "movltz.s",
         .translate = translate_movcond_s,
         .par = (const uint32_t[]){TCG_COND_LT},
-        .windowed_register_op = 0x4,
         .coprocessor = 0x1,
     }, {
         .name = "movnez.s",
         .translate = translate_movcond_s,
         .par = (const uint32_t[]){TCG_COND_NE},
-        .windowed_register_op = 0x4,
         .coprocessor = 0x1,
     }, {
         .name = "movt.s",
@@ -5645,37 +6563,35 @@ static const XtensaOpcodeOps fpu2000_ops[] = {
     }, {
         .name = "rfr",
         .translate = translate_rfr_s,
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "round.s",
         .translate = translate_ftoi_s,
         .par = (const uint32_t[]){float_round_nearest_even, false},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "ssi",
         .translate = translate_ldsti,
         .par = (const uint32_t[]){true, false},
-        .windowed_register_op = 0x2,
+        .op_flags = XTENSA_OP_STORE,
         .coprocessor = 0x1,
     }, {
         .name = "ssiu",
         .translate = translate_ldsti,
         .par = (const uint32_t[]){true, true},
-        .windowed_register_op = 0x2,
+        .op_flags = XTENSA_OP_STORE,
         .coprocessor = 0x1,
     }, {
         .name = "ssx",
         .translate = translate_ldstx,
         .par = (const uint32_t[]){true, false},
-        .windowed_register_op = 0x6,
+        .op_flags = XTENSA_OP_STORE,
         .coprocessor = 0x1,
     }, {
         .name = "ssxu",
         .translate = translate_ldstx,
         .par = (const uint32_t[]){true, true},
-        .windowed_register_op = 0x6,
+        .op_flags = XTENSA_OP_STORE,
         .coprocessor = 0x1,
     }, {
         .name = "sub.s",
@@ -5685,7 +6601,6 @@ static const XtensaOpcodeOps fpu2000_ops[] = {
         .name = "trunc.s",
         .translate = translate_ftoi_s,
         .par = (const uint32_t[]){float_round_to_zero, false},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "ueq.s",
@@ -5696,7 +6611,6 @@ static const XtensaOpcodeOps fpu2000_ops[] = {
         .name = "ufloat.s",
         .translate = translate_float_s,
         .par = (const uint32_t[]){true},
-        .windowed_register_op = 0x2,
         .coprocessor = 0x1,
     }, {
         .name = "ule.s",
@@ -5717,12 +6631,10 @@ static const XtensaOpcodeOps fpu2000_ops[] = {
         .name = "utrunc.s",
         .translate = translate_ftoi_s,
         .par = (const uint32_t[]){float_round_to_zero, true},
-        .windowed_register_op = 0x1,
         .coprocessor = 0x1,
     }, {
         .name = "wfr",
         .translate = translate_wfr_s,
-        .windowed_register_op = 0x2,
         .coprocessor = 0x1,
     },
 };

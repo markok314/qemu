@@ -13,8 +13,9 @@
 #ifndef MEMORY_DEVICE_H
 #define MEMORY_DEVICE_H
 
+#include "hw/qdev-core.h"
+#include "qapi/qapi-types-misc.h"
 #include "qom/object.h"
-#include "hw/qdev.h"
 
 #define TYPE_MEMORY_DEVICE "memory-device"
 
@@ -25,9 +26,7 @@
 #define MEMORY_DEVICE(obj) \
      INTERFACE_CHECK(MemoryDeviceState, (obj), TYPE_MEMORY_DEVICE)
 
-typedef struct MemoryDeviceState {
-    Object parent_obj;
-} MemoryDeviceState;
+typedef struct MemoryDeviceState MemoryDeviceState;
 
 /**
  * MemoryDeviceClass:

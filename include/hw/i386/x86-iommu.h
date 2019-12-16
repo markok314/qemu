@@ -17,8 +17,8 @@
  * with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef IOMMU_COMMON_H
-#define IOMMU_COMMON_H
+#ifndef HW_I386_X86_IOMMU_H
+#define HW_I386_X86_IOMMU_H
 
 #include "hw/sysbus.h"
 #include "hw/pci/pci.h"
@@ -74,12 +74,14 @@ typedef struct IEC_Notifier IEC_Notifier;
 
 struct X86IOMMUState {
     SysBusDevice busdev;
-    bool intr_supported;        /* Whether vIOMMU supports IR */
+    OnOffAuto intr_supported;   /* Whether vIOMMU supports IR */
     bool dt_supported;          /* Whether vIOMMU supports DT */
     bool pt_supported;          /* Whether vIOMMU supports pass-through */
     IommuType type;             /* IOMMU type - AMD/Intel     */
     QLIST_HEAD(, IEC_Notifier) iec_notifiers; /* IEC notify list */
 };
+
+bool x86_iommu_ir_supported(X86IOMMUState *s);
 
 /* Generic IRQ entry information when interrupt remapping is enabled */
 struct X86IOMMUIrq {

@@ -23,7 +23,7 @@
 
 void cpu_loop(CPUNios2State *env)
 {
-    CPUState *cs = ENV_GET_CPU(env);
+    CPUState *cs = env_cpu(env);
     Nios2CPU *cpu = NIOS2_CPU(cs);
     target_siginfo_t info;
     int trapnr, ret;
@@ -73,6 +73,12 @@ void cpu_loop(CPUNios2State *env)
                 queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
                 break;
             }
+        case EXCP_DEBUG:
+            info.si_signo = TARGET_SIGTRAP;
+            info.si_errno = 0;
+            info.si_code = TARGET_TRAP_BRKPT;
+            queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
+            break;
         case 0xaa:
             switch (env->regs[R_PC]) {
             /*case 0x1000:*/  /* TODO:__kuser_helper_version */

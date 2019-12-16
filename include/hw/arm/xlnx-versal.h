@@ -13,7 +13,7 @@
 #define XLNX_VERSAL_H
 
 #include "hw/sysbus.h"
-#include "hw/arm/arm.h"
+#include "hw/arm/boot.h"
 #include "hw/intc/arm_gicv3.h"
 
 #define TYPE_XLNX_VERSAL "xlnx-versal"
@@ -22,7 +22,7 @@
 #define XLNX_VERSAL_NR_ACPUS   2
 #define XLNX_VERSAL_NR_UARTS   2
 #define XLNX_VERSAL_NR_GEMS    2
-#define XLNX_VERSAL_NR_IRQS    256
+#define XLNX_VERSAL_NR_IRQS    192
 
 typedef struct Versal {
     /*< private >*/
@@ -75,9 +75,9 @@ typedef struct Versal {
 #define VERSAL_GEM1_IRQ_0          58
 #define VERSAL_GEM1_WAKE_IRQ_0     59
 
-/* Architecturally eserved IRQs suitable for virtualization.  */
-#define VERSAL_RSVD_HIGH_IRQ_FIRST 160
-#define VERSAL_RSVD_HIGH_IRQ_LAST  255
+/* Architecturally reserved IRQs suitable for virtualization.  */
+#define VERSAL_RSVD_IRQ_FIRST 111
+#define VERSAL_RSVD_IRQ_LAST  118
 
 #define MM_TOP_RSVD                 0xa0000000U
 #define MM_TOP_RSVD_SIZE            0x4000000
@@ -119,4 +119,7 @@ typedef struct Versal {
 #define MM_IOU_SCNTRS_SIZE          0x10000
 #define MM_FPD_CRF                  0xfd1a0000U
 #define MM_FPD_CRF_SIZE             0x140000
+
+#define MM_PMC_CRP                  0xf1260000U
+#define MM_PMC_CRP_SIZE             0x10000
 #endif

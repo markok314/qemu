@@ -26,7 +26,6 @@
 #include "qemu/osdep.h"
 
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "qemu/error-report.h"
 #include "qapi/qmp/qbool.h"
 #include "qapi/qmp/qdict.h"
@@ -280,7 +279,7 @@ QemuOpt *qemu_opt_find(QemuOpts *opts, const char *name)
 {
     QemuOpt *opt;
 
-    QTAILQ_FOREACH_REVERSE(opt, &opts->head, QemuOptHead, next) {
+    QTAILQ_FOREACH_REVERSE(opt, &opts->head, next) {
         if (strcmp(opt->name, name) != 0)
             continue;
         return opt;
@@ -379,7 +378,7 @@ bool qemu_opt_has_help_opt(QemuOpts *opts)
 {
     QemuOpt *opt;
 
-    QTAILQ_FOREACH_REVERSE(opt, &opts->head, QemuOptHead, next) {
+    QTAILQ_FOREACH_REVERSE(opt, &opts->head, next) {
         if (is_help_option(opt->name)) {
             return true;
         }

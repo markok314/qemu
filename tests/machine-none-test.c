@@ -36,9 +36,9 @@ static struct arch2cpu cpus_map[] = {
     /* FIXME: { "microblaze", "any" }, doesn't work with -M none -cpu any */
     /* FIXME: { "microblazeel", "any" }, doesn't work with -M none -cpu any */
     { "mips", "4Kc" },
-    { "mipsel", "4Kc" },
+    { "mipsel", "I7200" },
     { "mips64", "20Kc" },
-    { "mips64el", "20Kc" },
+    { "mips64el", "I6500" },
     { "moxie", "MoxieLite" },
     { "nios2", "FIXME" },
     { "or1k", "or1200" },
@@ -75,6 +75,7 @@ static void test_machine_cpu_cli(void)
     QDict *response;
     const char *arch = qtest_get_arch();
     const char *cpu_model = get_cpu_model_by_arch(arch);
+    QTestState *qts;
 
     if (!cpu_model) {
         if (!(!strcmp(arch, "microblaze") || !strcmp(arch, "microblazeel"))) {
@@ -83,13 +84,13 @@ static void test_machine_cpu_cli(void)
         }
         return; /* TODO: die here to force all targets have a test */
     }
-    global_qtest = qtest_initf("-machine none -cpu '%s'", cpu_model);
+    qts = qtest_initf("-machine none -cpu '%s'", cpu_model);
 
-    response = qmp("{ 'execute': 'quit' }");
+    response = qtest_qmp(qts, "{ 'execute': 'quit' }");
     g_assert(qdict_haskey(response, "return"));
     qobject_unref(response);
 
-    qtest_quit(global_qtest);
+    qtest_quit(qts);
 }
 
 int main(int argc, char **argv)

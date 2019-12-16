@@ -17,7 +17,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>
  */
 #include "qemu/osdep.h"
-#include "qemu-common.h"
 #include "cpu.h"
 #include "qemu/thread.h"
 #include "hw/i386/apic_internal.h"
@@ -122,9 +121,10 @@ static void apic_sync_vapic(APICCommonState *s, int sync_type)
         }
         vapic_state.irr = vector & 0xff;
 
-        cpu_physical_memory_write_rom(&address_space_memory,
-                                      s->vapic_paddr + start,
-                                      ((void *)&vapic_state) + start, length);
+        address_space_write_rom(&address_space_memory,
+                                s->vapic_paddr + start,
+                                MEMTXATTRS_UNSPECIFIED,
+                                ((void *)&vapic_state) + start, length);
     }
 }
 
@@ -441,7 +441,7 @@ static int apic_find_dest(uint8_t dest)
 
     for (i = 0; i < MAX_APICS; i++) {
         apic = local_apics[i];
-	if (apic && apic->id == dest)
+        if (apic && apic->id == dest)
             return i;
         if (!apic)
             break;
@@ -610,7 +610,7 @@ int apic_accept_pic_intr(DeviceState *dev)
 
     if ((s->apicbase & MSR_IA32_APICBASE_ENABLE) == 0 ||
         (lvt0 & APIC_LVT_MASKED) == 0)
-        return 1;
+        return isa_pic != NULL;
 
     return 0;
 }

@@ -21,7 +21,7 @@
 
 #ifndef INTEL_IOMMU_H
 #define INTEL_IOMMU_H
-#include "hw/qdev.h"
+
 #include "sysemu/dma.h"
 #include "hw/i386/x86-iommu.h"
 #include "hw/i386/ioapic.h"
@@ -66,11 +66,20 @@ typedef struct VTDIOTLBEntry VTDIOTLBEntry;
 typedef struct VTDBus VTDBus;
 typedef union VTD_IR_TableEntry VTD_IR_TableEntry;
 typedef union VTD_IR_MSIAddress VTD_IR_MSIAddress;
+typedef struct VTDPASIDDirEntry VTDPASIDDirEntry;
+typedef struct VTDPASIDEntry VTDPASIDEntry;
 
 /* Context-Entry */
 struct VTDContextEntry {
-    uint64_t lo;
-    uint64_t hi;
+    union {
+        struct {
+            uint64_t lo;
+            uint64_t hi;
+        };
+        struct {
+            uint64_t val[4];
+        };
+    };
 };
 
 struct VTDContextCacheEntry {
@@ -81,13 +90,23 @@ struct VTDContextCacheEntry {
     struct VTDContextEntry context_entry;
 };
 
+/* PASID Directory Entry */
+struct VTDPASIDDirEntry {
+    uint64_t val;
+};
+
+/* PASID Table Entry */
+struct VTDPASIDEntry {
+    uint64_t val[8];
+};
+
 struct VTDAddressSpace {
     PCIBus *bus;
     uint8_t devfn;
     AddressSpace as;
     IOMMUMemoryRegion iommu;
-    MemoryRegion root;
-    MemoryRegion sys_alias;
+    MemoryRegion root;          /* The root container of the device */
+    MemoryRegion nodmar;        /* The alias of shared nodmar MR */
     MemoryRegion iommu_ir;      /* Interrupt region: 0xfeeXXXXX */
     IntelIOMMUState *iommu_state;
     VTDContextCacheEntry context_cache_entry;
@@ -202,22 +221,27 @@ union VTD_IR_MSIAddress {
 struct IntelIOMMUState {
     X86IOMMUState x86_iommu;
     MemoryRegion csrmem;
+    MemoryRegion mr_nodmar;
+    MemoryRegion mr_ir;
+    MemoryRegion mr_sys_alias;
     uint8_t csr[DMAR_REG_SIZE];     /* register values */
     uint8_t wmask[DMAR_REG_SIZE];   /* R/W bytes */
     uint8_t w1cmask[DMAR_REG_SIZE]; /* RW1C(Write 1 to Clear) bytes */
     uint8_t womask[DMAR_REG_SIZE];  /* WO (write only - read returns 0) */
     uint32_t version;
 
-    bool caching_mode;          /* RO - is cap CM enabled? */
+    bool caching_mode;              /* RO - is cap CM enabled? */
+    bool scalable_mode;             /* RO - is Scalable Mode supported? */
 
     dma_addr_t root;                /* Current root table pointer */
-    bool root_extended;             /* Type of root table (extended or not) */
+    bool root_scalable;             /* Type of root table (scalable or not) */
     bool dmar_enabled;              /* Set if DMA remapping is enabled */
 
     uint16_t iq_head;               /* Current invalidation queue head */
     uint16_t iq_tail;               /* Current invalidation queue tail */
     dma_addr_t iq;                  /* Current invalidation queue pointer */
     uint16_t iq_size;               /* IQ Size in number of entries */
+    bool iq_dw;                     /* IQ descriptor width 256bit or not */
     bool qi_enabled;                /* Set if the QI is enabled */
     uint8_t iq_last_desc_type;      /* The type of last completed descriptor */
 
@@ -245,6 +269,7 @@ struct IntelIOMMUState {
     OnOffAuto intr_eim;             /* Toggle for EIM cabability */
     bool buggy_eim;                 /* Force buggy EIM unless eim=off */
     uint8_t aw_bits;                /* Host/IOVA address width (in bits) */
+    bool dma_drain;                 /* Whether DMA r/w draining enabled */
 
     /*
      * Protects IOMMU states in general.  Currently it protects the

@@ -183,8 +183,7 @@ another to load the state back.
 
 .. code:: c
 
-  int register_savevm_live(DeviceState *dev,
-                           const char *idstr,
+  int register_savevm_live(const char *idstr,
                            int instance_id,
                            int version_id,
                            SaveVMHandlers *ops,
@@ -314,7 +313,7 @@ For example:
 
    a) Add a new property using ``DEFINE_PROP_BOOL`` - e.g. support-foo and
       default it to true.
-   b) Add an entry to the ``HW_COMPAT_`` for the previous version that sets
+   b) Add an entry to the ``hw_compat_`` for the previous version that sets
       the property to false.
    c) Add a static bool  support_foo function that tests the property.
    d) Add a subsection with a .needed set to the support_foo function
@@ -419,8 +418,13 @@ The functions to do that are inside a vmstate definition, and are called:
 
   This function is called before we save the state of one device.
 
-Example: You can look at hpet.c, that uses the three function to
-massage the state that is transferred.
+- ``int (*post_save)(void *opaque);``
+
+  This function is called after we save the state of one device
+  (even upon failure, unless the call to pre_save returned an error).
+
+Example: You can look at hpet.c, that uses the first three functions
+to massage the state that is transferred.
 
 The ``VMSTATE_WITH_TMP`` macro may be useful when the migration
 data doesn't match the stored device data well; it allows an

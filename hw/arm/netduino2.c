@@ -25,12 +25,14 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "hw/boards.h"
-#include "hw/loader.h"
-#include "qemu/error-report.h"
-#include "hw/arm/stm32f205_soc.h"
-#include "hw/arm/arm.h"
-#include "qemu/soc-options.h"
+// MK #include "hw/loader.h"
+// MK #include "hw/arm/arm.h"
+// #include "qemu/soc-options.h"
 
+// 420 #include "hw/qdev-properties.h"
+// 420 #include "qemu/error-report.h"
+#include "hw/arm/stm32f205_soc.h"
+// 420 #include "hw/arm/boot.h"
 
 static void netduino2_init(MachineState *machine)
 {

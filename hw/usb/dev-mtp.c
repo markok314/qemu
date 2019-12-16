@@ -10,21 +10,24 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu-common.h"
 #include "qapi/error.h"
+#include "qemu/error-report.h"
 #include <wchar.h>
 #include <dirent.h>
 
 #include <sys/statvfs.h>
-#ifdef CONFIG_INOTIFY1
-#include <sys/inotify.h>
-#include "qemu/main-loop.h"
-#endif
 
-#include "qemu-common.h"
+
 #include "qemu/iov.h"
+#include "qemu/module.h"
+#include "qemu/filemonitor.h"
 #include "trace.h"
+#include "hw/qdev-properties.h"
 #include "hw/usb.h"
+#include "migration/vmstate.h"
 #include "desc.h"
+#include "qemu/units.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -33,6 +36,13 @@ enum mtp_container_type {
     TYPE_DATA     = 2,
     TYPE_RESPONSE = 3,
     TYPE_EVENT    = 4,
+};
+
+/* MTP write stage, for internal use only */
+enum mtp_write_status {
+    WRITE_START    = 1,
+    WRITE_CONTINUE = 2,
+    WRITE_END      = 3,
 };
 
 enum mtp_code {
@@ -124,7 +134,6 @@ enum {
     EP_EVENT,
 };
 
-#ifdef CONFIG_INOTIFY1
 typedef struct MTPMonEntry MTPMonEntry;
 
 struct MTPMonEntry {
@@ -133,7 +142,6 @@ struct MTPMonEntry {
 
     QTAILQ_ENTRY(MTPMonEntry) next;
 };
-#endif
 
 struct MTPControl {
     uint16_t     code;
@@ -152,8 +160,10 @@ struct MTPData {
     bool         first;
     /* Used for >4G file sizes */
     bool         pending;
-    uint64_t     cached_length;
     int          fd;
+    uint8_t      write_status;
+    /* Internal pointer per every MTP_WRITE_BUF_SZ */
+    uint64_t     data_offset;
 };
 
 struct MTPObject {
@@ -162,10 +172,8 @@ struct MTPObject {
     char         *name;
     char         *path;
     struct stat  stat;
-#ifdef CONFIG_INOTIFY1
-    /* inotify watch cookie */
-    int          watchfd;
-#endif
+    /* file monitor watch id */
+    int64_t      watchid;
     MTPObject    *parent;
     uint32_t     nchildren;
     QLIST_HEAD(, MTPObject) children;
@@ -188,11 +196,8 @@ struct MTPState {
     bool         readonly;
 
     QTAILQ_HEAD(, MTPObject) objects;
-#ifdef CONFIG_INOTIFY1
-    /* inotify descriptor */
-    int          inotifyfd;
-    QTAILQ_HEAD(events, MTPMonEntry) events;
-#endif
+    QFileMonitor *file_monitor;
+    QTAILQ_HEAD(, MTPMonEntry) events;
     /* Responder is expecting a write operation */
     bool write_pending;
     struct {
@@ -224,7 +229,7 @@ typedef struct {
     uint32_t assoc_desc;
     uint32_t seq_no; /*unused*/
     uint8_t length; /*part of filename field*/
-    uint16_t filename[0];
+    uint8_t filename[0]; /* UTF-16 encoded */
     char date_created[0]; /*unused*/
     char date_modified[0]; /*unused*/
     char keywords[0]; /*unused*/
@@ -244,6 +249,7 @@ typedef struct {
 
 #define MTP_MANUFACTURER  "QEMU"
 #define MTP_PRODUCT       "QEMU filesharing"
+#define MTP_WRITE_BUF_SZ  (512 * KiB)
 
 enum {
     STR_MANUFACTURER = 1,
@@ -372,7 +378,7 @@ static const USBDesc desc = {
 /* ----------------------------------------------------------------------- */
 
 static MTPObject *usb_mtp_object_alloc(MTPState *s, uint32_t handle,
-                                       MTPObject *parent, char *name)
+                                       MTPObject *parent, const char *name)
 {
     MTPObject *o = g_new0(MTPObject, 1);
 
@@ -380,6 +386,7 @@ static MTPObject *usb_mtp_object_alloc(MTPState *s, uint32_t handle,
         goto ignore;
     }
 
+    o->watchid = -1;
     o->handle = handle;
     o->parent = parent;
     o->name = g_strdup(name);
@@ -426,6 +433,10 @@ static void usb_mtp_object_free(MTPState *s, MTPObject *o)
 
     trace_usb_mtp_object_free(s->dev.addr, o->handle, o->path);
 
+    if (o->watchid != -1 && s->file_monitor) {
+        qemu_file_monitor_remove_watch(s->file_monitor, o->path, o->watchid);
+    }
+
     QTAILQ_REMOVE(&s->objects, o, next);
     if (o->parent) {
         QLIST_REMOVE(o, list);
@@ -454,7 +465,7 @@ static MTPObject *usb_mtp_object_lookup(MTPState *s, uint32_t handle)
 }
 
 static MTPObject *usb_mtp_add_child(MTPState *s, MTPObject *o,
-                                    char *name)
+                                    const char *name)
 {
     MTPObject *child =
         usb_mtp_object_alloc(s, s->next_handle++, o, name);
@@ -473,9 +484,13 @@ static MTPObject *usb_mtp_add_child(MTPState *s, MTPObject *o,
 }
 
 static MTPObject *usb_mtp_object_lookup_name(MTPObject *parent,
-                                             char *name, int len)
+                                             const char *name, int len)
 {
     MTPObject *iter;
+
+    if (len == -1) {
+        len = strlen(name);
+    }
 
     QLIST_FOREACH(iter, &parent->children, list) {
         if (strncmp(iter->name, name, len) == 0) {
@@ -486,13 +501,12 @@ static MTPObject *usb_mtp_object_lookup_name(MTPObject *parent,
     return NULL;
 }
 
-#ifdef CONFIG_INOTIFY1
-static MTPObject *usb_mtp_object_lookup_wd(MTPState *s, int wd)
+static MTPObject *usb_mtp_object_lookup_id(MTPState *s, int64_t id)
 {
     MTPObject *iter;
 
     QTAILQ_FOREACH(iter, &s->objects, next) {
-        if (iter->watchfd == wd) {
+        if (iter->watchid == id) {
             return iter;
         }
     }
@@ -500,179 +514,133 @@ static MTPObject *usb_mtp_object_lookup_wd(MTPState *s, int wd)
     return NULL;
 }
 
-static void inotify_watchfn(void *arg)
+static void file_monitor_event(int64_t id,
+                               QFileMonitorEvent ev,
+                               const char *name,
+                               void *opaque)
 {
-    MTPState *s = arg;
-    ssize_t bytes;
-    /* From the man page: atleast one event can be read */
-    int pos;
-    char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+    MTPState *s = opaque;
+    MTPObject *parent = usb_mtp_object_lookup_id(s, id);
+    MTPMonEntry *entry = NULL;
+    MTPObject *o;
 
-    for (;;) {
-        bytes = read(s->inotifyfd, buf, sizeof(buf));
-        pos = 0;
-
-        if (bytes <= 0) {
-            /* Better luck next time */
-            return;
-        }
-
-        /*
-         * TODO: Ignore initiator initiated events.
-         * For now we are good because the store is RO
-         */
-        while (bytes > 0) {
-            char *p = buf + pos;
-            struct inotify_event *event = (struct inotify_event *)p;
-            int watchfd = 0;
-            uint32_t mask = event->mask & (IN_CREATE | IN_DELETE |
-                                           IN_MODIFY | IN_IGNORED);
-            MTPObject *parent = usb_mtp_object_lookup_wd(s, event->wd);
-            MTPMonEntry *entry = NULL;
-            MTPObject *o;
-
-            pos = pos + sizeof(struct inotify_event) + event->len;
-            bytes = bytes - pos;
-
-            if (!parent) {
-                continue;
-            }
-
-            switch (mask) {
-            case IN_CREATE:
-                if (usb_mtp_object_lookup_name
-                    (parent, event->name, event->len)) {
-                    /* Duplicate create event */
-                    continue;
-                }
-                entry = g_new0(MTPMonEntry, 1);
-                entry->handle = s->next_handle;
-                entry->event = EVT_OBJ_ADDED;
-                o = usb_mtp_add_child(s, parent, event->name);
-                if (!o) {
-                    g_free(entry);
-                    continue;
-                }
-                o->watchfd = watchfd;
-                trace_usb_mtp_inotify_event(s->dev.addr, event->name,
-                                            event->mask, "Obj Added");
-                break;
-
-            case IN_DELETE:
-                /*
-                 * The kernel issues a IN_IGNORED event
-                 * when a dir containing a watchpoint is
-                 * deleted, so we don't have to delete the
-                 * watchpoint
-                 */
-                o = usb_mtp_object_lookup_name(parent, event->name, event->len);
-                if (!o) {
-                    continue;
-                }
-                entry = g_new0(MTPMonEntry, 1);
-                entry->handle = o->handle;
-                entry->event = EVT_OBJ_REMOVED;
-                trace_usb_mtp_inotify_event(s->dev.addr, o->path,
-                                      event->mask, "Obj Deleted");
-                usb_mtp_object_free(s, o);
-                break;
-
-            case IN_MODIFY:
-                o = usb_mtp_object_lookup_name(parent, event->name, event->len);
-                if (!o) {
-                    continue;
-                }
-                entry = g_new0(MTPMonEntry, 1);
-                entry->handle = o->handle;
-                entry->event = EVT_OBJ_INFO_CHANGED;
-                trace_usb_mtp_inotify_event(s->dev.addr, o->path,
-                                      event->mask, "Obj Modified");
-                break;
-
-            case IN_IGNORED:
-                trace_usb_mtp_inotify_event(s->dev.addr, parent->path,
-                                      event->mask, "Obj parent dir ignored");
-                break;
-
-            default:
-                fprintf(stderr, "usb-mtp: failed to parse inotify event\n");
-                continue;
-            }
-
-            if (entry) {
-                QTAILQ_INSERT_HEAD(&s->events, entry, next);
-            }
-        }
-    }
-}
-
-static int usb_mtp_inotify_init(MTPState *s)
-{
-    int fd;
-
-    fd = inotify_init1(IN_NONBLOCK);
-    if (fd == -1) {
-        return 1;
-    }
-
-    QTAILQ_INIT(&s->events);
-    s->inotifyfd = fd;
-
-    qemu_set_fd_handler(fd, inotify_watchfn, NULL, s);
-
-    return 0;
-}
-
-static void usb_mtp_inotify_cleanup(MTPState *s)
-{
-    MTPMonEntry *e, *p;
-
-    if (!s->inotifyfd) {
+    if (!parent) {
         return;
     }
 
-    qemu_set_fd_handler(s->inotifyfd, NULL, NULL, s);
-    close(s->inotifyfd);
+    switch (ev) {
+    case QFILE_MONITOR_EVENT_CREATED:
+        if (usb_mtp_object_lookup_name(parent, name, -1)) {
+            /* Duplicate create event */
+            return;
+        }
+        entry = g_new0(MTPMonEntry, 1);
+        entry->handle = s->next_handle;
+        entry->event = EVT_OBJ_ADDED;
+        o = usb_mtp_add_child(s, parent, name);
+        if (!o) {
+            g_free(entry);
+            return;
+        }
+        trace_usb_mtp_file_monitor_event(s->dev.addr, name, "Obj Added");
+        break;
+
+    case QFILE_MONITOR_EVENT_DELETED:
+        /*
+         * The kernel issues a IN_IGNORED event
+         * when a dir containing a watchpoint is
+         * deleted, so we don't have to delete the
+         * watchpoint
+         */
+        o = usb_mtp_object_lookup_name(parent, name, -1);
+        if (!o) {
+            return;
+        }
+        entry = g_new0(MTPMonEntry, 1);
+        entry->handle = o->handle;
+        entry->event = EVT_OBJ_REMOVED;
+        trace_usb_mtp_file_monitor_event(s->dev.addr, o->path, "Obj Deleted");
+        usb_mtp_object_free(s, o);
+        break;
+
+    case QFILE_MONITOR_EVENT_MODIFIED:
+        o = usb_mtp_object_lookup_name(parent, name, -1);
+        if (!o) {
+            return;
+        }
+        entry = g_new0(MTPMonEntry, 1);
+        entry->handle = o->handle;
+        entry->event = EVT_OBJ_INFO_CHANGED;
+        trace_usb_mtp_file_monitor_event(s->dev.addr, o->path, "Obj Modified");
+        break;
+
+    case QFILE_MONITOR_EVENT_IGNORED:
+        trace_usb_mtp_file_monitor_event(s->dev.addr, parent->path,
+                                    "Obj parent dir ignored");
+        break;
+
+    case QFILE_MONITOR_EVENT_ATTRIBUTES:
+        break;
+
+    default:
+        g_assert_not_reached();
+    }
+
+    if (entry) {
+        QTAILQ_INSERT_HEAD(&s->events, entry, next);
+    }
+}
+
+static void usb_mtp_file_monitor_cleanup(MTPState *s)
+{
+    MTPMonEntry *e, *p;
 
     QTAILQ_FOREACH_SAFE(e, &s->events, next, p) {
         QTAILQ_REMOVE(&s->events, e, next);
         g_free(e);
     }
+
+    qemu_file_monitor_free(s->file_monitor);
+    s->file_monitor = NULL;
 }
 
-static int usb_mtp_add_watch(int inotifyfd, char *path)
-{
-    uint32_t mask = IN_CREATE | IN_DELETE | IN_MODIFY |
-        IN_ISDIR;
-
-    return inotify_add_watch(inotifyfd, path, mask);
-}
-#endif
 
 static void usb_mtp_object_readdir(MTPState *s, MTPObject *o)
 {
     struct dirent *entry;
     DIR *dir;
+    int fd;
+    Error *err = NULL;
 
     if (o->have_children) {
         return;
     }
     o->have_children = true;
 
-    dir = opendir(o->path);
-    if (!dir) {
+    fd = open(o->path, O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) {
         return;
     }
-#ifdef CONFIG_INOTIFY1
-    int watchfd = usb_mtp_add_watch(s->inotifyfd, o->path);
-    if (watchfd == -1) {
-        fprintf(stderr, "usb-mtp: failed to add watch for %s\n", o->path);
-    } else {
-        trace_usb_mtp_inotify_event(s->dev.addr, o->path,
-                                    0, "Watch Added");
-        o->watchfd = watchfd;
+    dir = fdopendir(fd);
+    if (!dir) {
+        close(fd);
+        return;
     }
-#endif
+
+    if (s->file_monitor) {
+        int64_t id = qemu_file_monitor_add_watch(s->file_monitor, o->path, NULL,
+                                                 file_monitor_event, s, &err);
+        if (id == -1) {
+            error_report("usb-mtp: failed to add watch for %s: %s", o->path,
+                         error_get_pretty(err));
+            error_free(err);
+        } else {
+            trace_usb_mtp_file_monitor_event(s->dev.addr, o->path,
+                                             "Watch Added");
+            o->watchid = id;
+        }
+    }
+
     while ((entry = readdir(dir)) != NULL) {
         usb_mtp_add_child(s, o, entry->d_name);
     }
@@ -1007,7 +975,7 @@ static MTPData *usb_mtp_get_object(MTPState *s, MTPControl *c,
 
     trace_usb_mtp_op_get_object(s->dev.addr, o->handle, o->path);
 
-    d->fd = open(o->path, O_RDONLY);
+    d->fd = open(o->path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
     if (d->fd == -1) {
         usb_mtp_data_free(d);
         return NULL;
@@ -1031,7 +999,7 @@ static MTPData *usb_mtp_get_partial_object(MTPState *s, MTPControl *c,
                                         c->argv[1], c->argv[2]);
 
     d = usb_mtp_data_alloc(c);
-    d->fd = open(o->path, O_RDONLY);
+    d->fd = open(o->path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
     if (d->fd == -1) {
         usb_mtp_data_free(d);
         return NULL;
@@ -1170,30 +1138,25 @@ static MTPData *usb_mtp_get_object_prop_value(MTPState *s, MTPControl *c,
     return d;
 }
 
-/* Return correct return code for a delete event */
+/*
+ * Return values when object @o is deleted.
+ * If at least one of the deletions succeeded,
+ * DELETE_SUCCESS is set and if at least one
+ * of the deletions failed, DELETE_FAILURE is
+ * set. Both bits being set (DELETE_PARTIAL)
+ * signifies a  RES_PARTIAL_DELETE being sent
+ * back to the initiator.
+ */
 enum {
-    ALL_DELETE,
-    PARTIAL_DELETE,
-    READ_ONLY,
+    DELETE_SUCCESS = (1 << 0),
+    DELETE_FAILURE = (1 << 1),
+    DELETE_PARTIAL = (DELETE_FAILURE | DELETE_SUCCESS),
 };
-
-/* Assumes that children, if any, have been already freed */
-static void usb_mtp_object_free_one(MTPState *s, MTPObject *o)
-{
-#ifndef CONFIG_INOTIFY1
-    assert(o->nchildren == 0);
-    QTAILQ_REMOVE(&s->objects, o, next);
-    g_free(o->name);
-    g_free(o->path);
-    g_free(o);
-#endif
-}
 
 static int usb_mtp_deletefn(MTPState *s, MTPObject *o, uint32_t trans)
 {
     MTPObject *iter, *iter2;
-    bool partial_delete = false;
-    bool success = false;
+    int ret = 0;
 
     /*
      * TODO: Add support for Protection Status
@@ -1202,36 +1165,28 @@ static int usb_mtp_deletefn(MTPState *s, MTPObject *o, uint32_t trans)
     QLIST_FOREACH(iter, &o->children, list) {
         if (iter->format == FMT_ASSOCIATION) {
             QLIST_FOREACH(iter2, &iter->children, list) {
-                usb_mtp_deletefn(s, iter2, trans);
+                ret |= usb_mtp_deletefn(s, iter2, trans);
             }
         }
     }
 
     if (o->format == FMT_UNDEFINED_OBJECT) {
         if (remove(o->path)) {
-            partial_delete = true;
+            ret |= DELETE_FAILURE;
         } else {
-            usb_mtp_object_free_one(s, o);
-            success = true;
+            usb_mtp_object_free(s, o);
+            ret |= DELETE_SUCCESS;
         }
-    }
-
-    if (o->format == FMT_ASSOCIATION) {
+    } else if (o->format == FMT_ASSOCIATION) {
         if (rmdir(o->path)) {
-            partial_delete = true;
+            ret |= DELETE_FAILURE;
         } else {
-            usb_mtp_object_free_one(s, o);
-            success = true;
+            usb_mtp_object_free(s, o);
+            ret |= DELETE_SUCCESS;
         }
     }
 
-    if (success && partial_delete) {
-        return PARTIAL_DELETE;
-    }
-    if (!success && partial_delete) {
-        return READ_ONLY;
-    }
-    return ALL_DELETE;
+    return ret;
 }
 
 static void usb_mtp_object_delete(MTPState *s, uint32_t handle,
@@ -1265,19 +1220,24 @@ static void usb_mtp_object_delete(MTPState *s, uint32_t handle,
     }
 
     ret = usb_mtp_deletefn(s, o, trans);
-    if (ret == PARTIAL_DELETE) {
-        usb_mtp_queue_result(s, RES_PARTIAL_DELETE,
-                             trans, 0, 0, 0, 0);
-        return;
-    } else if (ret == READ_ONLY) {
-        usb_mtp_queue_result(s, RES_STORE_READ_ONLY, trans,
-                             0, 0, 0, 0);
-        return;
-    } else {
+    switch (ret) {
+    case DELETE_SUCCESS:
         usb_mtp_queue_result(s, RES_OK, trans,
                              0, 0, 0, 0);
-        return;
+        break;
+    case DELETE_FAILURE:
+        usb_mtp_queue_result(s, RES_PARTIAL_DELETE,
+                             trans, 0, 0, 0, 0);
+        break;
+    case DELETE_PARTIAL:
+        usb_mtp_queue_result(s, RES_PARTIAL_DELETE,
+                             trans, 0, 0, 0, 0);
+        break;
+    default:
+        g_assert_not_reached();
     }
+
+    return;
 }
 
 static void usb_mtp_command(MTPState *s, MTPControl *c)
@@ -1285,6 +1245,7 @@ static void usb_mtp_command(MTPState *s, MTPControl *c)
     MTPData *data_in = NULL;
     MTPObject *o = NULL;
     uint32_t nres = 0, res0 = 0;
+    Error *err = NULL;
 
     /* sanity checks */
     if (c->code >= CMD_CLOSE_SESSION && s->session == 0) {
@@ -1312,19 +1273,21 @@ static void usb_mtp_command(MTPState *s, MTPControl *c)
         trace_usb_mtp_op_open_session(s->dev.addr);
         s->session = c->argv[0];
         usb_mtp_object_alloc(s, s->next_handle++, NULL, s->root);
-#ifdef CONFIG_INOTIFY1
-        if (usb_mtp_inotify_init(s)) {
-            fprintf(stderr, "usb-mtp: file monitoring init failed\n");
+
+        s->file_monitor = qemu_file_monitor_new(&err);
+        if (err) {
+            error_report("usb-mtp: file monitoring init failed: %s",
+                         error_get_pretty(err));
+            error_free(err);
+        } else {
+            QTAILQ_INIT(&s->events);
         }
-#endif
         break;
     case CMD_CLOSE_SESSION:
         trace_usb_mtp_op_close_session(s->dev.addr);
         s->session = 0;
         s->next_handle = 0;
-#ifdef CONFIG_INOTIFY1
-        usb_mtp_inotify_cleanup(s);
-#endif
+        usb_mtp_file_monitor_cleanup(s);
         usb_mtp_object_free(s, QTAILQ_FIRST(&s->objects));
         assert(QTAILQ_EMPTY(&s->objects));
         break;
@@ -1537,9 +1500,7 @@ static void usb_mtp_handle_reset(USBDevice *dev)
 
     trace_usb_mtp_reset(s->dev.addr);
 
-#ifdef CONFIG_INOTIFY1
-    usb_mtp_inotify_cleanup(s);
-#endif
+    usb_mtp_file_monitor_cleanup(s);
     usb_mtp_object_free(s, QTAILQ_FIRST(&s->objects));
     s->session = 0;
     usb_mtp_data_free(s->data_in);
@@ -1593,7 +1554,7 @@ static void usb_mtp_cancel_packet(USBDevice *dev, USBPacket *p)
     fprintf(stderr, "%s\n", __func__);
 }
 
-static char *utf16_to_str(uint8_t len, uint16_t *arr)
+static char *utf16_to_str(uint8_t len, uint8_t *str16)
 {
     wchar_t *wstr = g_new0(wchar_t, len + 1);
     int count, dlen;
@@ -1601,7 +1562,7 @@ static char *utf16_to_str(uint8_t len, uint16_t *arr)
 
     for (count = 0; count < len; count++) {
         /* FIXME: not working for surrogate pairs */
-        wstr[count] = (wchar_t)arr[count];
+        wstr[count] = lduw_le_p(str16 + (count * 2));
     }
     wstr[count] = 0;
 
@@ -1613,24 +1574,35 @@ static char *utf16_to_str(uint8_t len, uint16_t *arr)
 }
 
 /* Wrapper around write, returns 0 on failure */
-static uint64_t write_retry(int fd, void *buf, uint64_t size)
+static uint64_t write_retry(int fd, void *buf, uint64_t size, off_t offset)
 {
-        uint64_t bytes_left = size, ret;
+        uint64_t ret = 0;
 
-        while (bytes_left > 0) {
-                ret = write(fd, buf, bytes_left);
-                if ((ret == -1) && (errno != EINTR || errno != EAGAIN ||
-                                    errno != EWOULDBLOCK)) {
-                        break;
-                }
-                bytes_left -= ret;
-                buf += ret;
+        if (lseek(fd, offset, SEEK_SET) < 0) {
+            goto done;
         }
 
-        return size - bytes_left;
+        ret = qemu_write_full(fd, buf, size);
+
+done:
+        return ret;
 }
 
-static void usb_mtp_write_data(MTPState *s)
+static int usb_mtp_update_object(MTPObject *parent, char *name)
+{
+    int ret = 0;
+
+    MTPObject *o =
+        usb_mtp_object_lookup_name(parent, name, strlen(name));
+
+    if (o) {
+        ret = lstat(o->path, &o->stat);
+    }
+
+    return ret;
+}
+
+static void usb_mtp_write_data(MTPState *s, uint32_t handle)
 {
     MTPData *d = s->data_out;
     MTPObject *parent =
@@ -1638,74 +1610,99 @@ static void usb_mtp_write_data(MTPState *s)
     char *path = NULL;
     uint64_t rc;
     mode_t mask = 0644;
+    int ret = 0;
 
     assert(d != NULL);
 
-    if (parent == NULL || !s->write_pending) {
-        usb_mtp_queue_result(s, RES_INVALID_OBJECTINFO, d->trans,
-                             0, 0, 0, 0);
-        return;
-    }
-
-    if (s->dataset.filename) {
-        path = g_strdup_printf("%s/%s", parent->path, s->dataset.filename);
-        if (s->dataset.format == FMT_ASSOCIATION) {
-            d->fd = mkdir(path, mask);
-            goto free;
-        }
-        if ((s->dataset.size != 0xFFFFFFFF) && (s->dataset.size < d->length)) {
-            usb_mtp_queue_result(s, RES_STORE_FULL, d->trans,
-                                 0, 0, 0, 0);
-            goto done;
-        }
-        d->fd = open(path, O_CREAT | O_WRONLY, mask);
-        if (d->fd == -1) {
-            usb_mtp_queue_result(s, RES_STORE_FULL, d->trans,
-                                 0, 0, 0, 0);
-            goto done;
+    switch (d->write_status) {
+    case WRITE_START:
+        if (!parent || !s->write_pending) {
+            usb_mtp_queue_result(s, RES_INVALID_OBJECTINFO, d->trans,
+                0, 0, 0, 0);
+            return;
         }
 
-        /*
-         * Return success if initiator sent 0 sized data
-         */
-        if (!s->dataset.size) {
-            goto success;
-        }
-
-        rc = write_retry(d->fd, d->data, d->offset);
-        if (rc != d->offset) {
-            usb_mtp_queue_result(s, RES_STORE_FULL, d->trans,
-                                 0, 0, 0, 0);
-            goto done;
+        if (s->dataset.filename) {
+            path = g_strdup_printf("%s/%s", parent->path, s->dataset.filename);
+            if (s->dataset.format == FMT_ASSOCIATION) {
+                ret = mkdir(path, mask);
+                if (!ret) {
+                    usb_mtp_queue_result(s, RES_OK, d->trans, 3,
+                                         QEMU_STORAGE_ID,
+                                         s->dataset.parent_handle,
+                                         handle);
+                    goto close;
+                }
+                goto done;
             }
-        /* Only for < 4G file sizes */
-        if (s->dataset.size != 0xFFFFFFFF && rc != s->dataset.size) {
-            usb_mtp_queue_result(s, RES_INCOMPLETE_TRANSFER, d->trans,
-                                 0, 0, 0, 0);
+
+            d->fd = open(path, O_CREAT | O_WRONLY |
+                         O_CLOEXEC | O_NOFOLLOW, mask);
+            if (d->fd == -1) {
+                ret = 1;
+                goto done;
+            }
+
+            /* Return success if initiator sent 0 sized data */
+            if (!s->dataset.size) {
+                goto done;
+            }
+            if (d->length != MTP_WRITE_BUF_SZ && !d->pending) {
+                d->write_status = WRITE_END;
+            }
+        }
+        /* fall through */
+    case WRITE_CONTINUE:
+    case WRITE_END:
+        rc = write_retry(d->fd, d->data, d->data_offset,
+                         d->offset - d->data_offset);
+        if (rc != d->data_offset) {
+            ret = 1;
             goto done;
         }
+        if (d->write_status != WRITE_END) {
+            g_free(path);
+            return;
+        } else {
+            /*
+             * Return an incomplete transfer if file size doesn't match
+             * for < 4G file or if lstat fails which will result in an incorrect
+             * file size
+             */
+            if ((s->dataset.size != 0xFFFFFFFF &&
+                 d->offset != s->dataset.size) ||
+                usb_mtp_update_object(parent, s->dataset.filename)) {
+                usb_mtp_queue_result(s, RES_INCOMPLETE_TRANSFER, d->trans,
+                                     0, 0, 0, 0);
+                goto close;
+            }
+        }
     }
-
-success:
-    usb_mtp_queue_result(s, RES_OK, d->trans,
-                         0, 0, 0, 0);
 
 done:
+    if (ret) {
+        usb_mtp_queue_result(s, RES_STORE_FULL, d->trans,
+                             0, 0, 0, 0);
+    } else {
+        usb_mtp_queue_result(s, RES_OK, d->trans,
+                             0, 0, 0, 0);
+    }
+close:
     /*
      * The write dataset is kept around and freed only
      * on success or if another write request comes in
      */
     if (d->fd != -1) {
         close(d->fd);
+        d->fd = -1;
     }
-free:
     g_free(s->dataset.filename);
     s->dataset.size = 0;
     g_free(path);
     s->write_pending = false;
 }
 
-static void usb_mtp_write_metadata(MTPState *s)
+static void usb_mtp_write_metadata(MTPState *s, uint64_t dlen)
 {
     MTPData *d = s->data_out;
     ObjectInfo *dataset = (ObjectInfo *)d->data;
@@ -1713,19 +1710,29 @@ static void usb_mtp_write_metadata(MTPState *s)
     MTPObject *o;
     MTPObject *p = usb_mtp_object_lookup(s, s->dataset.parent_handle);
     uint32_t next_handle = s->next_handle;
+    size_t filename_chars = dlen - offsetof(ObjectInfo, filename);
+
+    /*
+     * filename is utf-16. We're intentionally doing
+     * integer division to truncate if malicious guest
+     * sent an odd number of bytes.
+     */
+    filename_chars /= 2;
 
     assert(!s->write_pending);
     assert(p != NULL);
 
-    filename = utf16_to_str(dataset->length, dataset->filename);
+    filename = utf16_to_str(MIN(dataset->length, filename_chars),
+                            dataset->filename);
 
     if (strchr(filename, '/')) {
         usb_mtp_queue_result(s, RES_PARAMETER_NOT_SUPPORTED, d->trans,
                              0, 0, 0, 0);
+        g_free(filename);
         return;
     }
 
-    o = usb_mtp_object_lookup_name(p, filename, dataset->length);
+    o = usb_mtp_object_lookup_name(p, filename, -1);
     if (o != NULL) {
         next_handle = o->handle;
     }
@@ -1733,22 +1740,14 @@ static void usb_mtp_write_metadata(MTPState *s)
     s->dataset.filename = filename;
     s->dataset.format = dataset->format;
     s->dataset.size = dataset->size;
-    s->dataset.filename = filename;
     s->write_pending = true;
 
     if (s->dataset.format == FMT_ASSOCIATION) {
-        usb_mtp_write_data(s);
-        /* next_handle will be allocated to the newly created dir */
-        if (d->fd == -1) {
-            usb_mtp_queue_result(s, RES_STORE_FULL, d->trans,
-                                 0, 0, 0, 0);
-            return;
-        }
-        d->fd = -1;
+        usb_mtp_write_data(s, next_handle);
+    } else {
+        usb_mtp_queue_result(s, RES_OK, d->trans, 3, QEMU_STORAGE_ID,
+                             s->dataset.parent_handle, next_handle);
     }
-
-    usb_mtp_queue_result(s, RES_OK, d->trans, 3, QEMU_STORAGE_ID,
-                         s->dataset.parent_handle, next_handle);
 }
 
 static void usb_mtp_get_data(MTPState *s, mtp_container *container,
@@ -1769,40 +1768,46 @@ static void usb_mtp_get_data(MTPState *s, mtp_container *container,
         total_len = cpu_to_le32(container->length) - sizeof(mtp_container);
         /* Length of data in this packet */
         data_len -= sizeof(mtp_container);
-        usb_mtp_realloc(d, total_len);
-        d->length += total_len;
+        if (total_len < MTP_WRITE_BUF_SZ) {
+                usb_mtp_realloc(d, total_len);
+                d->length += total_len;
+        } else {
+                usb_mtp_realloc(d, MTP_WRITE_BUF_SZ - sizeof(mtp_container));
+                d->length += MTP_WRITE_BUF_SZ - sizeof(mtp_container);
+        }
         d->offset = 0;
-        d->cached_length = total_len;
         d->first = false;
         d->pending = false;
+        d->data_offset = 0;
+        d->write_status = WRITE_START;
     }
 
     if (d->pending) {
-        usb_mtp_realloc(d, d->cached_length);
-        d->length += d->cached_length;
+        memset(d->data, 0, d->length);
+        if (d->length != MTP_WRITE_BUF_SZ) {
+            usb_mtp_realloc(d, MTP_WRITE_BUF_SZ - d->length);
+            d->length += (MTP_WRITE_BUF_SZ - d->length);
+        }
         d->pending = false;
+        d->write_status = WRITE_CONTINUE;
+        d->data_offset = 0;
     }
 
-    if (d->length - d->offset > data_len) {
+    if (d->length - d->data_offset > data_len) {
         dlen = data_len;
     } else {
-        dlen = d->length - d->offset;
-        /* Check for cached data for large files */
-        if ((s->dataset.size == 0xFFFFFFFF) && (dlen < p->iov.size)) {
-            usb_mtp_realloc(d, p->iov.size - dlen);
-            d->length += p->iov.size - dlen;
-            dlen = p->iov.size;
-        }
+        dlen = d->length - d->data_offset;
     }
 
     switch (d->code) {
     case CMD_SEND_OBJECT_INFO:
-        usb_packet_copy(p, d->data + d->offset, dlen);
+        usb_packet_copy(p, d->data + d->data_offset, dlen);
         d->offset += dlen;
-        if (d->offset == d->length) {
+        d->data_offset += dlen;
+        if (d->data_offset == d->length) {
             /* The operation might have already failed */
             if (!s->result) {
-                usb_mtp_write_metadata(s);
+                usb_mtp_write_metadata(s, dlen);
             }
             usb_mtp_data_free(s->data_out);
             s->data_out = NULL;
@@ -1810,19 +1815,26 @@ static void usb_mtp_get_data(MTPState *s, mtp_container *container,
         }
         break;
     case CMD_SEND_OBJECT:
-        usb_packet_copy(p, d->data + d->offset, dlen);
+        usb_packet_copy(p, d->data + d->data_offset, dlen);
         d->offset += dlen;
+        d->data_offset += dlen;
         if ((p->iov.size % 64) || !p->iov.size) {
             assert((s->dataset.size == 0xFFFFFFFF) ||
-                   (s->dataset.size == d->length));
+                   (s->dataset.size == d->offset));
 
-            usb_mtp_write_data(s);
+            if (d->length == MTP_WRITE_BUF_SZ) {
+                d->write_status = WRITE_END;
+            } else {
+                d->write_status = WRITE_START;
+            }
+            usb_mtp_write_data(s, 0);
             usb_mtp_data_free(s->data_out);
             s->data_out = NULL;
             return;
         }
-        if (d->offset == d->length) {
+        if (d->data_offset == d->length) {
             d->pending = true;
+            usb_mtp_write_data(s, 0);
         }
         break;
     default:
@@ -1980,9 +1992,8 @@ static void usb_mtp_handle_data(USBDevice *dev, USBPacket *p)
         }
         break;
     case EP_EVENT:
-#ifdef CONFIG_INOTIFY1
         if (!QTAILQ_EMPTY(&s->events)) {
-            struct MTPMonEntry *e = QTAILQ_LAST(&s->events, events);
+            struct MTPMonEntry *e = QTAILQ_LAST(&s->events);
             uint32_t handle;
             int len = sizeof(container) + sizeof(uint32_t);
 
@@ -2004,7 +2015,6 @@ static void usb_mtp_handle_data(USBDevice *dev, USBPacket *p)
             g_free(e);
             return;
         }
-#endif
         p->status = USB_RET_NAK;
         return;
     default:
@@ -2028,25 +2038,35 @@ static void usb_mtp_realize(USBDevice *dev, Error **errp)
 {
     MTPState *s = USB_MTP(dev);
 
-    usb_desc_create_serial(dev);
-    usb_desc_init(dev);
-    QTAILQ_INIT(&s->objects);
-    if (s->desc == NULL) {
-        if (s->root == NULL) {
-            error_setg(errp, "usb-mtp: rootdir property must be configured");
-            return;
-        }
-        s->desc = strrchr(s->root, '/');
-        if (s->desc && s->desc[0]) {
-            s->desc = g_strdup(s->desc + 1);
-        } else {
-            s->desc = g_strdup("none");
-        }
+    if ((s->root == NULL) || !g_path_is_absolute(s->root)) {
+        error_setg(errp, "usb-mtp: rootdir must be configured and be an absolute path");
+        return;
     }
+
+    if (access(s->root, R_OK) != 0) {
+        error_setg(errp, "usb-mtp: rootdir does not exist/not readable");
+        return;
+    } else if (!s->readonly && access(s->root, W_OK) != 0) {
+        error_setg(errp, "usb-mtp: rootdir does not have write permissions");
+        return;
+    }
+
     /* Mark store as RW */
     if (!s->readonly) {
         s->flags |= (1 << MTP_FLAG_WRITABLE);
     }
+
+    if (s->desc == NULL) {
+        /*
+         * This does not check if path exists
+         * but we have the checks above
+         */
+        s->desc = g_path_get_basename(s->root);
+    }
+
+    usb_desc_create_serial(dev);
+    usb_desc_init(dev);
+    QTAILQ_INIT(&s->objects);
 
 }
 

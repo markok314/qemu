@@ -24,6 +24,17 @@ static const uint8_t kernel_mcf5208[] = {
     0x60, 0xfa                              /* bra.s  loop */
 };
 
+static const uint8_t bios_nextcube[] = {
+    0x06, 0x00, 0x00, 0x00,                 /* Initial SP */
+    0x01, 0x00, 0x00, 0x08,                 /* Initial PC */
+    0x41, 0xf9, 0x02, 0x11, 0x80, 0x00,     /* lea 0x02118000,%a0 */
+    0x10, 0x3c, 0x00, 0x54,                 /* move.b #'T',%d0 */
+    0x11, 0x7c, 0x00, 0x05, 0x00, 0x01,     /* move.b #5,1(%a0)    Sel TXCTRL */
+    0x11, 0x7c, 0x00, 0x68, 0x00, 0x01,     /* move.b #0x68,1(%a0) Enable TX */
+    0x11, 0x40, 0x00, 0x03,                 /* move.b %d0,3(%a0)   Print 'T' */
+    0x60, 0xfa                              /* bra.s  loop */
+};
+
 static const uint8_t kernel_pls3adsp1800[] = {
     0xb0, 0x00, 0x84, 0x00,                 /* imm   0x8400 */
     0x30, 0x60, 0x00, 0x04,                 /* addik r3,r0,4 */
@@ -100,8 +111,11 @@ static testdef_t tests[] = {
     { "ppc64", "ppce500", "", "U-Boot" },
     { "ppc64", "40p", "-m 192", "Memory: 192M" },
     { "ppc64", "mac99", "", "PowerPC,970FX" },
-    { "ppc64", "pseries", "", "Open Firmware" },
-    { "ppc64", "powernv", "-cpu POWER8", "OPAL" },
+    { "ppc64", "pseries",
+      "-machine cap-cfpc=broken,cap-sbbc=broken,cap-ibs=broken",
+      "Open Firmware" },
+    { "ppc64", "powernv8", "", "OPAL" },
+    { "ppc64", "powernv9", "", "OPAL" },
     { "ppc64", "sam460ex", "-device e1000", "8086  100e" },
     { "i386", "isapc", "-cpu qemu32 -device sga", "SGABIOS" },
     { "i386", "pc", "-device sga", "SGABIOS" },
@@ -112,8 +126,9 @@ static testdef_t tests[] = {
     { "sparc", "SS-4", "", "MB86904" },
     { "sparc", "SS-600MP", "", "TMS390Z55" },
     { "sparc64", "sun4u", "", "UltraSPARC" },
-    { "s390x", "s390-ccw-virtio", "", "virtio device" },
+    { "s390x", "s390-ccw-virtio", "", "device" },
     { "m68k", "mcf5208evb", "", "TT", sizeof(kernel_mcf5208), kernel_mcf5208 },
+    { "m68k", "next-cube", "", "TT", sizeof(bios_nextcube), 0, bios_nextcube },
     { "microblaze", "petalogix-s3adsp1800", "", "TT",
       sizeof(kernel_pls3adsp1800), kernel_pls3adsp1800 },
     { "microblazeel", "petalogix-ml605", "", "TT",
@@ -128,13 +143,14 @@ static testdef_t tests[] = {
     { NULL }
 };
 
-static bool check_guest_output(const testdef_t *test, int fd)
+static bool check_guest_output(QTestState *qts, const testdef_t *test, int fd)
 {
-    int i, nbr = 0, pos = 0, ccnt;
+    int nbr = 0, pos = 0, ccnt;
+    time_t now, start = time(NULL);
     char ch;
 
-    /* Poll serial output... Wait at most 360 seconds */
-    for (i = 0; i < 36000; ++i) {
+    /* Poll serial output... */
+    while (1) {
         ccnt = 0;
         while (ccnt++ < 512 && (nbr = read(fd, &ch, 1)) == 1) {
             if (ch == test->expect[pos]) {
@@ -148,6 +164,15 @@ static bool check_guest_output(const testdef_t *test, int fd)
             }
         }
         g_assert(nbr >= 0);
+        /* Wait only if the child is still alive.  */
+        if (!qtest_probe_child(qts)) {
+            break;
+        }
+        /* Wait at most 360 seconds.  */
+        now = time(NULL);
+        if (now - start >= 360) {
+            break;
+        }
         g_usleep(10000);
     }
 
@@ -161,6 +186,7 @@ static void test_machine(const void *data)
     char codetmp[] = "/tmp/qtest-boot-serial-cXXXXXX";
     const char *codeparam = "";
     const uint8_t *code = NULL;
+    QTestState *qts;
     int ser_fd;
 
     ser_fd = mkstemp(serialtmp);
@@ -189,22 +215,22 @@ static void test_machine(const void *data)
      * Make sure that this test uses tcg if available: It is used as a
      * fast-enough smoketest for that.
      */
-    global_qtest = qtest_initf("%s %s -M %s,accel=tcg:kvm "
-                               "-chardev file,id=serial0,path=%s "
-                               "-no-shutdown -serial chardev:serial0 %s",
-                               codeparam, code ? codetmp : "",
-                               test->machine, serialtmp, test->extra);
+    qts = qtest_initf("%s %s -M %s,accel=tcg:kvm -no-shutdown "
+                      "-chardev file,id=serial0,path=%s "
+                      "-serial chardev:serial0 %s",
+                      codeparam, code ? codetmp : "", test->machine,
+                      serialtmp, test->extra);
     if (code) {
         unlink(codetmp);
     }
 
-    if (!check_guest_output(test, ser_fd)) {
+    if (!check_guest_output(qts, test, ser_fd)) {
         g_error("Failed to find expected string. Please check '%s'",
                 serialtmp);
     }
     unlink(serialtmp);
 
-    qtest_quit(global_qtest);
+    qtest_quit(qts);
 
     close(ser_fd);
 }

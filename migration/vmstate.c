@@ -11,7 +11,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
 #include "migration.h"
 #include "migration/vmstate.h"
 #include "savevm.h"
@@ -390,6 +389,9 @@ int vmstate_save_state_v(QEMUFile *f, const VMStateDescription *vmsd,
                 if (ret) {
                     error_report("Save of field %s/%s failed",
                                  vmsd->name, field->name);
+                    if (vmsd->post_save) {
+                        vmsd->post_save(opaque);
+                    }
                     return ret;
                 }
 
@@ -415,7 +417,15 @@ int vmstate_save_state_v(QEMUFile *f, const VMStateDescription *vmsd,
         json_end_array(vmdesc);
     }
 
-    return vmstate_subsection_save(f, vmsd, opaque, vmdesc);
+    ret = vmstate_subsection_save(f, vmsd, opaque, vmdesc);
+
+    if (vmsd->post_save) {
+        int ps_ret = vmsd->post_save(opaque);
+        if (!ret) {
+            ret = ps_ret;
+        }
+    }
+    return ret;
 }
 
 static const VMStateDescription *
@@ -485,7 +495,7 @@ static int vmstate_subsection_save(QEMUFile *f, const VMStateDescription *vmsd,
                                    void *opaque, QJSON *vmdesc)
 {
     const VMStateDescription **sub = vmsd->subsections;
-    bool subsection_found = false;
+    bool vmdesc_has_subsections = false;
     int ret = 0;
 
     trace_vmstate_subsection_save_top(vmsd->name);
@@ -497,9 +507,9 @@ static int vmstate_subsection_save(QEMUFile *f, const VMStateDescription *vmsd,
             trace_vmstate_subsection_save_loop(vmsd->name, vmsdsub->name);
             if (vmdesc) {
                 /* Only create subsection array when we have any */
-                if (!subsection_found) {
+                if (!vmdesc_has_subsections) {
                     json_start_array(vmdesc, "subsections");
-                    subsection_found = true;
+                    vmdesc_has_subsections = true;
                 }
 
                 json_start_object(vmdesc, NULL);
@@ -522,7 +532,7 @@ static int vmstate_subsection_save(QEMUFile *f, const VMStateDescription *vmsd,
         sub++;
     }
 
-    if (vmdesc && subsection_found) {
+    if (vmdesc_has_subsections) {
         json_end_array(vmdesc);
     }
 

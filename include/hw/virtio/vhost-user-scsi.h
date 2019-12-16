@@ -17,8 +17,6 @@
 #ifndef VHOST_USER_SCSI_H
 #define VHOST_USER_SCSI_H
 
-#include "qemu-common.h"
-#include "hw/qdev.h"
 #include "hw/virtio/virtio-scsi.h"
 #include "hw/virtio/vhost.h"
 #include "hw/virtio/vhost-user.h"
@@ -30,7 +28,7 @@
 
 typedef struct VHostUserSCSI {
     VHostSCSICommon parent_obj;
-    VhostUserState *vhost_user;
+    VhostUserState vhost_user;
 } VHostUserSCSI;
 
 #endif /* VHOST_USER_SCSI_H */

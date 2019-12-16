@@ -11,10 +11,13 @@
 
 #include "qemu/osdep.h"
 #include "qemu/log.h"
+#include "qemu/module.h"
 #include "qapi/error.h"
 #include "trace.h"
 #include "hw/sysbus.h"
+#include "migration/vmstate.h"
 #include "hw/registerfields.h"
+#include "hw/irq.h"
 #include "hw/misc/iotkit-secctl.h"
 
 /* Registers in the secure privilege control block */
@@ -600,7 +603,7 @@ static void iotkit_secctl_mpc_status(void *opaque, int n, int level)
 {
     IoTKitSecCtl *s = IOTKIT_SECCTL(opaque);
 
-    s->mpcintstatus = deposit32(s->mpcintstatus, 0, 1, !!level);
+    s->mpcintstatus = deposit32(s->mpcintstatus, n, 1, !!level);
 }
 
 static void iotkit_secctl_mpcexp_status(void *opaque, int n, int level)
@@ -686,7 +689,8 @@ static void iotkit_secctl_init(Object *obj)
     qdev_init_gpio_out_named(dev, &s->sec_resp_cfg, "sec_resp_cfg", 1);
     qdev_init_gpio_out_named(dev, &s->nsc_cfg_irq, "nsc_cfg", 1);
 
-    qdev_init_gpio_in_named(dev, iotkit_secctl_mpc_status, "mpc_status", 1);
+    qdev_init_gpio_in_named(dev, iotkit_secctl_mpc_status, "mpc_status",
+                            IOTS_NUM_MPC);
     qdev_init_gpio_in_named(dev, iotkit_secctl_mpcexp_status,
                             "mpcexp_status", IOTS_NUM_EXP_MPC);
 
