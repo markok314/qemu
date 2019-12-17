@@ -18,6 +18,8 @@
 
 #include "qemu/osdep.h"
 #include "qemu/log.h"
+#include "qemu/qemu-print.h"
+#include "qemu/ctype.h"
 #include "cpu.h"
 #include "exec/exec-all.h"
 #include "qapi/error.h"
@@ -342,49 +344,48 @@ static int is_supervisor_mode(CPUState *cs)
 }
 */
 
-static void rh850_cpu_dump_state(CPUState *cs, FILE *f,
-    fprintf_function cpu_fprintf, int flags)
+static void rh850_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 {
     RH850CPU *cpu = RH850_CPU(cs);
     CPURH850State *env = &cpu->env;
 
-    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "pc", env->pc);
-    cpu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->systemRegs[BANK_ID_BASIC_0][PSW_IDX]);
+    qemu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "pc", env->pc);
+    qemu_fprintf(f, " %-7s " TARGET_FMT_lx "\n", "psw", env->systemRegs[BANK_ID_BASIC_0][PSW_IDX]);
 
     for (int gpRegIdx = 0; gpRegIdx < NUM_GP_REGS; gpRegIdx++) {
-        cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
+        qemu_fprintf(f, " %-7s " TARGET_FMT_lx,
             rh850_gp_regnames[gpRegIdx], env->gpRegs[gpRegIdx]);
         if ((gpRegIdx & 3) == 3) {
-            cpu_fprintf(f, "\n");
+            qemu_fprintf(f, "\n");
         }
     }
 
-    cpu_fprintf(f, "\n");
+    qemu_fprintf(f, "\n");
 
     for (int bankIdx = 0; bankIdx < NUM_SYS_REG_BANKS; bankIdx++) {
         int numPrinted = 0;
         for (int regIdx = 0; regIdx < MAX_SYS_REGS_IN_BANK; regIdx++) {
             if (rh850_sys_regnames[bankIdx][regIdx]  &&  !(bankIdx == 0  && regIdx == PSW_IDX)) {
-                cpu_fprintf(f, " %-7s " TARGET_FMT_lx,
+                qemu_fprintf(f, " %-7s " TARGET_FMT_lx,
                             rh850_sys_regnames[bankIdx][regIdx],
                             env->systemRegs[bankIdx][regIdx]);
                 if ((numPrinted & 3) == 3) {
-                    cpu_fprintf(f, "\n");
+                    qemu_fprintf(f, "\n");
                 }
                 numPrinted++;
             }
         }
         if (((numPrinted - 1) & 3) != 3) {
-            cpu_fprintf(f, "\n");
+            qemu_fprintf(f, "\n");
         }
         if (numPrinted) { // zero means empty bank, no newline needed
-            cpu_fprintf(f, "\n");
+            qemu_fprintf(f, "\n");
         }
     }
 
-	cpu_fprintf(f, " %s " TARGET_FMT_lx,
+	qemu_fprintf(f, " %s " TARGET_FMT_lx,
 				rh850_sys_databuff_regnames[0], env->sysDatabuffRegs[0]);
-	cpu_fprintf(f, "\n");
+	qemu_fprintf(f, "\n");
 }
 
 static void rh850_cpu_set_pc(CPUState *cs, vaddr value)
@@ -393,6 +394,23 @@ static void rh850_cpu_set_pc(CPUState *cs, vaddr value)
     CPURH850State *env = &cpu->env;
     env->pc = value;
 }
+
+
+/* called by qemu's softmmu to fill the qemu tlb */
+static bool rh850_tlb_fill(CPUState *cs, vaddr addr, int size,
+                           MMUAccessType access_type, int mmu_idx,
+                           bool probe, uintptr_t retaddr)
+{
+    int ret;
+    ret = rh850_cpu_handle_mmu_fault(cs, addr, size, access_type, mmu_idx);
+    if (ret == TRANSLATE_FAIL) {
+        RH850CPU *cpu = RH850_CPU(cs);
+        CPURH850State *env = &cpu->env;
+        do_raise_exception_err(env, cs->exception_index, retaddr);
+    }
+    return true;
+}
+
 
 static void rh850_cpu_synchronize_from_tb(CPUState *cs, TranslationBlock *tb)
 {
@@ -682,6 +700,7 @@ static void rh850_cpu_class_init(ObjectClass *c, void *data)
     cc->cpu_exec_interrupt = rh850_cpu_exec_interrupt;
     cc->dump_state = rh850_cpu_dump_state;
     cc->set_pc = rh850_cpu_set_pc;
+    cc->tlb_fill = rh850_tlb_fill;
     cc->synchronize_from_tb = rh850_cpu_synchronize_from_tb;
     cc->gdb_read_register = rh850_cpu_gdb_read_register;
     cc->gdb_write_register = rh850_cpu_gdb_write_register;
@@ -728,7 +747,6 @@ char *rh850_isa_string(RH850CPU *cpu)
 }
 
 typedef struct RH850CPUListState {
-    fprintf_function cpu_fprintf;
     FILE *file;
 } RH850CPUListState;
 
@@ -749,20 +767,16 @@ static void rh850_cpu_list_entry(gpointer data, gpointer user_data)
     const char *typename = object_class_get_name(OBJECT_CLASS(data));
     int len = strlen(typename) - strlen(RH850_CPU_TYPE_SUFFIX);
 
-    (*s->cpu_fprintf)(s->file, "%.*s\n", len, typename);
+    qemu_fprintf(s->file, "%.*s\n", len, typename);
 }
 
-void rh850_cpu_list(FILE *f, fprintf_function cpu_fprintf)
+void rh850_cpu_list(void)
 {
-    RH850CPUListState s = {
-        .cpu_fprintf = cpu_fprintf,
-        .file = f,
-    };
     GSList *list;
 
     list = object_class_get_list(TYPE_RH850_CPU, false);
     list = g_slist_sort(list, rh850_cpu_list_compare);
-    g_slist_foreach(list, rh850_cpu_list_entry, &s);
+    g_slist_foreach(list, rh850_cpu_list_entry, NULL);
     g_slist_free(list);
 }
 

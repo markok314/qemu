@@ -20,10 +20,12 @@ struct SLookupItem
 class CDisassemblerBase  
 {
 public:
-	CDisassemblerBase(BOOL m_bDefaultBigEndian);
+  CDisassemblerBase(BOOL m_bDefaultBigEndian);
   virtual ~CDisassemblerBase();
   // quick disassemble - calc rnInsType, rdwNextAddress
-  virtual int QuickDisasm(ADDROFFS dwAddress, const BYTE * pbyBuf, int nNumAvailBytes, int & rnInsType, ADDROFFS & rdwNextAddress, int & rnNumCycles);
+  virtual int QuickDisasm(ADDROFFS dwAddress, const BYTE * pbyBuf, 
+                          int nNumAvailBytes, int & rnInsType, 
+                          ADDROFFS & rdwNextAddress, int & rnNumCycles);
   // string disassembly
   virtual int Disasm(const BYTE * pbyBuf, jstring & rjstrDasm, int nNumAvailBytes)=0;
   // TRUE if subroutine call or block instruction

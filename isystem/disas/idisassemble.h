@@ -119,6 +119,7 @@ public:
   virtual int32_t Update();// = 0;
   struct CParameters
   {
+    CParameters(): m_wOptions(0), m_aAddress(0) {}
     enum { MAX_DASM_LEN = 232 };
     enum EOptions
     {
@@ -136,9 +137,9 @@ public:
       daFormatPadd      = 0x0000,  // formated op-code string is padded with spaces between op-code and arguments
       daFormatTab       = 0x0010,  // formated op-code string uses TAB to separate op-code and arguments
     };
-    WORD   m_wOptions = 0; /// // disassemly options
+    WORD   m_wOptions; /// // disassemly options
     WORD   m_wNumMAUs;  // number of MAUs available in m_pbyBuf
-    ADDROFFS m_aAddress = 0; ///
+    ADDROFFS m_aAddress; ///
     const BYTE * m_pbyBuf;  // pointer to where the dis. buffer is located
   };
   virtual int32_t Disassemble(const CParameters * pParameters, LPTSTR pszDasm, WORD * pwLength);// = 0;

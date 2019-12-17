@@ -34,10 +34,12 @@
 //#include "hw/i2c/i2c.h"
 //#include "net/net.h"
 #include "hw/boards.h"
+#include "hw/qdev-properties.h"
 #include "exec/memory.h"
 //#include "qemu/log.h"
 #include "exec/address-spaces.h"
 #include "sysemu/qtest.h"
+#include "sysemu/reset.h"
 //#include "sysemu/sysemu.h"
 //#include "hw/char/pl011.h"
 //#include "hw/misc/unimp.h"
@@ -147,13 +149,18 @@ static void load_rh_kernel(RH850CPU *cpu, const char *kernel_filename, int mem_s
         uint64_t entry;
         uint64_t lowaddr;
 
-        int image_size = load_elf_as(kernel_filename, NULL, NULL, &entry, &lowaddr,
-        		                     NULL, IS_BIG_ENDIAN, EM_RH850, 1, 0, as);
+        int image_size = load_elf_as(kernel_filename, 
+                                     NULL, 
+                                     NULL, 
+                                     NULL, &entry, &lowaddr,
+        		             NULL, IS_BIG_ENDIAN, EM_RH850, 
+                                     1, 0, as);
 
         if (image_size == ELF_LOAD_WRONG_ARCH) { // V850 is subset of RH850, so it is also allowed
             error_report("Loading kernel as V850 code: '%s'", kernel_filename);
-        	image_size = load_elf_as(kernel_filename, NULL, NULL, &entry, &lowaddr,
-           		                     NULL, IS_BIG_ENDIAN, EM_V850, 1, 0, as);
+            image_size = load_elf_as(kernel_filename, NULL, NULL, NULL,
+                                     &entry, &lowaddr,
+                                     NULL, IS_BIG_ENDIAN, EM_V850, 1, 0, as);
         }
 
         if (image_size < 0) {

@@ -17,7 +17,7 @@
 
 #define NecAdrToSymbol(A) StandardAdrToSymbol(A, maPhysicalV850, 4)
 
-CDisassemblerNEC850 *p = nullptr;
+CDisassemblerNEC850 *p = NULL;
 
 void disasm_wrap(char *buf, size_t buflen, uint64_t pc, uint64_t inst, int insLen)
 {

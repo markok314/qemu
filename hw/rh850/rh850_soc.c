@@ -14,6 +14,7 @@
 #include "cpu.h"
 #include "hw/sysbus.h"
 #include "hw/loader.h"
+#include "hw/qdev-properties.h"
 #include "elf.h"
 #include "sysemu/qtest.h"
 #include "qemu/error-report.h"

@@ -319,19 +319,6 @@ void rh850_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
     do_raise_exception_err(env, cs->exception_index, retaddr);
 }
 
-/* called by qemu's softmmu to fill the qemu tlb */
-void tlb_fill(CPUState *cs, target_ulong addr, int size,
-        MMUAccessType access_type, int mmu_idx, uintptr_t retaddr)
-{
-    int ret;
-    ret = rh850_cpu_handle_mmu_fault(cs, addr, size, access_type, mmu_idx);
-    if (ret == TRANSLATE_FAIL) {
-        RH850CPU *cpu = RH850_CPU(cs);
-        CPURH850State *env = &cpu->env;
-        do_raise_exception_err(env, cs->exception_index, retaddr);
-    }
-}
-
 #endif
 
 int rh850_cpu_handle_mmu_fault(CPUState *cs, vaddr address, int size,

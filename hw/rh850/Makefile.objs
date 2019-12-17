@@ -1,2 +1,2 @@
-obj-$(CONFIG_RH850) += rh850mini.o
-obj-$(CONFIG_RH850) += rh850_soc.o
+obj-$(CONFIG_RH850_MINI) += rh850mini.o
+obj-$(CONFIG_RH850_CORE) += rh850_soc.o

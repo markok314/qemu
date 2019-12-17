@@ -5044,15 +5044,15 @@ static const TranslatorOps rh850_tr_ops = {
  */
 #define NEW_GEN_INSN
 #ifdef NEW_GEN_INSN
-void gen_intermediate_code(CPUState *cpu, TranslationBlock *tb)
+void gen_intermediate_code(CPUState *cpu, TranslationBlock *tb, int max_insns)
 {
     DisasContext dc;
-    translator_loop(&rh850_tr_ops, &dc.base, cpu, tb);
+    translator_loop(&rh850_tr_ops, &dc.base, cpu, tb, max_insns);
 }
 
 #else    // NEW_GEN_INSN
 
-void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
+void gen_intermediate_code(CPUState *cs, TranslationBlock *tb, int max_insns)
 {
     CPURH850State *env = cs->env_ptr;
     DisasContext ctx;

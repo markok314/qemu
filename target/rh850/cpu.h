@@ -20,22 +20,13 @@
 #ifndef RH850_CPU_H
 #define RH850_CPU_H
 
-/* QEMU addressing/paging config */
-#define TARGET_PAGE_BITS 12 /* 4 KiB Pages */
-
-#if defined(TARGET_RH850)
-#define TARGET_LONG_BITS 32
-#define TARGET_PHYS_ADDR_SPACE_BITS 34
-#define TARGET_VIRT_ADDR_SPACE_BITS 32
-#endif
-
 #define TCG_GUEST_DEFAULT_MO 0
 
 #define ELF_MACHINE EM_RH850
 #define CPUArchState struct CPURH850State
 
 #include "qemu-common.h"
-#include "qom/cpu.h"
+#include "hw/core/cpu.h"
 #include "exec/cpu-defs.h"
 #include "fpu/softfloat.h"
 
@@ -91,7 +82,6 @@ enum {
 
 #define TRANSLATE_FAIL 1
 #define TRANSLATE_SUCCESS 0
-#define NB_MMU_MODES 4
 #define MMU_USER_IDX 3
 
 #define MAX_RH850_PMPS (16)
@@ -202,8 +192,6 @@ struct CPURH850State {
 #endif
 
 */
-    /* QEMU */
-    CPU_COMMON
 
     /* Fields from here on are preserved across CPU reset. */
     QEMUTimer *timer; /* Internal timer */
@@ -241,8 +229,11 @@ typedef struct RH850CPU {
     /*< private >*/
     CPUState parent_obj;
     /*< public >*/
+    CPUNegativeOffsetState neg;
     CPURH850State env;
 } RH850CPU;
+
+typedef RH850CPU ArchCPU;
 
 static inline RH850CPU *rh850_env_get_cpu(CPURH850State *env)
 {
@@ -288,7 +279,7 @@ int rh850_cpu_handle_mmu_fault(CPUState *cpu, vaddr address, int size,
                               int rw, int mmu_idx);
 
 char *rh850_isa_string(RH850CPU *cpu);
-void rh850_cpu_list(FILE *f, fprintf_function cpu_fprintf);
+void rh850_cpu_list(void);
 
 #define cpu_init(cpu_model) cpu_generic_init(TYPE_RH850_CPU, cpu_model)
 #define cpu_signal_handler cpu_rh850_signal_handler

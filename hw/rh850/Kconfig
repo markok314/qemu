@@ -1,0 +1,12 @@
+config RH850_MINI
+    bool
+    select RH850_CORE
+    select RH850_DIS
+
+
+config RH850_CORE
+    bool
+
+config RH850_DIS
+    bool
+
