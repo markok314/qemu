@@ -58,7 +58,7 @@ def _docker_build(docker_host_dir, targets):
         isVerbose = 1
     targetsStr = ','.join(targets).replace(',', '-softmmu,') + '-softmmu'
     cmd = 'sudo -n docker run --label com.qemu.instance.uuid=isystemBuild -u 1000 --security-opt seccomp=unconfined --rm --net=none ' + \
-         f'-e TARGET_LIST={targetsStr} -e EXTRA_CONFIGURE_OPTS= -e V={isVerbose} -e J=4 -e DEBUG= -e SHOW_ENV= -e CCACHE_DIR=/var/tmp/ccache ' + \
+         f'-e TARGET_LIST={targetsStr} -e EXTRA_CONFIGURE_OPTS= -e V={isVerbose} -e J=12 -e DEBUG= -e SHOW_ENV= -e CCACHE_DIR=/var/tmp/ccache ' + \
          f'-v /home/isystem/.cache/qemu-docker-ccache:/var/tmp/ccache:z -v /home/isystem/proj/qemu/{docker_host_dir}:/var/tmp/qemu ' + \
           ' qemu:fedora /var/tmp/qemu/run ../../isystem/dockerBuild.sh'
 
@@ -213,7 +213,7 @@ sudo python3 createWindowsDistro.py
 Examples:
    To build RH850 and ARM for Windows x64:
 
-   sudo python3 createWindowsDistro.py -t rh850,arm -a 64
+   python3 createWindowsDistro.py -t rh850,arm -a 64
 """
     parser = argparse.ArgumentParser(description=usage)
 

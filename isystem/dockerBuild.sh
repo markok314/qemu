@@ -28,7 +28,7 @@ for prefix in x86_64-w64-mingw32-; do
         --enable-vnc \
         --enable-bzip2 \
         --enable-guest-agent \
-        --with-sdlabi=2.0 \
+        --enable-docs \
         --disable-debug-info
 done
 
